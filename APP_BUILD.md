@@ -17,6 +17,20 @@
 
 ---
 
+## ✅ 当前状态（2026-10-12）
+
+- **后端已就绪**：采用「复用现有 workbuddy 后端」方案，`BACKEND_URL` 仓库变量已设为
+  `https://a4af07ad6a4543814.app.workbuddy.host`，App 直接连你现有的全部聊天与照片，**无需再部署**。
+- **APK 已成功构建**：见 GitHub → **Actions → Build Android APK (恋人空间)** 的最新一次运行
+  （`conclusion: success`），在 **Artifacts** 里下载 `loverspace-apk`（内含 `app-debug.apk`）。
+  > 你只需登录 GitHub 下载安装即可，不用自己跑构建。
+- **零数据迁移**：因为 App 连的就是现有后端，数据天然互通，无需「导入备份 / 整盘搬」。
+
+> 想重新出包（比如以后换了后端地址）：到仓库 **Settings → Variables** 改 `BACKEND_URL`，
+> 再 Actions 页面点 **Run workflow** 即可，约 3–5 分钟出新的 APK。
+
+---
+
 ## 极速试用（可选，跳过部署）
 
 App 是 WebView 加载网页，**不经过微信**，所以平台网关按 `MicroMessenger` UA 的拦截对 App 无效。
@@ -93,7 +107,8 @@ App 在 `app/capacitor.config.json` 里用占位符 `https://REPLACE_WITH_YOUR_B
    > 已设为 `workflow_dispatch`，可随时手动重跑；改了后端地址（Variables）后重跑即生效。
 
 ### 方式 B：本机 Android Studio 出包
-1. 装 [Android Studio](https://developer.android.com/studio)，SDK 装 API 35 + Build Tools 35.0.0。
+1. 装 [Android Studio](https://developer.android.com/studio)，SDK 装 **API 36**（compileSdk=36）+ Build Tools 35.0.0，
+   JDK 用 **21**（Capacitor 8 的安卓模块要求 Java 21 编译，Android Studio 的 Embedded JDK 已满足）。
 2. 打开 `app/android` 这个目录（Import Project）。
 3. 菜单 **Build → Build Bundle(s) / APK(s) → Build APK(s)**。
 4. 产物在 `app/android/app/build/outputs/apk/debug/app-debug.apk`。
