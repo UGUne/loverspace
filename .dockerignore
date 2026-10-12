@@ -1,0 +1,11 @@
+node_modules
+.git
+.codebuddy
+backups
+data
+*.log
+api
+vercel.json
+DEPLOY.md
+README.md
+.cloudstudio

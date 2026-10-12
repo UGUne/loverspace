@@ -1,0 +1,17 @@
+# Render 部署配置（路线 B：直接跑 server.js，零代码改造）
+# 用法：在 Render 新建 Blueprint → 连接本仓库 → 自动按此文件创建服务 + 持久磁盘
+services:
+  - type: web
+    name: loverspace
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free            # 免费档可用；如需更大内存/更稳可升 starter
+    healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: "3000"
+    # 持久磁盘：所有空间数据(rooms.json)与上传照片(uploads/)都落在这里，重启不清空
+    disks:
+      - name: loverspace-data
+        mountPath: /app/data
+        sizeGB: 1

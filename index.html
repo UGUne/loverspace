@@ -1,0 +1,2809 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<meta name="theme-color" content="#ff7ba9" />
+<link rel="manifest" href="/manifest.json" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="恋人空间" />
+<link rel="apple-touch-icon" href="/icons/icon-192.png" />
+<link rel="icon" href="/icons/icon-192.png" />
+<title>恋人空间</title>
+<style>
+  :root {
+    --pink: #ff7ba9;
+    --pink-deep: #f2558d;
+    --pink-soft: #ffd9e6;
+    --pink-bg: #fff0f5;
+    --ink: #4a3b42;
+    --ink-2: #9b8a92;
+    --card: #ffffff;
+    --line: #ffe4ee;
+    --radius: 18px;
+    --shadow: 0 6px 24px rgba(255, 119, 170, 0.16);
+    --tab-h: 62px;
+    --appbar-h: calc(52px + env(safe-area-inset-top));
+    --sb-h: calc(26px + env(safe-area-inset-top));
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+    color: var(--ink);
+    background: #ffeef4;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+  * { -webkit-user-select: none !important; user-select: none !important; -webkit-touch-callout: none !important; -webkit-tap-highlight-color: transparent; }
+  input, textarea, [contenteditable="true"], .editable { -webkit-user-select: text !important; user-select: text !important; -webkit-touch-callout: default !important; }
+  #app {
+    max-width: 100%;
+    margin: 0 auto;
+    min-height: 100dvh;
+    background: linear-gradient(180deg, #ffd6e5 0%, #ffeef4 220px, #fff7fa 100%);
+    position: relative;
+    padding-top: calc(26px + env(safe-area-inset-top));
+    padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom) + 16px);
+    overflow-x: hidden;
+  }
+  .app-statusbar { position: fixed; top: 0; left: 0; right: 0; height: var(--sb-h); padding: env(safe-area-inset-top) 16px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 600; color: #fff; background: linear-gradient(135deg, var(--pink), var(--pink-deep)); z-index: 120; box-shadow: 0 1px 6px rgba(0,0,0,.08); }
+  .app-statusbar .sb-clock { font-variant-numeric: tabular-nums; flex: none; }
+  .app-statusbar .sb-quote { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .95; text-align: right; }
+  /* 状态栏常驻：普通模式与全屏模式均显示，用安全区避开系统状态栏 */
+  .appbar {
+    height: calc(52px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 16px 0;
+    display: flex; align-items: center; gap: 8px;
+    position: sticky; top: 0; z-index: 40;
+    background: linear-gradient(180deg, #ffc9dc, #ffd6e5);
+  }
+  .appbar .logo {
+    width: 32px; height: 32px; border-radius: 10px; flex: none;
+    background: linear-gradient(135deg, #ff8fb5, #f2558d);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 3px 8px rgba(242,85,141,.35);
+  }
+  .appbar h1 { font-size: 18px; font-weight: 700; color: #fff; flex: 1; text-shadow: 0 1px 3px rgba(242,85,141,.35); }
+  .appbar .topbtn {
+    width: 34px; height: 34px; border: none; border-radius: 50%;
+    background: rgba(255,255,255,.75); color: var(--pink-deep);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .appbar .topbtn:active { transform: scale(.92); }
+  svg.ic { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
+  svg.ic.fill { fill: currentColor; stroke: none; }
+
+  .view { display: none; padding: 14px 14px 0; animation: fadein .22s ease; }
+  .view.on { display: block; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .card {
+    background: var(--card); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 16px; margin-bottom: 14px;
+  }
+  .card-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; margin-bottom: 12px; color: var(--ink); }
+  .card-title .t-ic { color: var(--pink); }
+  .card-title .more { margin-left: auto; font-size: 12px; color: var(--ink-2); border: none; background: none; cursor: pointer; display: flex; align-items: center; gap: 2px; }
+
+  .hero {
+    background: linear-gradient(160deg, #ff9ec0, #f2558d);
+    border-radius: 22px; padding: 22px 16px 18px; color: #fff;
+    box-shadow: 0 10px 30px rgba(242,85,141,.35);
+    position: relative; overflow: hidden; margin-bottom: 14px;
+  }
+  .hero::before, .hero::after { content: ""; position: absolute; border-radius: 50%; background: rgba(255,255,255,.14); }
+  .hero::before { width: 140px; height: 140px; top: -60px; right: -40px; }
+  .hero::after { width: 90px; height: 90px; bottom: -40px; left: -20px; }
+  .hero .couple { display: flex; align-items: center; justify-content: center; gap: 18px; position: relative; z-index: 1; }
+  .avatar {
+    width: 54px; height: 54px; border-radius: 50%; object-fit: cover;
+    border: 3px solid rgba(255,255,255,.9); background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 700; color: #fff; cursor: pointer; overflow: hidden; flex: none;
+  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .avatar.img { border-color: rgba(255,255,255,.9); }
+  .avatar.p0 { background: linear-gradient(135deg, #ffa5c4, #ff7ba9); }
+  .avatar.p1 { background: linear-gradient(135deg, #8fc7ff, #5a9cf8); }
+  .hero .heart-mid { color: #fff; animation: beat 1.4s ease-in-out infinite; }
+  @keyframes beat { 0%,100% { transform: scale(1); } 12% { transform: scale(1.22); } 24% { transform: scale(1); } 36% { transform: scale(1.15); } }
+  .hero .days { text-align: center; margin-top: 12px; position: relative; z-index: 1; }
+  .hero .days .num { font-size: 40px; font-weight: 800; letter-spacing: 1px; text-shadow: 0 2px 6px rgba(0,0,0,.12); }
+  .hero .days .num small { font-size: 15px; font-weight: 600; margin-left: 2px; }
+  .hero .days .lbl { font-size: 12px; opacity: .92; margin-top: 2px; }
+  .hero .names { display: flex; justify-content: center; gap: 40px; margin-top: 8px; font-size: 13px; position: relative; z-index: 1; opacity: .95; }
+  .hero .namel, .hero .namer { width: 68px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
+
+  .quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .quick button { border: none; background: none; cursor: pointer; padding: 6px 2px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--ink); }
+  .quick button:active { transform: scale(.93); }
+  .quick .q-ic { width: 46px; height: 46px; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,.08); }
+  .quick .q-ic svg.ic { width: 22px; height: 22px; }
+  .quick span { font-size: 11px; color: var(--ink-2); }
+
+  .menu-list { padding: 4px 0; }
+  .menu-item { width: 100%; display: flex; align-items: center; gap: 12px; padding: 15px 16px; border: none; background: none; cursor: pointer; font-size: 15px; color: var(--ink); text-align: left; border-bottom: 1px solid var(--line); }
+  .menu-item:last-child { border-bottom: none; }
+  .menu-item:active { background: var(--pink-bg); }
+  .menu-item .m-ic { color: var(--pink); flex: none; }
+  .menu-item .sub { margin-left: auto; color: var(--ink-2); font-size: 13px; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .menu-item .chev { color: #d9a8ba; flex: none; margin-left: 4px; }
+
+  .anni-item { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+  .anni-item:last-child { border-bottom: none; }
+  .anni-date { width: 52px; height: 56px; border-radius: 12px; background: linear-gradient(160deg, #ff9ec0, #f2558d); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; flex: none; box-shadow: 0 4px 10px rgba(242,85,141,.3); }
+  .anni-date b { font-size:19px; line-height:1.1; }
+  .anni-date i { font-style: normal; font-size: 10px; }
+  .anni-info { flex: 1; min-width: 0; }
+  .anni-info .t { font-size: 15px; font-weight: 600; }
+  .anni-info .d { font-size: 12px; color: var(--ink-2); margin-top: 3px; }
+  .anni-count { text-align: right; flex: none; }
+  .anni-count b { font-size: 20px; color: var(--pink-deep); }
+  .anni-count i { font-style: normal; font-size: 11px; color: var(--ink-2); display: block; }
+  .anni-count.today b { color: #fff; background: var(--pink-deep); border-radius: 8px; padding: 2px 8px; font-size: 13px; }
+  .del-btn { border: none; background: none; color: #d9a8ba; cursor: pointer; padding: 6px; flex: none; }
+  .del-btn:active { color: var(--pink-deep); }
+
+  #view-chat { position: absolute; top: calc(var(--appbar-h) + var(--sb-h)); left: 0; right: 0; bottom: calc(var(--tab-h) + env(safe-area-inset-bottom)); padding: 0; display: none; overflow: hidden; }
+  #view-chat.on { display: flex; flex-direction: column; }
+  #view-chat .card { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; border-radius: 0; margin: 0; width: 100%; }
+  .chat-wrap { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 12px; padding: 10px 12px 8px; }
+  .bubble-row { display: flex; gap: 8px; align-items: flex-end; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: transform .12s ease; }
+  .bubble-row.pressing .bubble { transform: scale(.94); opacity: .92; }
+  .bubble-row.me { flex-direction: row-reverse; }
+  .bubble-row .b-avatar { width: 34px; height: 34px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; font-weight: 700; overflow: hidden; }
+  .bubble-row .b-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .bubble { max-width: 68%; background: #fff; border-radius: 4px 14px 14px 14px; padding: 9px 12px; font-size: 14px; line-height: 1.5; box-shadow: 0 2px 8px rgba(255,119,170,.12); position: relative; word-break: break-word; }
+  .bubble-row.me .bubble { background: linear-gradient(135deg, #ff8fb5, #f2558d); color: #fff; border-radius: 14px 4px 14px 14px; }
+  .bubble .b-time { display: block; font-size: 10px; opacity: .55; margin-top: 4px; }
+  .chat-empty { text-align: center; color: var(--ink-2); font-size: 13px; padding: 30px 0; }
+
+  .chat-inputbar { position: sticky; bottom: 0; display: flex; gap: 8px; padding: 10px 0 4px; background: linear-gradient(transparent, #fff 40%); }
+  .chat-inputbar input { flex: 1; height: 42px; border: 1.5px solid var(--line); border-radius: 21px; padding: 0 16px; font-size: 14px; background: #fff; outline: none; color: var(--ink); }
+  .chat-inputbar input:focus { border-color: var(--pink); }
+  .send-btn { height: 42px; padding: 0 20px; border: none; border-radius: 21px; cursor: pointer; background: linear-gradient(135deg, #ff8fb5, #f2558d); color: #fff; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(242,85,141,.35); }
+  .send-btn:active { transform: scale(.95); }
+
+  .mood-bar { display: flex; justify-content: space-between; gap: 4px; }
+  .mood-bar button { flex: 1; border: 1.5px solid var(--line); background: #fff; border-radius: 14px; padding: 8px 2px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--ink); }
+  .mood-bar button:active { transform: scale(.93); }
+  .mood-bar button.on { border-color: var(--pink); background: var(--pink-bg); }
+  .mood-bar .m-face { width: 26px; height: 26px; color: var(--ink-2); }
+  .mood-bar button.on .m-face { color: var(--pink-deep); }
+  .mood-bar span { font-size: 10px; color: var(--ink-2); }
+  .mood-note { width: 100%; height: 38px; margin-top: 10px; border: 1.5px solid var(--line); border-radius: 12px; padding: 0 12px; font-size: 13px; outline: none; color: var(--ink); }
+  .mood-note:focus { border-color: var(--pink); }
+
+  .mood-tl { display: flex; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .mood-tl:last-child { border-bottom: none; }
+  .mood-tl .mt-face { width: 34px; height: 34px; border-radius: 50%; background: var(--pink-bg); color: var(--pink-deep); display: flex; align-items: center; justify-content: center; flex: none; }
+  .mood-tl .mt-face svg.ic { width: 20px; height: 20px; }
+  .mood-tl .mt-body { flex: 1; min-width: 0; }
+  .mood-tl .mt-head { font-size: 12px; color: var(--ink-2); display: flex; gap: 8px; }
+  .mood-tl .mt-head b { color: var(--ink); font-size: 13px; }
+  .mood-tl .mt-text { font-size: 14px; margin-top: 3px; }
+
+  .tree-stage { display: flex; flex-direction: column; align-items: center; padding: 8px 0 4px; }
+  .grow-track { width: 100%; height: 10px; border-radius: 5px; background: var(--pink-soft); overflow: hidden; }
+  .grow-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, #ffb0cc, #f2558d); transition: width .6s ease; }
+  .grow-lbl { font-size: 11px; color: var(--ink-2); margin-top: 6px; }
+  .water-btn { margin-top: 14px; display: flex; align-items: center; gap: 8px; border: none; border-radius: 24px; padding: 12px 34px; cursor: pointer; background: linear-gradient(135deg, #7ec8ff, #4a9df3); color: #fff; font-size: 15px; font-weight: 700; box-shadow: 0 6px 16px rgba(74,157,243,.4); }
+  .water-btn:disabled { background: #d8dee6; box-shadow: none; cursor: default; }
+  .water-btn:active:not(:disabled) { transform: scale(.95); }
+
+  .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .photo-cell { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: var(--pink-soft); cursor: pointer; }
+  .photo-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo-cell.selmode { outline: 2.5px solid transparent; outline-offset: -2.5px; }
+  .photo-cell.selmode.sel { outline-color: var(--pink-deep); }
+  .photo-cell .ph-sel { position: absolute; top: 6px; left: 6px; width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,.85); display: flex; align-items: center; justify-content: center; color: var(--pink-deep); }
+  .photo-cell .ph-sel.on { background: var(--pink-deep); color: #fff; }
+  .photo-cell .ph-sel svg { width: 16px; height: 16px; }
+  .photo-cell.sortmode { cursor: grab; }
+  .photo-cell.sortmode:active { cursor: grabbing; }
+  .photo-cell .ph-rank { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,.5); color: #fff; font-size: 12px; border-radius: 10px; padding: 1px 7px; }
+  .photo-cell.dragging { opacity: .4; }
+  .photo-cell.drag-over { outline: 2.5px dashed var(--pink-deep); outline-offset: -2.5px; }
+  .photo-add { aspect-ratio: 1; border-radius: 12px; background: rgba(255,255,255,.6); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--pink-deep); cursor: pointer; font-size: 13px; border: 2px dashed #ffb7cf; }
+  .photo-add:active { background: var(--pink-bg); }
+
+  .tabbar { position: fixed; bottom: 0; left: 0; transform: none; width: 100%; max-width: none; height: calc(var(--tab-h) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: rgba(255,255,255,.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); display: flex; z-index: 50; }
+  .tabbar button { flex: 1; border: none; background: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #b3a2ab; font-size: 10px; position: relative; }
+  .tabbar button.on { color: var(--pink-deep); }
+  .tabbar button.on .tab-ic { transform: translateY(-1px) scale(1.08); }
+  .tabbar .tab-ic { width: 23px; height: 23px; transition: transform .18s; }
+  .tabbar .tab-ic .fill-part { opacity: 0; transition: opacity .18s; }
+  .tabbar button.on .tab-ic .fill-part { opacity: 1; }
+
+  .mask { position: fixed; inset: 0; background: rgba(70,40,55,.45); z-index: 90; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .mask.open { opacity: 1; pointer-events: auto; }
+  .sheet { position: fixed; bottom: 0; left: 0; transform: translateY(105%); width: 100%; max-width: none; max-height: 86dvh; overflow-y: auto; background: #fff; border-radius: 22px 22px 0 0; z-index: 95; padding: 18px 18px calc(20px + env(safe-area-inset-bottom)); transition: transform .26s cubic-bezier(.32,.72,.35,1); }
+  .sheet.open { transform: translateY(0); }
+  .sheet-head { display: flex; align-items: center; margin-bottom: 14px; }
+  .sheet-head h3 { font-size: 16px; font-weight: 700; flex: 1; }
+  .sheet-close { border: none; background: var(--pink-bg); color: var(--pink-deep); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; color: var(--ink-2); margin-bottom: 6px; }
+  .field input[type="text"], .field input[type="date"], .field input[type="url"] { width: 100%; height: 44px; border: 1.5px solid var(--line); border-radius: 12px; padding: 0 14px; font-size: 14px; outline: none; background: #fff; color: var(--ink); }
+  .field input:focus { border-color: var(--pink); }
+  .primary-btn { width: 100%; height: 46px; border: none; border-radius: 23px; cursor: pointer; background: linear-gradient(135deg, #ff8fb5, #f2558d); color: #fff; font-size: 15px; font-weight: 700; box-shadow: 0 6px 16px rgba(242,85,141,.35); margin-top: 4px; }
+  .primary-btn:active { transform: scale(.97); }
+  .ghost-btn { width: 100%; height: 44px; border: 1.5px solid #ffb7cf; border-radius: 22px; cursor: pointer; background: #fff; color: var(--pink-deep); font-size: 14px; font-weight: 600; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .ghost-btn:active { background: var(--pink-bg); }
+
+  .idpick { display: flex; gap: 10px; }
+  .idpick button { flex: 1; border: 1.5px solid var(--line); background: #fff; border-radius: 14px; padding: 12px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--ink); font-size: 13px; }
+  .idpick button.on { border-color: var(--pink); background: var(--pink-bg); }
+  .idpick .avatar { width: 44px; height: 44px; font-size: 16px; border-width: 2px; cursor: default; }
+
+  .avatar-edit { display: flex; gap: 24px; justify-content: center; margin-bottom: 16px; }
+  .avatar-edit .av-btn { border: none; background: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
+  .avatar-edit .avatar { width: 56px; height: 56px; border: 3px solid var(--pink-soft); position: relative; }
+  .avatar-edit .cam { position: absolute; bottom: -2px; right: -2px; width: 22px; height: 22px; border-radius: 50%; background: var(--pink-deep); color: #fff; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; }
+  .avatar-edit .cam svg.ic { width: 11px; height: 11px; }
+
+  .viewer { position: fixed; inset: 0; background: rgba(0,0,0,.88); z-index: 120; display: none; align-items: center; justify-content: center; }
+  .viewer.open { display: flex; }
+  .viewer img { max-width: 96vw; max-height: 86vh; border-radius: 8px; opacity: 0; transition: opacity .25s; }
+  .viewer img.ready { opacity: 1; }
+  .viewer .skel { position: absolute; width: min(72vw, 360px); height: min(52vh, 340px); border-radius: 10px; background: linear-gradient(100deg, #3a3338 30%, #504850 50%, #3a3338 70%); background-size: 200% 100%; animation: skel 1.2s infinite; display: none; }
+  .viewer.loading .skel { display: block; }
+  @keyframes skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  .viewer button { position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 16px; width: 44px; height: 44px; border-radius: 50%; border: none; background: rgba(255,255,255,.2); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .viewer .v-del { position: absolute; top: auto; bottom: calc(26px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: auto; height: 44px; padding: 0 26px; border-radius: 22px; background: rgba(255,255,255,.16); color: #fff; font-size: 14px; font-weight: 600; gap: 6px; display: none; }
+  .viewer .v-del svg.ic { width: 16px; height: 16px; }
+  .viewer.has-del .v-del { display: flex; }
+
+  #toast { position: fixed; bottom: calc(var(--tab-h) + 30px); left: 50%; transform: translateX(-50%) translateY(10px); background: rgba(60,40,50,.85); color: #fff; font-size: 13px; padding: 9px 18px; border-radius: 20px; opacity: 0; pointer-events: none; transition: all .25s; z-index: 200; max-width: 80vw; text-align: center; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .empty-tip { text-align: center; color: var(--ink-2); font-size: 13px; padding: 26px 0; }
+
+  #roomGate { position: fixed; inset: 0; z-index: 300; background: linear-gradient(160deg, #ffd6e5, #ffb0cc); display: flex; align-items: center; justify-content: center; padding: 24px; }
+  #roomGate.hide { display: none; }
+  .gate-card { background: #fff; border-radius: 24px; padding: 28px 22px 24px; width: 100%; max-width: 330px; box-shadow: 0 20px 50px rgba(242,85,141,.3); text-align: center; }
+  .gate-logo { width: 64px; height: 64px; border-radius: 20px; margin: 0 auto 14px; background: linear-gradient(135deg, #ff8fb5, #f2558d); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(242,85,141,.4); }
+  .gate-title { font-size: 22px; font-weight: 800; color: var(--ink); }
+  .gate-sub { font-size: 13px; color: var(--ink-2); margin: 8px 0 20px; line-height: 1.6; }
+  .gate-input { width: 100%; height: 46px; border: 1.5px solid var(--line); border-radius: 12px; text-align: center; font-size: 20px; letter-spacing: 4px; text-transform: uppercase; outline: none; margin-bottom: 12px; color: var(--pink-deep); font-weight: 700; }
+  .gate-input:focus { border-color: var(--pink); }
+  .gate-note { margin-top: 16px; font-size: 12px; color: var(--ink-2); cursor: pointer; text-decoration: underline; }
+  .gate-err { color: var(--pink-deep); font-size: 12px; margin-top: 8px; min-height: 16px; }
+  .gate-input.pwd { font-size: 14px; letter-spacing: 1px; text-transform: none; text-align: left; padding: 0 14px; font-weight: 500; color: var(--ink); }
+
+  /* 自拍时间轴 */
+  .sf-hero { display: flex; align-items: center; gap: 14px; padding: 4px 0 2px; }
+  .sf-couple { display: flex; align-items: center; justify-content: center; flex: none; gap: 6px; }
+  .sf-couple .avatar { width: 42px; height: 42px; border: 2.5px solid #fff; position: relative; }
+  .sf-couple .avatar.p1 { margin-left: 0; }
+  .sf-couple .sf-heart { color: var(--pink); position: relative; z-index: 3; margin: 0; width: 22px; height: 22px; flex: none; filter: drop-shadow(0 1px 2px rgba(0,0,0,.15)); }
+  .sf-stat { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.5; }
+  .sf-stat b { color: var(--pink-deep); }
+  .sf-btns { display: flex; gap: 10px; margin-top: 14px; }
+  .sf-btns .primary-btn { flex: 1; margin-top: 0; display: flex; align-items: center; justify-content: center; gap: 7px; }
+  .sf-btns .primary-btn svg.ic { width: 16px; height: 16px; }
+  .sf-day { display: flex; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .sf-day:last-child { border-bottom: none; }
+  .sf-rail { width: 52px; flex: none; position: relative; }
+  .sf-rail .sf-dlbl { font-size: 15px; font-weight: 700; color: var(--ink); }
+  .sf-rail .sf-dsub { font-size: 10px; color: var(--ink-2); margin-top: 2px; }
+  .sf-rail .sf-dot { position: absolute; left: 0; bottom: 2px; color: var(--pink); width: 12px; height: 12px; }
+  .sf-row { flex: 1; display: flex; gap: 8px; align-items: stretch; min-width: 0; }
+  .sf-card { flex: 1; border-radius: 16px; min-height: 175px; overflow: hidden; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; cursor: pointer; }
+  .sf-card.mine { background: linear-gradient(160deg, #e8f2ff, #cfe5ff); }
+  .sf-card.ta { background: linear-gradient(160deg, #ffe9f2, #ffd7e6); }
+  .sf-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .sf-card .sf-tag { position: absolute; bottom: 6px; left: 6px; background: rgba(0,0,0,.4); color: #fff; font-size: 10px; padding: 2px 9px; border-radius: 10px; z-index: 2; }
+  .sf-ph { font-size: 12px; color: rgba(0,0,0,.42); padding: 8px 6px; line-height: 1.55; }
+  .mini-btn { border: none; border-radius: 18px; padding: 10px 18px; font-size: 14px; font-weight: 700; color: #fff; cursor: pointer; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; line-height: 1; }
+  .mini-btn:active { transform: scale(.95); }
+  .mini-btn.b { background: linear-gradient(135deg, #7ec8ff, #4a9df3); box-shadow: 0 3px 8px rgba(74,157,243,.35); }
+  .mini-btn.p { background: linear-gradient(135deg, #ff9ec0, #f2558d); box-shadow: 0 3px 8px rgba(242,85,141,.35); }
+  .sf-mid { align-self: center; flex: none; color: var(--pink); width: 20px; height: 20px; }
+  /* 相册 */
+  .album-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .mini-btn.danger { background: linear-gradient(135deg,#ff7b7b,#e33d3d); box-shadow: 0 3px 8px rgba(227,61,61,.3); }
+  #albumBack { font-size: 15px; padding: 10px 16px 10px 12px; }
+  #albumBack::before { content: "\2039"; font-size: 22px; line-height: 1; margin-right: 1px; font-weight: 800; }
+  .album-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .album-bar .spacer { flex: 1 1 auto; }
+  .album-managebar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; padding: 8px 10px; background: var(--pink-bg); border-radius: 14px; }
+  .album-managebar #selCount { font-size: 13px; font-weight: 700; color: var(--pink-deep); }
+  .album-managebar .spacer { flex: 1 1 auto; }
+  .album-cap { font-size: 12px; color: var(--ink-2); background: var(--pink-bg); border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; line-height: 1.5; }
+  .album-cap.warn { color: #b8436a; background: #fff0f5; border: 1px solid #ffc6da; }
+  .album-card { position: relative; aspect-ratio: 1; border-radius: 14px; overflow: hidden; background: var(--pink-soft); cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .album-card .album-cover { width: 100%; height: 100%; }
+  .album-card .album-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .album-card .album-cover.empty { display: flex; align-items: center; justify-content: center; color: #ffb7cf; }
+  .album-card .album-cover.empty svg { width: 34px; height: 34px; }
+  .album-meta { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 10px 8px; background: linear-gradient(transparent, rgba(0,0,0,.55)); color: #fff; }
+  .album-name { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .album-count { font-size: 11px; opacity: .85; margin-top: 1px; }
+  .album-card.new { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--pink-deep); font-size: 12px; border: 2px dashed #ffb7cf; background: rgba(255,255,255,.6); box-shadow: none; }
+  .album-card.new svg { width: 30px; height: 30px; }
+  /* 头像裁剪 */
+  .crop-wrap { position: relative; width: 240px; height: 240px; margin: 0 auto; border-radius: 50%; overflow: hidden; background: #eee; touch-action: none; }
+  .crop-wrap img { position: absolute; left: 0; top: 0; transform-origin: 0 0; user-select: none; -webkit-user-drag: none; }
+  .crop-ring { position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 9999px rgba(0,0,0,.45); pointer-events: none; }
+  .crop-zoom { width: 100%; margin-top: 14px; }
+  .crop-hint { font-size: 12px; color: var(--ink-2); text-align: center; margin-top: 8px; }
+  /* 恋爱树增强 */
+  .tree-actions { display: flex; gap: 10px; margin: 12px 0; }
+  .tree-actions .tbtn { flex: 1; border: none; border-radius: 14px; padding: 12px 6px; font-size: 12px; font-weight: 700; color: #fff; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .tree-actions .tbtn:disabled { opacity: .5; }
+  .tree-actions .tbtn svg { width: 22px; height: 22px; }
+  .tree-section-title { font-size: 13px; font-weight: 700; color: var(--ink-1); margin: 14px 0 8px; display: flex; align-items: center; gap: 6px; }
+  .task-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .task-item .t-text { flex: 1; font-size: 14px; }
+  .task-item .t-who { display: flex; gap: 6px; }
+  .task-item .t-who span { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; border: 2px solid #fff; box-sizing: border-box; }
+  .task-item .t-who span.on { box-shadow: 0 0 0 2px #3fae6e; }
+  .task-add input { width: 100%; border: 1.5px solid #ffb7cf; border-radius: 12px; padding: 10px 12px; font-size: 14px; margin-top: 6px; box-sizing: border-box; }
+  .pet-card { display: flex; align-items: center; gap: 14px; background: linear-gradient(135deg,#fff,#fff4f8); border-radius: 16px; padding: 14px; margin: 10px 0; }
+  .pet-emoji { font-size: 46px; line-height: 1; filter: drop-shadow(0 3px 4px rgba(0,0,0,.12)); }
+  .pet-info { flex: 1; }
+  .pet-name { font-size: 14px; font-weight: 700; }
+  .pet-stat { font-size: 11px; color: var(--ink-2); margin-top: 2px; }
+  .pet-bars { margin-top: 6px; }
+  .pet-bar { height: 6px; border-radius: 3px; background: #ffe3ec; margin-top: 5px; overflow: hidden; }
+  .pet-bar > i { display: block; height: 100%; background: linear-gradient(135deg,#ff9ec0,#f2558d); }
+  .pet-btns { display: flex; gap: 8px; margin-top: 10px; }
+  .pet-btns .mini-btn { flex: 1; border-radius: 12px; padding: 9px 0; }
+  /* 想你打卡 */
+  .miss-card { background: linear-gradient(135deg,#ffe3ee,#ffd0e3); border-radius: 18px; padding: 18px 16px; text-align: center; }
+  .miss-heart { font-size: 50px; line-height: 1; cursor: pointer; transition: transform .15s; }
+  .miss-heart:active { transform: scale(1.18); }
+  .miss-tip { font-size: 13px; color: var(--ink-2); margin-top: 4px; }
+  .miss-streak { margin-top: 12px; font-size: 13px; }
+  .miss-streak b { font-size: 22px; color: var(--pink-deep); }
+  /* 恋爱树动效 */
+  .tree-scene { border-radius: 18px; overflow: hidden; background: #e9f8ff; line-height: 0; box-shadow: inset 0 0 0 1px rgba(255,255,255,.5); }
+  .tree-scene svg { width: 100%; height: auto; }
+  .sign-board { position: relative; background: linear-gradient(135deg,#dda36b,#b97b3f); border: 3px solid #8a5a33; border-radius: 12px; padding: 8px 16px; color: #fff; margin: 12px auto 0; max-width: 250px; box-shadow: 0 4px 10px rgba(138,90,51,.25); }
+  .sign-board::before, .sign-board::after { content: ""; position: absolute; top: 50%; width: 7px; height: 7px; border-radius: 50%; background: #6b4423; transform: translateY(-50%); }
+  .sign-board::before { left: 8px; }
+  .sign-board::after { right: 8px; }
+  .sign-row { display: flex; align-items: baseline; justify-content: center; gap: 7px; font-size: 13px; padding: 2px 0; }
+  .sign-row b { font-size: 18px; color: #ffe28a; min-width: 20px; text-align: center; }
+  .t-canopy { transform-origin: 80px 140px; animation: tSway 7s ease-in-out infinite; }
+  @keyframes tSway { 0%,100% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg); } }
+  .t-spark { animation: tSpark 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  .t-spark.s2 { animation-delay: .9s; }
+  @keyframes tSpark { 0%,100% { opacity: .15; transform: scale(.7); } 50% { opacity: 1; transform: scale(1.15); } }
+  .t-fall { animation: tFall 5s linear infinite; }
+  .t-fall.f2 { animation-delay: 1.8s; }
+  .t-fall.f3 { animation-delay: 3.4s; }
+  @keyframes tFall { 0% { transform: translate(0,-4px); opacity: 0; } 18% { opacity: .9; } 100% { transform: translate(-12px,28px); opacity: 0; } }
+  /* 每日任务 */
+  .dt-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .dt-item:last-child { border-bottom: none; }
+  .dt-ico { width: 30px; height: 30px; border-radius: 10px; background: #f4f6fa; display: flex; align-items: center; justify-content: center; color: #9aa7b8; flex: none; }
+  .dt-ico svg { width: 15px; height: 15px; }
+  .dt-item.done .dt-ico { background: linear-gradient(135deg,#8fd3a8,#3fae6e); color: #fff; }
+  .dt-name { flex: 1; }
+  .dt-item.done .dt-name { color: var(--ink-2); }
+  .dt-who { display: flex; gap: 6px; }
+  .dt-who span { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; opacity: .32; }
+  .dt-who span.on { opacity: 1; box-shadow: 0 0 0 2px #3fae6e; }
+  .dt-who .p0 { background: linear-gradient(135deg,#ffa5c4,#ff7ba9); }
+  .dt-who .p1 { background: linear-gradient(135deg,#8fc7ff,#5a9cf8); }
+  /* 奶龙宠物 */
+  .pet-card { flex-direction: column; align-items: stretch; gap: 6px; }
+  .pet-stage { position: relative; display: flex; justify-content: center; padding: 4px 0 0; cursor: pointer; }
+  .pet-bob { animation: petBob 3.2s ease-in-out infinite; }
+  @keyframes petBob { 0%,100% { transform: translateY(0) scale(1,1); } 50% { transform: translateY(-3px) scale(1.015,.985); } }
+  .pet-lid { animation: petBlink 4.6s ease-in-out infinite; }
+  @keyframes petBlink { 0%,92%,100% { transform: scaleY(0); } 95%,97% { transform: scaleY(1); } }
+  .pet-wiggle { animation: petWiggle .6s ease-in-out; }
+  @keyframes petWiggle { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-6deg); } 50% { transform: rotate(5deg); } 75% { transform: rotate(-3deg); } }
+  .pet-heart { position: absolute; font-size: 16px; color: #ff6b9d; animation: petHeart 1.3s ease-out forwards; pointer-events: none; }
+  @keyframes petHeart { 0% { opacity: 0; transform: translateY(8px) scale(.5); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-36px) scale(1.15); } }
+  .pet-info { text-align: left; }
+  .mini-btn:disabled { opacity: .5; }
+  .tbtn span { font-size: 11px; }
+  /* ===== 主题 / 皮肤 ===== */
+  body { font-family: var(--font, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif); }
+  .theme-colors { display: flex; gap: 10px; flex-wrap: wrap; }
+  .theme-colors .tc { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.15); cursor: pointer; padding: 0; }
+  .theme-colors .tc.on { border-color: #333; transform: scale(1.12); box-shadow: 0 0 0 2px var(--pink); }
+  .seg { display: flex; gap: 8px; }
+  .seg button { flex: 1; border: 1.5px solid var(--line); background: #fff; border-radius: 12px; padding: 9px 4px; cursor: pointer; font-size: 14px; color: var(--ink); }
+  .seg button.on { border-color: var(--pink); background: var(--pink-bg); color: var(--pink-deep); font-weight: 700; }
+  /* 暗黑模式 */
+  body.dark { background: #1a1620; color: #e8dfe6; }
+  body.dark #app { background: linear-gradient(180deg,#2a2330 0%,#1a1620 220px,#15111a 100%); }
+  body.dark .card, body.dark .sheet, body.dark .hero, body.dark .quick, body.dark .miss-card { background: #241e2c; }
+  body.dark .card-title, body.dark .anni-info .t, body.dark .grow-lbl, body.dark .names, body.dark .lbl, body.dark .anni-date b { color: #e8dfe6; }
+  body.dark .tabbar { background: rgba(40,32,48,.94); border-color: #332a3c; }
+  body.dark .mini-btn { background: #2e2638; color: #e8dfe6; border-color: #3a3145; }
+  body.dark .mini-btn.b { background: var(--pink-deep); color: #fff; }
+  body.dark input, body.dark .mood-note, body.dark .chat-inputbar input { background: #2e2638; color: #e8dfe6; border-color: #3a3145; }
+  body.dark .bubble { background: #2e2638; color: #e8dfe6; }
+  body.dark .bubble-row.me .bubble { background: var(--pink-deep); color: #fff; }
+  body.dark .msg-menu { background: #2e2638; box-shadow: 0 8px 28px rgba(0,0,0,.5); }
+  body.dark .msg-menu button { color: #e8dfe6; }
+  body.dark .msg-menu button:active { background: #3a3145; }
+  /* ===== 那年今日 / 时间线 ===== */
+  .loveword-card .loveword { font-size: 14px; line-height: 1.6; color: var(--pink-deep); font-weight: 600; padding: 4px 0; }
+  #homeMemory { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .mem-cell { position: relative; cursor: pointer; }
+  .mem-cell img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 10px; }
+  .mem-cell .mem-yr { position: absolute; left: 4px; bottom: 4px; background: rgba(0,0,0,.5); color: #fff; font-size: 10px; padding: 1px 5px; border-radius: 6px; }
+  .tl-date { font-size: 13px; font-weight: 700; color: var(--ink-2); margin: 12px 0 8px; }
+  .tl-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .tl-cell { position: relative; cursor: pointer; }
+  .tl-cell img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 8px; }
+  .tl-cell .tl-al { position: absolute; left: 2px; bottom: 2px; right: 2px; font-size: 9px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tl-scroll { max-height: 72dvh; overflow: auto; }
+  /* ===== 悄悄话增强 ===== */
+  .chat-quick { display: flex; gap: 8px; padding: 10px 12px 4px; flex-wrap: wrap; }
+  .chat-quick .qk { border: 1.5px solid var(--line); background: var(--pink-bg); color: var(--pink-deep); border-radius: 14px; padding: 7px 12px; font-size: 13px; cursor: pointer; }
+  .chat-love { margin: 0 12px 10px; text-align: center; font-weight: 600; color: var(--pink-deep); font-size: 13px; cursor: pointer; }
+  .emoji-btn { border: 1.5px solid var(--line); background: #fff; border-radius: 50%; width: 38px; height: 38px; font-size: 18px; cursor: pointer; flex: none; }
+  .emoji-panel { position: fixed; left: 0; right: 0; bottom: 0; width: 100%; height: 40dvh; min-height: 40dvh; max-height: 40dvh; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px 8px; align-content: start; padding: 12px 14px calc(18px + env(safe-area-inset-bottom)); background: var(--card); border-radius: 22px 22px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,.22); overflow: auto; z-index: 80; margin-top: 0; -webkit-overflow-scrolling: touch; animation: sheetUp .22s ease; }
+  @keyframes sheetUp { from { transform: translateY(20px); opacity: .6; } to { transform: translateY(0); opacity: 1; } }
+  .emoji-panel .sheet-head { grid-column: 1 / -1; position: sticky; top: 0; background: var(--card); z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: 6px 2px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+  .emoji-panel .sheet-head::before { content: ""; position: absolute; left: 50%; top: -8px; transform: translateX(-50%); width: 42px; height: 5px; border-radius: 3px; background: var(--line); }
+  .emoji-panel .sheet-head .t { font-size: 14px; font-weight: 600; color: var(--ink); padding-left: 4px; }
+  .emoji-panel .sheet-head .x { border: none; background: var(--pink-bg); color: var(--pink-deep); width: 30px; height: 30px; border-radius: 50%; font-size: 14px; cursor: pointer; }
+  .emoji-panel .sticker-item { border: none; background: none; cursor: pointer; padding: 10px; border-radius: 16px; display: flex; align-items: center; justify-content: center; }
+  .emoji-panel .sticker-item:active { background: var(--pink-bg); transform: scale(.92); }
+  /* 表情面板打开时：聊天输入框固定在面板上方，始终可见 */
+  body.emoji-open .chat-inputbar { position: fixed; left: 0; right: 0; bottom: calc(40dvh + var(--kb, 0px)); z-index: 85; background: #fff; border-top: 1px solid var(--line); padding: 10px 16px 4px; box-shadow: 0 -2px 10px rgba(0,0,0,.05); }
+  /* 键盘弹出：输入条抬到键盘上方，底栏隐藏（visualViewport 计算 --kb） */
+  body.kb-open .chat-inputbar { position: fixed; left: 0; right: 0; bottom: var(--kb, 0px); z-index: 90; background: #fff; border-top: 1px solid var(--line); padding: 10px 16px calc(4px + env(safe-area-inset-bottom)); }
+  body.kb-open .tabbar { display: none; }
+  body.emoji-open .chat-wrap { padding-bottom: calc(40dvh + 64px); }
+  .sticker { font-size: 40px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; will-change: transform; }
+  .sticker img { width: 72px; height: 72px; display: block; }
+  .emoji-panel .sticker img { width: 56px; height: 56px; }
+  .bubble.is-sticker .sticker img { width: 92px; height: 92px; }
+  .bubble.is-sticker { background: transparent !important; box-shadow: none !important; padding: 4px 6px; }
+  .bubble.is-sticker .b-time { margin-top: 2px; opacity: .45; }
+  .msg-recall { text-align: center; color: var(--ink-2); font-size: 12px; margin: 8px 0; }
+  .msg-menu { position: fixed; z-index: 9999; background: var(--card); border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.22); padding: 5px; min-width: 120px; }
+  .msg-menu button { display: block; width: 100%; text-align: left; padding: 11px 16px; font-size: 14px; border: none; background: none; color: var(--ink); border-radius: 8px; cursor: pointer; }
+  .msg-menu button:active { background: var(--pink-bg); }
+  .msg-menu button.danger { color: #ff4d6d; }
+  .b-read { font-size: 10px; color: var(--ink-2); margin-left: 6px; }
+  .bubble-row.me .b-read { color: var(--pink-deep); }
+  /* ===== 动态表情动画（仿 QQ 动图贴纸） ===== */
+  @keyframes st-heartbeat { 0%,100% { transform: scale(1); } 25% { transform: scale(1.22); } 50% { transform: scale(.94); } 75% { transform: scale(1.12); } }
+  @keyframes st-bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+  @keyframes st-shake { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
+  @keyframes st-wobble { 0%,100% { transform: rotate(0) translateX(0); } 20% { transform: rotate(8deg) translateX(3px); } 40% { transform: rotate(-8deg) translateX(-3px); } 60% { transform: rotate(6deg) translateX(2px); } 80% { transform: rotate(-6deg) translateX(-2px); } }
+  @keyframes st-breath { 0%,100% { transform: scale(1); } 50% { transform: scale(1.16); } }
+  @keyframes st-twinkle { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.3); opacity: .55; } }
+  @keyframes st-spin { 0% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
+  @keyframes st-throw { 0% { transform: translate(0,0) scale(1) rotate(0); } 30% { transform: translate(14px,-22px) scale(1.15) rotate(12deg); } 60% { transform: translate(26px,-6px) scale(1) rotate(-8deg); } 100% { transform: translate(34px,8px) scale(.9) rotate(0); } }
+  @keyframes st-rock { 0%,100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }
+  @keyframes st-sway { 0%,100% { transform: translateX(-6px) rotate(-6deg); } 50% { transform: translateX(6px) rotate(6deg); } }
+  @keyframes st-purr { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08) translateY(-2px); } }
+  .anim-heartbeat { animation: st-heartbeat 1.2s ease-in-out infinite; }
+  .anim-bounce { animation: st-bounce 1s ease-in-out infinite; }
+  .anim-shake { animation: st-shake .5s ease-in-out infinite; }
+  .anim-wobble { animation: st-wobble 1.4s ease-in-out infinite; }
+  .anim-breath { animation: st-breath 2.4s ease-in-out infinite; }
+  .anim-twinkle { animation: st-twinkle 1.6s ease-in-out infinite; }
+  .anim-spin { animation: st-spin 3s linear infinite; }
+  .anim-throw { animation: st-throw 1.8s ease-in-out infinite; }
+  .anim-rock { animation: st-rock 1.2s ease-in-out infinite; }
+  .anim-sway { animation: st-sway 2s ease-in-out infinite; }
+  .anim-purr { animation: st-purr .8s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<!-- 空间码入口 -->
+<div id="roomGate">
+  <div class="gate-card">
+    <div class="gate-logo"><svg class="ic fill" style="color:#fff;width:32px;height:32px"><use href="#i-heart"/></svg></div>
+    <div class="gate-title">恋人空间</div>
+    <div class="gate-sub">两个人用同一个空间码<br>就能实时共享所有内容</div>
+    <button class="primary-btn" id="gateCreate">创建共享空间</button>
+    <input class="gate-input pwd" id="gatePwd" type="password" maxlength="32" placeholder="加密密码（可选，两人填同一个）" style="margin-top:10px" />
+    <input class="gate-input" id="gateCode" placeholder="输入空间码加入" maxlength="6" />
+    <button class="ghost-btn" id="gateJoin" style="margin-top:0">加入已有空间</button>
+    <div class="gate-err" id="gateErr"></div>
+    <button class="primary-btn" id="gateEnter" style="display:none">进入我的空间</button>
+    <div class="gate-note" id="gateLocal">暂时不用云端 · 本地模式</div>
+    <div style="margin-top:10px;font-size:10px;color:rgba(0,0,0,0.35)">内核 v6 · 端到端加密 · 双云端自动选</div>
+  </div>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path class="fill-part" d="M12 20.5C7 16.5 3 13 3 8.9 3 6.2 5.1 4 7.8 4c1.7 0 3.2.8 4.2 2.2C13 4.8 14.5 4 16.2 4 18.9 4 21 6.2 21 8.9c0 4.1-4 7.6-9 11.6z"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10.5V20h12v-9.5"/><path d="M10 20v-5.5h4V20"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path class="fill-part" d="M4 5h16v11H9l-5 4V5z"/></symbol>
+    <symbol id="i-photo" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4.5 17.5 10 12l4 4 3-3 3 3"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.2" r="3.6"/><path d="M5 20c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="2.5"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/><path d="M8 14h2.5M8 17h5"/></symbol>
+    <symbol id="i-tree" viewBox="0 0 24 24"><path d="M12 21v-6"/><path d="M12 15c-3.6 0-6-2.2-6-5.2C6 6.6 8.6 4 12 4s6 2.6 6 5.8c0 3-2.4 5.2-6 5.2z"/><path d="M12 15v-6M12 11l2.2-2M12 12.5 9.8 10.5"/></symbol>
+    <symbol id="i-mood" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.8 14.2c.8 1.2 1.9 1.8 3.2 1.8s2.4-.6 3.2-1.8"/><path d="M9 9.6h.01M15 9.6h.01" stroke-width="2.6"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.5 12c0-.5-.05-1-.14-1.44l1.8-1.4-1.7-2.94-2.1.86c-.7-.6-1.5-1.06-2.4-1.36L14.6 3.5h-3.4l-.36 2.22c-.9.3-1.7.76-2.4 1.36l-2.1-.86-1.7 2.94 1.8 1.4c-.09.44-.14.94-.14 1.44s.05 1 .14 1.44l-1.8 1.4 1.7 2.94 2.1-.86c.7.6 1.5 1.06 2.4 1.36l.36 2.22h3.4l.36-2.22c.9-.3 1.7-.76 2.4-1.36l2.1.86 1.7-2.94-1.8-1.4c.09-.44.14-.94.14-1.44z"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.6"/><circle cx="17.5" cy="5.5" r="2.6"/><circle cx="17.5" cy="18.5" r="2.6"/><path d="M8.4 10.7l6.8-3.9M8.4 13.3l6.8 3.9"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 6.5h15M9.5 6V4.5h5V6M7 6.5l.8 13h8.4l.8-13"/><path d="M10.2 10v6M13.8 10v6"/></symbol>
+    <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8.5h3l1.6-2.3h6.8L17 8.5h3v11H4z"/><circle cx="12" cy="13.6" r="3.4"/></symbol>
+    <symbol id="i-drop" viewBox="0 0 24 24"><path class="fill-part" d="M12 3.5S5.8 10.6 5.8 15a6.2 6.2 0 0 0 12.4 0c0-4.4-6.2-11.5-6.2-11.5z"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4.4l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.6 1.6"/><path d="M14 10a4.5 4.5 0 0 0-6.4-.4l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.6-1.6"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 11 12 15.5 16.5 11M5 19.5h14"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18h10.5a3.5 3.5 0 0 0 .4-6.98A5 5 0 0 0 7.2 8.7 4.2 4.2 0 0 0 7 18z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5.5" y="10.5" width="13" height="9.5" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/><path d="M12 14.2v2.2"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15.5v-11M7.5 8.5 12 4l4.5 4.5M5 19.5h14"/></symbol>
+    <symbol id="i-face-happy" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.6 14c.9 1.3 2 2 3.4 2s2.5-.7 3.4-2"/><path d="M9 9.4h.01M15 9.4h.01" stroke-width="2.6"/></symbol>
+    <symbol id="i-face-calm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.8 14.6h6.4"/><path d="M9 9.4h.01M15 9.4h.01" stroke-width="2.6"/></symbol>
+    <symbol id="i-face-sad" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.6 16c.9-1.3 2-2 3.4-2s2.5.7 3.4 2"/><path d="M9 9.4h.01M15 9.4h.01" stroke-width="2.6"/></symbol>
+    <symbol id="i-face-angry" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.8 15.8c.9-1.1 1.9-1.6 3.2-1.6s2.3.5 3.2 1.6"/><path d="M7.6 8.4l2.6 1.2M16.4 8.4l-2.6 1.2"/></symbol>
+    <symbol id="i-face-sleep" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 14.6h6"/><path d="M9 9.8h2.4L9 12h2.4M14 8.2h2.4L14 10.4h2.4"/></symbol>
+    <symbol id="i-face-love" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 16.2c-2.2-1.6-3.6-2.9-3.6-4.4 0-1 .8-1.8 1.8-1.8.7 0 1.4.4 1.8 1 .4-.6 1.1-1 1.8-1 1 0 1.8.8 1.8 1.8 0 1.5-1.4 2.8-3.6 4.4z"/><path d="M8.6 9h.01" stroke-width="2.4"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M4.5 12.5l5 5 10-11"/></symbol>
+    <symbol id="i-paw" viewBox="0 0 24 24"><circle cx="7" cy="9" r="1.8"/><circle cx="12" cy="7" r="1.8"/><circle cx="17" cy="9" r="1.8"/><path d="M5.5 15c.6-2.4 2.7-4 6.5-4s5.9 1.6 6.5 4c.3 1.2-.7 2.2-2 2.2-1.3 0-2-1-3.5-1s-2.2 1-3.5 1c-1.3 0-2.3-1-2-2.2z"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></symbol>
+  </defs>
+</svg>
+
+<div class="app-statusbar" id="appStatusbar">
+  <span class="sb-clock" id="sbClock">--:--</span>
+  <span class="sb-quote" id="sbQuote"></span>
+</div>
+<div id="app">
+  <header class="appbar">
+    <div class="logo"><svg class="ic fill" style="color:#fff;width:18px;height:18px"><use href="#i-heart"/></svg></div>
+    <h1 id="barTitle">恋人空间</h1>
+    <button class="topbtn" id="shareTopBtn" title="分享"><svg class="ic"><use href="#i-share"/></svg></button>
+    <button class="topbtn" id="setTopBtn" title="设置"><svg class="ic"><use href="#i-gear"/></svg></button>
+    <button class="topbtn" id="fsBtn" title="全屏切换" style="font-size:18px;font-weight:700">⛶</button>
+  </header>
+
+  <section class="view on" id="view-home">
+    <div class="hero">
+      <div class="couple">
+        <div class="avatar p0" id="homeAv0"></div>
+        <svg class="ic fill heart-mid" style="width:30px;height:30px"><use href="#i-heart"/></svg>
+        <div class="avatar p1" id="homeAv1"></div>
+      </div>
+      <div class="names"><span class="namel" id="homeN0"></span><span style="width:30px"></span><span class="namer" id="homeN1"></span></div>
+      <div class="days">
+        <div class="num"><span id="homeDays">0</span><small>天</small></div>
+        <div class="lbl">我们已经在一起</div>
+      </div>
+    </div>
+
+    <div class="card loveword-card">
+      <div class="card-title"><svg class="ic t-ic"><use href="#i-heart"/></svg>今日情话<span style="margin-left:auto;font-size:12px;color:var(--ink-2)">每日一句</span></div>
+      <div class="loveword" id="homeLove"></div>
+    </div>
+
+    <div class="card">
+      <div class="quick">
+        <button data-go="anni"><div class="q-ic" style="background:linear-gradient(135deg,#ff9ec0,#f2558d)"><svg class="ic"><use href="#i-cal"/></svg></div><span>纪念日</span></button>
+        <button data-go="chat"><div class="q-ic" style="background:linear-gradient(135deg,#ffb27a,#f97b4f)"><svg class="ic"><use href="#i-chat"/></svg></div><span>悄悄话</span></button>
+        <button data-go="album"><div class="q-ic" style="background:linear-gradient(135deg,#8fd3a8,#3fae6e)"><svg class="ic"><use href="#i-photo"/></svg></div><span>相册</span></button>
+        <button data-go="mood"><div class="q-ic" style="background:linear-gradient(135deg,#b39bff,#7b5cf0)"><svg class="ic"><use href="#i-mood"/></svg></div><span>心情</span></button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><svg class="ic t-ic"><use href="#i-tree"/></svg>我们的恋爱树<button class="more" data-go="tree">去养成 <svg class="ic" style="width:12px;height:12px"><use href="#i-chev"/></svg></button></div>
+      <div style="display:flex;align-items:center;gap:14px">
+        <div id="homeTreeMini" style="width:72px;height:72px;flex:none"></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600" id="homeTreeName"></div>
+          <div class="grow-track" style="margin-top:8px"><div class="grow-fill" id="homeTreeBar" style="width:0%"></div></div>
+          <div class="grow-lbl" id="homeTreeLbl" style="margin-top:5px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><svg class="ic t-ic"><use href="#i-heart"/></svg>每日想你</div>
+      <div class="miss-card">
+        <div class="miss-heart" id="missHeart">💗</div>
+        <div class="miss-tip" id="missTip"></div>
+        <div class="miss-streak">已连续想 TA <b id="missStreak">0</b> 天 · 累计 <span id="missTotal">0</span> 天</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><svg class="ic t-ic"><use href="#i-cal"/></svg>最近纪念日<button class="more" data-go="anni">全部 <svg class="ic" style="width:12px;height:12px"><use href="#i-chev"/></svg></button></div>
+      <div id="homeAnni"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><svg class="ic t-ic"><use href="#i-chat"/></svg>最新悄悄话<button class="more" data-go="chat">去回复 <svg class="ic" style="width:12px;height:12px"><use href="#i-chev"/></svg></button></div>
+      <div id="homeMsgs"></div>
+    </div>
+
+    <div class="card" id="memoryCard" style="display:none">
+      <div class="card-title"><svg class="ic t-ic"><use href="#i-photo"/></svg>那年今日<button class="more" id="memView">时间线 <svg class="ic" style="width:12px;height:12px"><use href="#i-chev"/></svg></button></div>
+      <div id="homeMemory"></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-chat">
+    <div class="card" style="min-height:70dvh">
+      <div class="card-title"><svg class="ic t-ic"><use href="#i-chat"/></svg>悄悄话<span style="margin-left:auto;font-size:12px;color:var(--ink-2)" id="chatAs"></span></div>
+      <div class="chat-wrap" id="chatList"></div>
+      <div class="chat-quick">
+        <button class="qk" data-qk="早安 ☀️">早安 ☀️</button>
+        <button class="qk" data-qk="晚安 🌙">晚安 🌙</button>
+        <button class="qk" id="chatLove">今日情话 💌</button>
+      </div>
+      <div class="chat-love" id="chatLoveBar"></div>
+      <div class="chat-inputbar">
+        <button class="emoji-btn" id="emojiBtn" title="动态表情">😊</button>
+        <input id="chatInput" type="text" maxlength="200" placeholder="写句悄悄话给TA…" />
+        <button class="send-btn" id="chatSend">发送</button>
+      </div>
+      <div class="emoji-panel" id="emojiPanel" style="display:none"></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-album">
+    <div class="card">
+      <div class="card-title" id="albumTitle"><svg class="ic t-ic"><use href="#i-photo"/></svg>我们的相册</div>
+      <div class="album-bar" id="albumBar" style="display:none">
+        <button class="mini-btn" id="albumBack">返回</button>
+        <div class="spacer"></div>
+        <button class="mini-btn b" id="albumManage">管理</button>
+        <button class="mini-btn b" id="albumSort">排序</button>
+        <button class="mini-btn" id="albumRename">重命名</button>
+        <button class="mini-btn danger" id="albumDelete">删除相册</button>
+      </div>
+      <div class="album-managebar" id="albumManageBar" style="display:none">
+        <span id="selCount">已选 0 张</span>
+        <div class="spacer"></div>
+        <button class="mini-btn b" id="selAll">全选</button>
+        <button class="mini-btn" id="selCover">设为封面</button>
+        <button class="mini-btn p" id="selMove">移动到</button>
+        <button class="mini-btn danger" id="selDelete">删除</button>
+        <button class="mini-btn" id="selDone">完成</button>
+      </div>
+      <div class="album-cap" id="albumCap" style="display:none"></div>
+      <div class="photo-grid" id="photoGrid"></div>
+      <div class="empty-tip" id="photoEmpty" style="display:none"></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-selfie">
+    <div class="card">
+      <div class="sf-hero">
+        <div class="sf-couple">
+          <div class="avatar p0" id="sfAv0"></div>
+          <svg class="ic fill sf-heart"><use href="#i-heart"/></svg>
+          <div class="avatar p1" id="sfAv1"></div>
+        </div>
+        <div class="sf-stat" id="sfStat"></div>
+      </div>
+      <div class="sf-btns"><button class="primary-btn" id="sfShoot"><svg class="ic"><use href="#i-cam"/></svg><span id="sfShootLbl">今天拍一张</span></button></div>
+    </div>
+    <div class="card"><div id="sfTimeline"></div></div>
+  </section>
+
+  <section class="view" id="view-us">
+    <div class="card" style="padding:20px 16px 14px">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div class="avatar p0" id="usAv0" style="width:44px;height:44px;cursor:default"></div>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:700" id="usNames"></div>
+          <div style="font-size:12px;color:var(--ink-2);margin-top:3px" id="usSub"></div>
+        </div>
+        <svg class="ic fill" style="color:var(--pink);width:26px;height:26px"><use href="#i-heart"/></svg>
+      </div>
+    </div>
+    <div class="card menu-list" style="padding:4px 0">
+      <button class="menu-item" id="miProfile"><svg class="ic m-ic"><use href="#i-user"/></svg>恋爱资料<span class="sub" id="miProfileSub"></span><svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg></button>
+      <button class="menu-item" id="miAnni"><svg class="ic m-ic"><use href="#i-cal"/></svg>纪念日<span class="sub" id="miAnniSub"></span><svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg></button>
+      <button class="menu-item" id="miMood"><svg class="ic m-ic"><use href="#i-mood"/></svg>心情日记<span class="sub" id="miMoodSub"></span><svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg></button>
+      <button class="menu-item" id="miTree"><svg class="ic m-ic"><use href="#i-tree"/></svg>我们的恋爱树<span class="sub" id="miTreeSub"></span><svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg></button>
+      <button class="menu-item" id="miId"><svg class="ic m-ic"><use href="#i-pencil"/></svg>切换身份<span class="sub" id="miIdSub"></span><svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg></button>
+    </div>
+    <div class="card menu-list" style="padding:4px 0">
+      <button class="menu-item" id="miShare"><svg class="ic m-ic"><use href="#i-share"/></svg>分享给另一半<span class="sub">生成同步链接</span><svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg></button>
+      <button class="menu-item" id="miPriv"><svg class="ic m-ic"><use href="#i-lock"/></svg>加密与隐私<span class="sub" id="miPrivSub"></span><svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg></button>
+      <button class="menu-item" id="miBackup"><svg class="ic m-ic"><use href="#i-download"/></svg>备份与恢复<span class="sub"></span><svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg></button>
+      <button class="menu-item" id="miSb"><svg class="ic m-ic"><use href="#i-cloud"/></svg>后端配置<span class="sub" id="miSbSub">Supabase 已启用</span><svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg></button>
+      <button class="menu-item" id="miSet"><svg class="ic m-ic"><use href="#i-gear"/></svg>设置<span class="sub"></span><svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg></button>
+    </div>
+  </section>
+
+  <nav class="tabbar">
+    <button data-tab="home" class="on"><svg class="ic tab-ic"><use href="#i-home"/></svg>首页</button>
+    <button data-tab="chat"><svg class="ic tab-ic"><use href="#i-chat"/></svg>悄悄话</button>
+    <button data-tab="album"><svg class="ic tab-ic"><use href="#i-photo"/></svg>相册</button>
+    <button data-tab="selfie"><svg class="ic tab-ic"><use href="#i-cam"/></svg>自拍</button>
+    <button data-tab="us"><svg class="ic tab-ic"><use href="#i-user"/></svg>我们</button>
+  </nav>
+</div>
+
+<div class="mask" id="mask"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-head"><h3 id="sheetTitle"></h3><button class="sheet-close" id="sheetClose"><svg class="ic" style="width:14px;height:14px"><use href="#i-x"/></svg></button></div>
+  <div id="sheetBody"></div>
+</div>
+<div class="viewer" id="viewer"><div class="skel"></div><button id="viewerClose"><svg class="ic" style="width:18px;height:18px"><use href="#i-x"/></svg></button><img id="viewerImg" alt="" /><button class="v-del" id="viewerDel"><svg class="ic"><use href="#i-trash"/></svg>删除照片</button></div>
+<div id="toast"></div>
+<input type="file" id="filePick" accept="image/*" style="display:none" />
+
+<script>
+(function () {
+  "use strict";
+  var LS_DATA = "loverspace.data.v2";
+  var LS_ID = "loverspace.identity";
+  var LS_ROOM = "loverspace.room";
+  var DEFAULT = {
+    spaceName: "恋人空间",
+    startedDate: "",
+    partners: [{ name: "宝贝", avatar: "" }, { name: "我", avatar: "" }],
+    anniversaries: [],
+    messages: [],
+    moods: [],
+    tree: { growth: 0, lastWater: [0, 0], tasks: [], feed: [0, 0], play: [0, 0], daily: { date: "", acts: { water: [0, 0], feed: [0, 0], play: [0, 0] }, claimed: {} }, pet: { name: "小甜", hunger: 100, mood: 100, lastFed: 0, lastPlay: 0, lvl: 1, cared: 0 } },
+    albums: [],
+    photos: [],
+    selfies: [],
+    miss: [],
+    _deleted: { messages: [], anniversaries: [], moods: [], photos: [], selfies: [], albums: [] },
+    theme: { color: "#ff7ba9", dark: false, font: "default" }
+  };
+  var data = null;
+  var me = parseInt(localStorage.getItem(LS_ID) || "0", 10) || 0;
+  var room = (localStorage.getItem(LS_ROOM) || "").trim();
+  var localMode = false;
+  var backend = { enabled: false, ts: 0 };
+  var pollTimer = null;
+
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function loadLocal() {
+    try { data = JSON.parse(localStorage.getItem(LS_DATA)); } catch (e) { data = null; }
+    if (!data || typeof data !== "object") data = clone(DEFAULT);
+    for (var k in DEFAULT) if (!(k in data)) data[k] = clone(DEFAULT[k]);
+    if (!data.tree || typeof data.tree !== "object") data.tree = { growth: 0, lastWater: [0, 0] };
+    if (!Array.isArray(data.tree.lastWater)) data.tree.lastWater = [0, 0];
+    if (!Array.isArray(data.selfies)) data.selfies = [];
+    if (!data._deleted || typeof data._deleted !== "object") data._deleted = { messages: [], anniversaries: [], moods: [], photos: [], selfies: [], albums: [] };
+    // 旧版扁平 photos 迁移进默认相册
+    if (!Array.isArray(data.albums)) data.albums = [];
+    if (Array.isArray(data.photos) && data.photos.length) { data.albums.unshift({ id: uid(), name: "我们的日常", photos: data.photos, ts: Date.now() }); data.photos = []; }
+    if (!data.albums.length) data.albums.push({ id: uid(), name: "我们的日常", photos: [], ts: Date.now() });
+    if (!data.tree.tasks) data.tree.tasks = [];
+    if (!Array.isArray(data.tree.feed)) data.tree.feed = [0, 0];
+    if (!Array.isArray(data.tree.play)) data.tree.play = [0, 0];
+    if (!data.tree.pet || typeof data.tree.pet !== "object") data.tree.pet = { name: "小甜", hunger: 100, mood: 100, lastFed: 0, lastPlay: 0, lvl: 1, cared: 0 };
+    if (!data.tree.daily || typeof data.tree.daily !== "object") data.tree.daily = { date: "", acts: { water: [0, 0], feed: [0, 0], play: [0, 0] }, claimed: {} };
+    if (!data.tree.daily.acts || typeof data.tree.daily.acts !== "object") data.tree.daily.acts = { water: [0, 0], feed: [0, 0], play: [0, 0] };
+    if (!data.tree.daily.claimed || typeof data.tree.daily.claimed !== "object") data.tree.daily.claimed = {};
+    if (typeof data.tree.daily.date !== "string") data.tree.daily.date = "";
+    if (!data.theme || typeof data.theme !== "object") data.theme = { color: "#ff7ba9", dark: false, font: "default" };
+    if (!data.theme.color) data.theme.color = "#ff7ba9";
+    if (typeof data.theme.dark !== "boolean") data.theme.dark = false;
+    if (!data.theme.font) data.theme.font = "default";
+    if (data.tree.daily.date !== todayStr()) { data.tree.daily.date = todayStr(); data.tree.daily.acts = { water: [0, 0], feed: [0, 0], play: [0, 0] }; data.tree.daily.claimed = {}; }
+    // 浇水日志（用于连续浇树天数）
+    if (!data.tree.waterLog || typeof data.tree.waterLog !== "object") data.tree.waterLog = {};
+    [0, 1].forEach(function (i) {
+      if (!Array.isArray(data.tree.waterLog[i])) data.tree.waterLog[i] = [];
+      var t = todayStr();
+      if ((data.tree.lastWater[i] || 0) > 0 && todayStr(new Date(data.tree.lastWater[i])) === t && data.tree.waterLog[i].indexOf(t) < 0) data.tree.waterLog[i].push(t);
+    });
+    // 成长值一次性清零（resetAt 同步到双方，避免合并恢复旧值）
+    if (!data.tree.resetAt) { data.tree.resetAt = Date.now(); data.tree.growth = 0; }
+    if (!Array.isArray(data.miss)) data.miss = [];
+    if (!data._deleted.albums) data._deleted.albums = [];
+  }
+  function saveLocal() { data._updated = Math.max(Date.now(), (data._updated || 0) + 1); try { localStorage.setItem(LS_DATA, JSON.stringify(data)); } catch (e) {} }
+
+  function api(path, opts) {
+    var o = opts || {};
+    if (typeof AbortController === "function") {
+      var ctrl = new AbortController();
+      var timer = setTimeout(function () { ctrl.abort(); }, 6000);
+      o.signal = ctrl.signal;
+      return fetch(path, o).then(function (r) { clearTimeout(timer); return r.json(); }).catch(function () { clearTimeout(timer); return null; });
+    }
+    return fetch(path, o).then(function (r) { return r.json(); }).catch(function () { return null; });
+  }
+
+  // 空间码生成（Supabase 模式下由前端生成，作为 rooms 表主键）
+  function genCode() {
+    var chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    var s = ""; for (var i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    return s;
+  }
+  // 后端模式：双云端自动探测 —— 同源内置云端优先（页面就从它加载，可达性最好），失败自动切 Supabase
+  var SB_URL = (localStorage.getItem("ls.sburl") || "https://fjhtlriruwyiqafawoip.supabase.com").trim();
+  var SB_KEY = (localStorage.getItem("ls.sbkey") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqaHRscmlydXd5aXFhZmF3b2lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NDA1NjYsImV4cCI6MjEwNzAxNjU2Nn0.WwSnnP9M4qHSbQiNzosY6yH-U3OczCVJTsgKgZbccxY").trim();
+  var USE_SB = localStorage.getItem("ls.backend") === "sb";
+  function sbReady() { return SB_URL && SB_KEY; }
+  function usingSb() { return USE_SB && sbReady(); }
+  function chooseBackend(mode) {
+    USE_SB = (mode === "sb" && sbReady());
+    localStorage.setItem("ls.backend", USE_SB ? "sb" : "local");
+  }
+  function cloudName() { return usingSb() ? "Supabase" : "内置云端"; }
+  function sbHeaders() {
+    return {
+      "apikey": SB_KEY,
+      "Authorization": "Bearer " + SB_KEY,
+      "Content-Type": "application/json",
+      "Prefer": "return=representation,resolution=merge-duplicates"
+    };
+  }
+  // Supabase REST 分支：method = POST(创建) / GET(读取) / PUT(更新全量)
+  function sbRequest(method, id, body) {
+    var base = SB_URL.replace(/\/+$/, "") + "/rest/v1/rooms";
+    var opt = { headers: sbHeaders() };
+    function httpErr(status, txt) { return { error: "HTTP " + status + (txt ? " " + String(txt).slice(0, 70) : "") }; }
+    function netErr(e) { return { error: "网络不通(" + (e && e.message ? e.message : "fetch失败") + ")" }; }
+    if (method === "POST") {
+      var code = genCode();
+      opt.method = "POST";
+      opt.body = JSON.stringify({ id: code, data: null, updated_at: new Date().toISOString() });
+      return fetch(base, opt).then(function (r) {
+          if (!r.ok) return r.text().then(function (t) { return httpErr(r.status, t); });
+          return r.json().then(function (j) { var row = Array.isArray(j) ? j[0] : j; return { id: row ? row.id : code }; });
+        }).catch(netErr);
+    }
+    if (method === "GET") {
+      opt.method = "GET";
+      return fetch(base + "?id=eq." + encodeURIComponent(id), opt).then(function (r) {
+          if (!r.ok) return r.text().then(function (t) { return httpErr(r.status, t); });
+          return r.json().then(function (j) { var row = Array.isArray(j) ? j[0] : null; return { id: id, exists: !!row, data: row ? row.data : null, ts: row && row.updated_at ? Date.parse(row.updated_at) : 0 }; });
+        }).catch(netErr);
+    }
+    // 更新：PATCH 整行（前端已本地合并，写全量）
+    opt.method = "PATCH";
+    opt.body = JSON.stringify({ data: body.data, updated_at: new Date().toISOString() });
+    return fetch(base + "?id=eq." + encodeURIComponent(id), opt).then(function (r) {
+        if (!r.ok) return r.text().then(function (t) { return httpErr(r.status, t); });
+        return { id: id };
+      }).catch(netErr);
+  }
+  // 同源内置云端分支
+  function localRequest(method, id, body) {
+    if (method === "POST") return api("/api/room", { method: "POST" });
+    var o = { method: method === "PUT" ? "PUT" : "GET" };
+    if (method === "PUT") { o.headers = { "Content-Type": "application/json" }; o.body = JSON.stringify(body); }
+    return api("/api/room/" + id, o);
+  }
+  function roomApi(method, id, body) { return usingSb() ? sbRequest(method, id, body) : localRequest(method, id, body); }
+
+  // ===== 端到端加密：上传前用 AES-GCM 加密，云端只存密文，密码只有你们俩知道 =====
+  var LS_PWD = "loverspace.pwd";
+  var encPwd = localStorage.getItem(LS_PWD) || "";
+  var subtle = (window.crypto && window.crypto.subtle) || null;
+  var keyCache = {};
+  var pwdPrompted = false;
+  function eB64(buf) { var b = new Uint8Array(buf), s = ""; for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return btoa(s); }
+  function eUnB64(x) { var s = atob(x), b = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) b[i] = s.charCodeAt(i); return b; }
+  function encKey(pwd) {
+    var id = room + "::" + pwd;
+    if (keyCache[id]) return Promise.resolve(keyCache[id]);
+    var te = new TextEncoder();
+    return subtle.importKey("raw", te.encode(pwd), "PBKDF2", false, ["deriveKey"]).then(function (bk) {
+      return subtle.deriveKey({ name: "PBKDF2", salt: te.encode("loverspace::" + room), iterations: 120000, hash: "SHA-256" }, bk, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+    }).then(function (k) { keyCache[id] = k; return k; });
+  }
+  function encryptData(obj) {
+    if (!subtle) return Promise.resolve(null);
+    var te = new TextEncoder();
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    return encKey(encPwd).then(function (k) {
+      return subtle.encrypt({ name: "AES-GCM", iv: iv }, k, te.encode(JSON.stringify(obj)));
+    }).then(function (ct) { return { enc: 1, iv: eB64(iv), ct: eB64(ct) }; });
+  }
+  function decryptData(payload) {
+    var td = new TextDecoder();
+    return encKey(encPwd).then(function (k) {
+      return subtle.decrypt({ name: "AES-GCM", iv: eUnB64(payload.iv) }, k, eUnB64(payload.ct));
+    }).then(function (plain) { return JSON.parse(td.decode(plain)); });
+  }
+  function setEncPwd(v) {
+    encPwd = v || ""; keyCache = {}; pwdPrompted = false;
+    if (encPwd) localStorage.setItem(LS_PWD, encPwd); else localStorage.removeItem(LS_PWD);
+  }
+  function askPassword(msg) {
+    if (pwdPrompted) return;
+    pwdPrompted = true;
+    openSheet("输入加密密码", '<div class="empty-tip" style="padding:4px 0 12px">' + esc(msg || "这个空间开启了端到端加密") + '<br/>输入你们约定的密码即可解锁全部内容</div>' +
+      '<div class="field"><label>加密密码</label><input type="password" id="pwdIn" /></div>' +
+      '<button class="primary-btn" id="pwdGo">解锁</button>');
+    $("pwdGo").addEventListener("click", function () {
+      var v = ($("pwdIn").value || "");
+      if (!v) { toast("请输入密码"); return; }
+      var old = encPwd;
+      encPwd = v; keyCache = {};
+      fetchServer().then(function (ok) {
+        if (ok) {
+          localStorage.setItem(LS_PWD, v);
+          pwdPrompted = false; renderAll(); closeSheet(); toast("解锁成功，同步已开启");
+        } else {
+          encPwd = old; keyCache = {};
+          pwdPrompted = false;
+          askPassword("密码不对或网络不好，再试一次");
+        }
+      });
+    });
+  }
+  // 云端返回数据的统一入口：密文则先解密再合并
+  function applyRemote(r) {
+    if (!r || (r.data == null && r.exists === undefined && !r.id)) return Promise.resolve(false);
+    backend.enabled = true;
+    if (!r.data) return Promise.resolve(true);
+    if (r.data.enc === 1) {
+      if (!subtle || !encPwd) { askPassword(); return Promise.resolve(false); }
+      return decryptData(r.data).then(function (d) {
+        if (d && d.partners) { data = merge(data, d); backend.ts = r.ts || 0; return true; }
+        return false;
+      }).catch(function () { askPassword("解锁失败，密码好像不对"); return false; });
+    }
+    data = merge(data, r.data); backend.ts = r.ts || 0;
+    return Promise.resolve(true);
+  }
+
+  // 探测可用的云端：同源优先，返回 "local" / "sb" / null（都不可用）
+  // 内置云端（沙箱后端）可能休眠：探测失败自动重试唤醒，最多4次、间隔2秒
+  function sleep(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
+  function probe(onStatus) {
+    var attempts = 0, MAX = 4;
+    function tryLocal() {
+      attempts++;
+      if (onStatus && attempts > 1) onStatus("云端唤醒中…（" + attempts + "/" + MAX + "）");
+      return localRequest("GET", "__PING__").then(function (r) {
+        if (r && r.exists === false && !r.error) return "local";
+        throw new Error("local unreachable");
+      }).catch(function () {
+        if (attempts < MAX) return sleep(2000).then(tryLocal);
+        if (sbReady()) {
+          if (onStatus) onStatus("切到 Supabase 试试…");
+          return sbRequest("GET", "__PING__").then(function (r2) {
+            if (r2 && r2.exists === false && !r2.error) return "sb";
+            return null;
+          });
+        }
+        return null;
+      });
+    }
+    return tryLocal();
+  }
+  function roomCreate() { return roomApi("POST"); }
+  function roomGet(id) { return roomApi("GET", id); }
+  function roomPut(id, payload) { return roomApi("PUT", id, { data: payload }); }
+  function fetchServer() {
+    if (!room) return Promise.resolve(false);
+    return roomGet(room).then(applyRemote);
+  }
+  function save() {
+    saveLocal();
+    if (backend.enabled && room) {
+      var payloadP = (encPwd && subtle) ? encryptData(data).catch(function () { return null; }) : Promise.resolve(data);
+      payloadP.then(function (payload) {
+        if (!payload) return;
+        roomPut(room, payload).then(function (r) { if (r && r.ts) backend.ts = r.ts; });
+      });
+    }
+  }
+  function poll() {
+    if (!room) return;
+    if (!backend.enabled) {
+      fetchServer().then(function (ok) {
+        if (ok) { saveLocal(); renderAll(); toast("已连上云端（" + cloudName() + "），同步已开启"); return; }
+        // 当前云端不可达 → 自动切换另一个再试
+        var alt = usingSb() ? "local" : "sb";
+        if (alt === "sb" && !sbReady()) return;
+        var prev = USE_SB;
+        USE_SB = (alt === "sb");
+        fetchServer().then(function (ok2) {
+          if (ok2) { chooseBackend(alt); saveLocal(); renderAll(); toast("已切换到" + cloudName() + "，同步已开启"); }
+          else { USE_SB = prev; }
+        });
+      });
+      return;
+    }
+    roomGet(room).then(function (r) {
+      if (!r || !r.data) return;
+      applyRemote(r).then(function (ok) { if (ok) { saveLocal(); renderAll(); } });
+    });
+  }
+  function startPoll() {
+    if (pollTimer || !room) return;
+    pollTimer = setInterval(poll, 4000);
+  }
+
+  function unionById(a, b) {
+    var map = {}, i;
+    for (i = 0; i < a.length; i++) map[a[i].id] = a[i];
+    for (i = 0; i < b.length; i++) map[b[i].id] = b[i];
+    var out = []; for (var k in map) out.push(map[k]); return out;
+  }
+  // 删除墓碑：合并时把双方标记删除的 id 一并排除，保证删除也能跨设备同步
+  function mergeDel(a, b) {
+    var m = {};
+    (a || []).forEach(function (x) { m[x] = 1; });
+    (b || []).forEach(function (x) { m[x] = 1; });
+    return Object.keys(m);
+  }
+  function mergeArr(la, ra, delIds) {
+    var u = unionById(la || [], ra || []);
+    return u.filter(function (x) { return delIds.indexOf(x.id) === -1; });
+  }
+  function tomb(type, id) { var d = data._deleted[type] || (data._deleted[type] = []); if (d.indexOf(id) === -1) d.push(id); }
+  function merge(local, remote) {
+    if (!remote) return local;
+    var res = clone(local);
+    var lUpd = local._updated || 0, rUpd = remote._updated || 0;
+    var newer = rUpd >= lUpd ? remote : local;
+    res.spaceName = newer.spaceName;
+    res.startedDate = newer.startedDate;
+    for (var i = 0; i < 2; i++) {
+      res.partners[i].name = (newer.partners[i] ? newer.partners[i].name : local.partners[i].name);
+      res.partners[i].avatar = (newer.partners[i] && newer.partners[i].avatar) || local.partners[i].avatar;
+    }
+    var delMes = mergeDel(local._deleted && local._deleted.messages, remote._deleted && remote._deleted.messages);
+    var delAnni = mergeDel(local._deleted && local._deleted.anniversaries, remote._deleted && remote._deleted.anniversaries);
+    var delMood = mergeDel(local._deleted && local._deleted.moods, remote._deleted && remote._deleted.moods);
+    var delPhoto = mergeDel(local._deleted && local._deleted.photos, remote._deleted && remote._deleted.photos);
+    var delSelfie = mergeDel(local._deleted && local._deleted.selfies, remote._deleted && remote._deleted.selfies);
+    var delAlb = mergeDel(local._deleted && local._deleted.albums, remote._deleted && remote._deleted.albums);
+    res.anniversaries = mergeArr(local.anniversaries, remote.anniversaries, delAnni);
+    res.messages = mergeArr(local.messages, remote.messages, delMes);
+    res.moods = mergeArr(local.moods, remote.moods, delMood);
+    res.photos = mergeArr(local.photos, remote.photos, delPhoto);
+    res.selfies = mergeArr(local.selfies, remote.selfies, delSelfie);
+    res.albums = mergeAlbums(local.albums, remote.albums, delAlb, delPhoto);
+    res.miss = mergeArr(local.miss, remote.miss, []);
+    res._deleted = { messages: delMes, anniversaries: delAnni, moods: delMood, photos: delPhoto, selfies: delSelfie, albums: delAlb };
+    var lra = local.tree.resetAt || 0, rra = remote.tree.resetAt || 0;
+    var growthSync;
+    if (rra > lra) growthSync = remote.tree.growth || 0;
+    else if (lra > rra) growthSync = local.tree.growth || 0;
+    else growthSync = Math.max(local.tree.growth || 0, remote.tree.growth || 0);
+    res.tree = {
+      growth: growthSync,
+      resetAt: Math.max(lra, rra),
+      lastWater: [
+        Math.max(local.tree.lastWater[0] || 0, remote.tree.lastWater[0] || 0),
+        Math.max(local.tree.lastWater[1] || 0, remote.tree.lastWater[1] || 0)
+      ],
+      feed: [
+        Math.max(local.tree.feed[0] || 0, remote.tree.feed[0] || 0),
+        Math.max(local.tree.feed[1] || 0, remote.tree.feed[1] || 0)
+      ],
+      play: [
+        Math.max(local.tree.play[0] || 0, remote.tree.play[0] || 0),
+        Math.max(local.tree.play[1] || 0, remote.tree.play[1] || 0)
+      ],
+      waterLog: (function () {
+        function u(a, b) { var m = {}; (a || []).concat(b || []).forEach(function (d) { m[d] = 1; }); return Object.keys(m); }
+        var lw = local.tree.waterLog || {}, rw = remote.tree.waterLog || {};
+        return { 0: u(lw[0], rw[0]), 1: u(lw[1], rw[1]) };
+      })(),
+      tasks: (function () {
+        var m = {}; (local.tree.tasks || []).concat(remote.tree.tasks || []).forEach(function (t) { m[t.id] = t; });
+        return Object.keys(m).map(function (k) { return m[k]; });
+      })(),
+      pet: (function () {
+        var lp = local.tree.pet || {}, rp = remote.tree.pet || {};
+        var later = (lp.lastFed || 0) + (lp.lastPlay || 0) >= (rp.lastFed || 0) + (rp.lastPlay || 0) ? lp : rp;
+        return { name: later.name || "小甜", hunger: Math.max(lp.hunger || 0, rp.hunger || 0), mood: Math.max(lp.mood || 0, rp.mood || 0), lastFed: Math.max(lp.lastFed || 0, rp.lastFed || 0), lastPlay: Math.max(lp.lastPlay || 0, rp.lastPlay || 0), lvl: Math.max(lp.lvl || 1, rp.lvl || 1), cared: Math.max(lp.cared || 0, rp.cared || 0) };
+      })(),
+      daily: (function () {
+        function blank() { return { date: "", acts: { water: [0, 0], feed: [0, 0], play: [0, 0] }, claimed: {} }; }
+        var ld = local.tree.daily || blank(), rd = remote.tree.daily || blank();
+        if (!ld.acts) ld.acts = { water: [0, 0], feed: [0, 0], play: [0, 0] };
+        if (!rd.acts) rd.acts = { water: [0, 0], feed: [0, 0], play: [0, 0] };
+        var out;
+        if (ld.date === rd.date) {
+          out = { date: ld.date, claimed: {} };
+          var keys = {}; Object.keys(ld.claimed || {}).concat(Object.keys(rd.claimed || {})).forEach(function (k) { keys[k] = 1; });
+          Object.keys(keys).forEach(function (k) { out.claimed[k] = (ld.claimed && ld.claimed[k]) || (rd.claimed && rd.claimed[k]) || false; });
+          out.acts = {};
+          ["water", "feed", "play"].forEach(function (key) {
+            out.acts[key] = [
+              Math.max((ld.acts[key] || [0, 0])[0] || 0, (rd.acts[key] || [0, 0])[0] || 0),
+              Math.max((ld.acts[key] || [0, 0])[1] || 0, (rd.acts[key] || [0, 0])[1] || 0)
+            ];
+          });
+        } else {
+          var newer = (rd.date || "") > (ld.date || "") ? rd : ld;
+          out = { date: newer.date, claimed: clone(newer.claimed || {}), acts: clone(newer.acts || { water: [0, 0], feed: [0, 0], play: [0, 0] }) };
+        }
+        return out;
+      })()
+    };
+    res._updated = Math.max(lUpd, rUpd);
+    return res;
+  }
+  // 相册合并：按 id 并集，被删相册排除；相册内照片按 id 并集再剔除删除墓碑
+  function mergeAlbums(la, ra, delAlb, delPhoto) {
+    var ids = {}, i;
+    (la || []).forEach(function (a) { ids[a.id] = 1; });
+    (ra || []).forEach(function (a) { ids[a.id] = 1; });
+    var out = [];
+    for (var k in ids) {
+      if (delAlb.indexOf(k) !== -1) continue;
+      var l = (la || []).find(function (a) { return a.id === k; });
+      var r = (ra || []).find(function (a) { return a.id === k; });
+      var base = l || r;
+      var photos = mergeArr(l ? l.photos : [], r ? r.photos : [], delPhoto);
+      out.push({ id: k, name: (l && l.name) || (r && r.name) || "相册", photos: photos, ts: Math.max(l ? l.ts || 0 : 0, r ? r.ts || 0 : 0) });
+    }
+    out.sort(function (a, b) { return b.ts - a.ts; });
+    return out;
+  }
+
+  function $(id) { return document.getElementById(id); }
+  // 全局错误兜底：任何脚本报错都显示在屏幕上，而不是默默“没反应”
+  function showFatal(msg) {
+    var g = $("gateErr");
+    if (g && !g.textContent) g.textContent = "出错了：" + msg + "（可长按刷新按钮清缓存后重试）";
+  }
+  window.addEventListener("error", function (e) { showFatal((e && e.message) || "脚本错误"); });
+  window.addEventListener("unhandledrejection", function (e) { showFatal((e && e.reason && e.reason.message) || "请求异常"); });
+  function icon(name) { return '<svg class="ic"><use href="#i-' + name + '"/></svg>'; }
+  var MOODS = [
+    { id: "love", name: "恋爱", icon: "face-love" },
+    { id: "happy", name: "开心", icon: "face-happy" },
+    { id: "calm", name: "平静", icon: "face-calm" },
+    { id: "sad", name: "难过", icon: "face-sad" },
+    { id: "angry", name: "生气", icon: "face-angry" },
+    { id: "tired", name: "累了", icon: "face-sleep" }
+  ];
+  function moodById(id) { for (var i = 0; i < MOODS.length; i++) if (MOODS[i].id === id) return MOODS[i]; return MOODS[1]; }
+  function todayStr(d) { var t = d || new Date(); return t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0"); }
+  function daysBetween(a, b) { return Math.round((b - a) / 86400000); }
+  function fmtTime(ts) {
+    var d = new Date(ts), now = new Date();
+    var hm = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+    if (todayStr(d) === todayStr(now)) return "今天 " + hm;
+    var yest = new Date(now.getTime() - 86400000);
+    if (todayStr(d) === todayStr(yest)) return "昨天 " + hm;
+    return (d.getMonth() + 1) + "月" + d.getDate() + "日 " + hm;
+  }
+  var toastTimer = null;
+  function toast(msg) { var t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove("show"); }, 1800); }
+
+  function closeSheetUI() { $("sheet").classList.remove("open"); $("mask").classList.remove("open"); }
+  function openSheet(title, html) { $("sheetTitle").textContent = title; $("sheetBody").innerHTML = html; $("sheet").classList.add("open"); $("mask").classList.add("open"); $("sheet").scrollTop = 0; history.pushState({ app: 1 }, ""); }
+  // 关闭弹窗：弹窗已打开时回退一层历史（与 openSheet 压入的层级对应），否则无操作。
+  // 这样弹窗的关闭完全依赖“进入时压入的历史”，不再依赖 popstate 里补压，移动端更稳健。
+  function closeSheet() { if ($("sheet").classList.contains("open")) history.back(); }
+
+  function compressImage(file, maxSide, quality, cb) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onerror = function () { toast("读取图片失败，换一张或贴网络图片链接"); };
+    reader.onload = function () {
+      var img = new Image();
+      img.onerror = function () { toast("这张图片手机读不出来（可能是 HEIC 等格式），换个角度拍照，或贴网络图片链接"); };
+      img.onload = function () {
+        var scale = Math.min(1, maxSide / Math.max(img.width || maxSide, img.height || maxSide));
+        var c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(img.width * scale)); c.height = Math.max(1, Math.round(img.height * scale));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        var durl;
+        try { durl = c.toDataURL("image/jpeg", quality); } catch (e) { durl = ""; }
+        if (!durl || durl.length < 200) { toast("图片太大，手机处理不了，换张小一点的或贴网络图片链接"); return; }
+        cb(durl);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+  // 把原图发到沙箱 /api/upload，拿回 URL；失败返回 null（调用方回退本地）
+  function uploadImage(dataUrl, cb) {
+    try {
+      fetch("/api/upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ img: dataUrl }) })
+        .then(function (r) { return r.json(); })
+        .then(function (j) { cb(j && j.url ? j.url : null); })
+        .catch(function () { cb(null); });
+    } catch (e) { cb(null); }
+  }
+
+  // ===== 头像/图片裁剪：圆形预览 + 缩放/拖拽，导出高清正方形 =====
+  function cropImage(file, cb, outSize) {
+    outSize = outSize || 320;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        var natW = img.naturalWidth, natH = img.naturalHeight;
+        var VIEW = 240;
+        var baseScale = VIEW / Math.min(natW, natH);
+        var state = { scale: baseScale, min: baseScale, max: baseScale * 4, x: (VIEW - natW * baseScale) / 2, y: (VIEW - natH * baseScale) / 2 };
+        var html = '<div class="crop-wrap" id="cropWrap"><img id="cropImg" src="' + reader.result + '" alt=""/><div class="crop-ring"></div></div>' +
+          '<input type="range" class="crop-zoom" id="cropZoom" min="1" max="4" step="0.01" value="1"/>' +
+          '<div class="crop-hint">双指或拖动滑块缩放，拖动图片调整位置</div>' +
+          '<button class="primary-btn" id="cropSave" style="margin-top:14px">使用这张头像</button>' +
+          '<button class="ghost-btn" id="cropCancel">取消</button>';
+        openSheet("裁剪头像", html);
+        var el = $("cropImg"), wrap = $("cropWrap");
+        function apply() {
+          el.style.transform = "translate(" + state.x + "px," + state.y + "px) scale(" + state.scale + ")";
+        }
+        function clamp() {
+          var w = natW * state.scale, h = natH * state.scale;
+          state.x = Math.min(0, Math.max(VIEW - w, state.x));
+          state.y = Math.min(0, Math.max(VIEW - h, state.y));
+        }
+        apply();
+        $("cropZoom").addEventListener("input", function () {
+          var r = parseFloat(this.value);
+          state.scale = state.min * r;
+          clamp(); apply();
+        });
+        var drag = null;
+        wrap.addEventListener("pointerdown", function (e) { drag = { x: e.clientX, y: e.clientY, sx: state.x, sy: state.y }; wrap.setPointerCapture(e.pointerId); });
+        wrap.addEventListener("pointermove", function (e) {
+          if (!drag) return;
+          state.x = drag.sx + (e.clientX - drag.x);
+          state.y = drag.sy + (e.clientY - drag.y);
+          clamp(); apply();
+        });
+        wrap.addEventListener("pointerup", function (e) { drag = null; try { wrap.releasePointerCapture(e.pointerId); } catch (x) {} });
+        $("cropCancel").addEventListener("click", closeSheet);
+        $("cropSave").addEventListener("click", function () {
+          var c = document.createElement("canvas"); c.width = outSize; c.height = outSize;
+          var sx = -state.x / state.scale, sy = -state.y / state.scale, sW = VIEW / state.scale, sH = VIEW / state.scale;
+          c.getContext("2d").drawImage(img, sx, sy, sW, sH, 0, 0, outSize, outSize);
+          cb(c.toDataURL("image/jpeg", 0.92));
+          closeSheet();
+        });
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function b64encode(str) { var b = new TextEncoder().encode(str), s = ""; for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return btoa(s); }
+  function b64decode(x) { var s = atob(x), b = []; for (var i = 0; i < s.length; i++) b.push(s.charCodeAt(i)); return new TextDecoder().decode(new Uint8Array(b)); }
+
+  function loveDays() {
+    if (!data.startedDate) return 0;
+    var s = new Date(data.startedDate + "T00:00:00");
+    if (isNaN(s)) return 0;
+    return Math.max(0, daysBetween(s, new Date()) + 1);
+  }
+  // ===== 主题 / 皮肤工具：根据主色派生整套配色 =====
+  function hexToRgb(h) {
+    h = (h || "#ff7ba9").replace("#", "");
+    if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    var n = parseInt(h, 16);
+    return [(n>>16)&255, (n>>8)&255, n&255];
+  }
+  function rgbToHex(r,g,b){ return "#"+[r,g,b].map(function(x){x=Math.max(0,Math.min(255,Math.round(x)));return ("0"+x.toString(16)).slice(-2);}).join(""); }
+  function shade(hex, pct) {
+    var c = hexToRgb(hex), t = pct < 0 ? 0 : 255, p = Math.abs(pct)/100;
+    return rgbToHex(c[0]+(t-c[0])*p, c[1]+(t-c[1])*p, c[2]+(t-c[2])*p);
+  }
+  function hexA(hex, a) { var c = hexToRgb(hex); return "rgba("+c[0]+","+c[1]+","+c[2]+","+a+")"; }
+  function applyTheme() {
+    var t = data.theme || (data.theme = { color: "#ff7ba9", dark: false, font: "default" });
+    var root = document.documentElement, c = t.color || "#ff7ba9";
+    root.style.setProperty("--pink", c);
+    root.style.setProperty("--pink-deep", shade(c, -16));
+    root.style.setProperty("--pink-soft", shade(c, 28));
+    root.style.setProperty("--pink-bg", shade(c, 90));
+    root.style.setProperty("--line", shade(c, 84));
+    root.style.setProperty("--shadow", "0 6px 24px " + hexA(c, .16));
+    var ff = "-apple-system, \"PingFang SC\", \"Microsoft YaHei\", sans-serif";
+    if (t.font === "round") ff = "\"PingFang SC\", \"HarmonyOS Sans SC\", sans-serif";
+    else if (t.font === "serif") ff = "Georgia, \"Songti SC\", serif";
+    else if (t.font === "hand") ff = "\"Xingkai SC\", \"STKaiti\", cursive";
+    root.style.setProperty("--font", ff);
+    document.body.classList.toggle("dark", !!t.dark);
+  }
+  var THEME_COLORS = ["#ff7ba9","#ff8a5c","#ff5c7c","#a86bff","#5c8aff","#3fae6e","#ffb02e"];
+  var THEME_FONTS = [["default","默认"],["round","圆润"],["serif","衬线"],["hand","手写"]];
+  // ===== 情话每日推送 =====
+  var LOVE_WORDS = ["今天也是超喜欢你的一天 💕","你是我的小确幸 ✨","想和你一起虚度时光","你的笑是我的充电宝 🔋","世界很大，但我的手只想牵你 🤝","早安，我的全世界 ☀️","晚安，梦里见 🌙","你是我权衡所有选择后的最优解","和你在一起的每一天都值得纪念","谢谢你出现在我的生命里","喜欢你，是慢动作回放的心动","你是我的限定温柔","想把你写进我的未来里 ✍️","有你在，平凡也发光 🌟","你的存在本身就很浪漫"];
+  function todayLove() { var d = new Date(); var n = Math.floor((d - new Date(d.getFullYear(),0,0))/86400000); return LOVE_WORDS[n % LOVE_WORDS.length]; }
+  function anniInfo(a) {
+    var d = new Date(a.date + "T00:00:00"); if (isNaN(d)) return null;
+    var now = new Date();
+    var today0 = new Date(todayStr() + "T00:00:00");
+    var thisYear = new Date(now.getFullYear(), d.getMonth(), d.getDate());
+    var diff = daysBetween(today0, thisYear);
+    if (diff < 0) diff = daysBetween(today0, new Date(now.getFullYear() + 1, d.getMonth(), d.getDate()));
+    return { month: d.getMonth() + 1, day: d.getDate(), next: diff, isToday: diff === 0 };
+  }
+  var TREE_STAGES = [
+    { min: 0, name: "小种子", desc: "每天浇浇水，让爱情发芽吧" },
+    { min: 3, name: "嫩芽", desc: "发芽啦！爱情正在生长" },
+    { min: 8, name: "小树苗", desc: "茁壮成长的小树苗" },
+    { min: 15, name: "小树", desc: "枝叶越来越茂密了" },
+    { min: 25, name: "大树", desc: "枝繁叶茂，爱情常青" },
+    { min: 40, name: "开花啦", desc: "满树繁花，爱意正浓" }
+  ];
+  function treeStage() {
+    var g = data.tree.growth, idx = 0;
+    for (var i = TREE_STAGES.length - 1; i >= 0; i--) if (g >= TREE_STAGES[i].min) { idx = i; break; }
+    var next = idx + 1 < TREE_STAGES.length ? TREE_STAGES[idx + 1].min : null;
+    return { idx: idx, stage: TREE_STAGES[idx], next: next };
+  }
+  function treeSVG(size) {
+    var st = treeStage(), i = st.idx;
+    var s = (size || 160);
+    var defs = "<defs>" +
+      '<linearGradient id="tgSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b7e0ff"/><stop offset="1" stop-color="#e9f8ff"/></linearGradient>' +
+      '<linearGradient id="tgCan" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fd96e"/><stop offset="1" stop-color="#48a05a"/></linearGradient>' +
+      '<linearGradient id="tgTrunk" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c08a54"/><stop offset="1" stop-color="#8a5a33"/></linearGradient>' +
+      "</defs>";
+    var parts = ['<rect x="0" y="0" width="160" height="160" fill="url(#tgSky)"/>'];
+    parts.push('<g fill="#fff" opacity=".92"><ellipse cx="32" cy="26" rx="14" ry="6.5"/><ellipse cx="44" cy="22" rx="9" ry="5.5"/><ellipse cx="126" cy="38" rx="12" ry="5.5"/><ellipse cx="136" cy="34" rx="8" ry="4.5"/></g>');
+    parts.push('<path d="M0 130 C40 120 80 124 160 128 L160 160 L0 160 Z" fill="#8fd977"/>');
+    parts.push('<path d="M0 142 C50 133 110 135 160 142 L160 160 L0 160 Z" fill="#9fe383"/>');
+    parts.push('<g fill="#fff"><circle cx="20" cy="150" r="2.2"/><circle cx="141" cy="155" r="2.2"/><circle cx="31" cy="159" r="1.8"/><circle cx="127" cy="146" r="1.8"/></g>');
+    if (i === 0) {
+      parts.push('<path d="M80 136 C77 128 77 121 80 114" stroke="url(#tgTrunk)" stroke-width="4" fill="none" stroke-linecap="round"/>');
+      parts.push('<path d="M80 116 C74 110 73 103 77 98 C82 102 83 109 80 116 Z" fill="url(#tgCan)"/>');
+      parts.push('<path d="M80 119 C85 115 91 115 94 119 C91 124 83 124 80 119 Z" fill="url(#tgCan)" opacity=".92"/>');
+    } else {
+      var sc = Math.min(1.12, 0.6 + i * 0.105);
+      parts.push('<g transform="translate(80 84) scale(' + sc + ') translate(-80 -84)">');
+      parts.push('<path d="M80 142 C76 128 75 118 79 106 L82 106 C86 118 85 128 82 142 Z" fill="url(#tgTrunk)"/>');
+      parts.push('<path d="M80 118 C71 112 65 105 63 98" stroke="#8a5a33" stroke-width="3.4" fill="none" stroke-linecap="round"/>');
+      parts.push('<path d="M81 118 C90 112 96 105 98 98" stroke="#8a5a33" stroke-width="3.4" fill="none" stroke-linecap="round"/>');
+      parts.push('<g class="t-canopy" style="transform-origin:80px 142px">');
+      parts.push('<path d="M80 102 C54 86 43 70 47 56 C50 44 63 40 71 48 C76 52 79 56 80 60 C81 56 84 52 89 48 C97 40 110 44 113 56 C117 70 106 86 80 102 Z" fill="url(#tgCan)"/>');
+      parts.push('<path d="M64 52 C60 54 57 58 56 63" stroke="#b8eb9a" stroke-width="3.4" fill="none" stroke-linecap="round" opacity=".85"/>');
+      parts.push('<path d="M97 51 C101 54 103 58 104 62" stroke="#b8eb9a" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>');
+      if (i >= 4) {
+        var fp2 = [[62, 60], [95, 56], [80, 74], [69, 85], [92, 82], [80, 48]];
+        for (var fi = 0; fi < fp2.length; fi++) {
+          parts.push('<g><circle cx="' + (fp2[fi][0] - 2) + '" cy="' + fp2[fi][1] + '" r="2" fill="#fff"/><circle cx="' + (fp2[fi][0] + 2) + '" cy="' + fp2[fi][1] + '" r="2" fill="#fff"/><circle cx="' + fp2[fi][0] + '" cy="' + (fp2[fi][1] - 2) + '" r="2" fill="#fff"/><circle cx="' + fp2[fi][0] + '" cy="' + (fp2[fi][1] + 2) + '" r="2" fill="#fff"/><circle cx="' + fp2[fi][0] + '" cy="' + fp2[fi][1] + '" r="1.3" fill="#ffd21e"/></g>');
+        }
+      }
+      parts.push("</g></g>");
+    }
+    parts.push('<circle class="t-fall" cx="52" cy="72" r="2.4" fill="#ffc9dd"/>');
+    parts.push('<circle class="t-fall f2" cx="108" cy="62" r="2" fill="#ffe28a"/>');
+    parts.push('<circle class="t-fall f3" cx="94" cy="96" r="1.8" fill="#c4eeb0"/>');
+    return '<svg viewBox="0 0 160 160" width="' + s + '" height="' + s + '" style="display:block">' + defs + parts.join("") + "</svg>";
+  }
+
+  function avatarHTML(p, idx, attrs) {
+    var inner = p.avatar ? '<img src="' + p.avatar + '" alt=""/>' : esc((p.name || "?").slice(0, 1));
+    return '<div class="avatar p' + idx + (p.avatar ? " img" : "") + '" ' + (attrs || "") + ">" + inner + "</div>";
+  }
+  function renderAll() {
+    applyTheme();
+    if (claimDaily()) saveLocal();
+    document.title = data.spaceName || "恋人空间";
+    $("barTitle").textContent = data.spaceName || "恋人空间";
+    renderHome(); renderChat(); renderAlbum(); renderSelfie(); renderUs();
+  }
+  function allPhotos() { var out = []; (data.albums||[]).forEach(function(a){ (a.photos||[]).forEach(function(p){ out.push({ p:p, a:a }); }); }); return out; }
+  function memoryToday() {
+    var now = new Date(), res = [];
+    allPhotos().forEach(function(o){
+      var d = new Date(o.p.ts || Date.now());
+      if (d.getMonth() === now.getMonth() && d.getDate() === now.getDate() && d.getFullYear() < now.getFullYear()) res.push({ p:o.p, a:o.a, year:d.getFullYear() });
+    });
+    return res;
+  }
+  function ymd(d){ return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); }
+  function openMemorySheet() {
+    var all = allPhotos().map(function(o){ return { p:o.p, a:o.a, d:new Date(o.p.ts||Date.now()) }; }).sort(function(x,y){ return y.p.ts - x.p.ts; });
+    var groups = {}; all.forEach(function(o){ var k = ymd(o.d); (groups[k] = groups[k] || []).push(o); });
+    var keys = Object.keys(groups).sort().reverse();
+    if (!keys.length) { openSheet("回忆时间线", '<div class="empty-tip">还没有照片，去相册上传一些吧</div>'); return; }
+    var html = '<div class="tl-scroll">';
+    keys.forEach(function(k){
+      html += '<div class="tl-date">' + k + " · " + groups[k].length + ' 张</div><div class="tl-grid">';
+      groups[k].forEach(function(o){ html += '<div class="tl-cell" data-tl="' + o.p.id + '"><img src="' + (o.p.thumb || o.p.src) + '" alt=""/><span class="tl-al">' + esc(o.a.name) + "</span></div>"; });
+      html += "</div>";
+    });
+    html += "</div>";
+    openSheet("回忆时间线", html);
+    $("sheetBody").querySelectorAll("[data-tl]").forEach(function(c){ c.addEventListener("click", function(){ var fp = findPhoto(c.dataset.tl); if (fp) openViewer(fp.photo); }); });
+  }
+  function renderHome() {
+    $("homeAv0").outerHTML = avatarHTML(data.partners[0], 0, 'id="homeAv0"');
+    $("homeAv1").outerHTML = avatarHTML(data.partners[1], 1, 'id="homeAv1"');
+    $("homeN0").textContent = data.partners[0].name; $("homeN1").textContent = data.partners[1].name;
+    $("homeDays").textContent = loveDays();
+    var st = treeStage();
+    $("homeTreeMini").innerHTML = treeSVG(72);
+    $("homeTreeName").textContent = st.stage.name;
+    $("homeTreeBar").style.width = (st.next ? Math.min(100, ((data.tree.growth - st.stage.min) / (st.next - st.stage.min)) * 100) : 100) + "%";
+    $("homeTreeLbl").textContent = st.next ? ("成长值 " + data.tree.growth + " / " + st.next) : ("成长值 " + data.tree.growth + " · 已满级");
+    var list = data.anniversaries.map(function (a) { var i = anniInfo(a); return i ? { a: a, i: i } : null; }).filter(Boolean);
+    renderMiss();
+    list.sort(function (x, y) { return x.i.next - y.i.next; });
+    $("homeAnni").innerHTML = list.length
+      ? list.slice(0, 2).map(function (o) {
+          return '<div class="anni-item"><div class="anni-date"><b>' + o.i.day + "</b><i>" + o.i.month + "月</i></div>" +
+            '<div class="anni-info"><div class="t">' + esc(o.a.title) + '</div><div class="d">' + esc(o.a.date) + "</div></div>" +
+            '<div class="anni-count' + (o.i.isToday ? " today" : "") + '"><b>' + (o.i.isToday ? "今天" : o.i.next) + "</b><i>" + (o.i.isToday ? "" : "天后") + "</i></div></div>";
+        }).join("")
+      : '<div class="empty-tip">还没有纪念日，去添加一个吧</div>';
+    var msgs = data.messages.slice(-2).reverse();
+    $("homeMsgs").innerHTML = msgs.length
+      ? msgs.map(function (m) {
+          var p = data.partners[m.who] || data.partners[0];
+          var body;
+          if (m.type === "sticker") {
+            var sk = STICKERS.find(function (x) { return x.key === m.key; });
+            body = sk ? ('<span class="sticker"><img src="' + sk.img + '" alt="' + sk.name + '" style="width:30px;height:30px;vertical-align:middle"/></span> <span style="font-size:12px;color:var(--ink-2)">' + esc(sk.name) + "</span>") : ("[" + esc(m.name || "表情") + "]");
+          } else {
+            body = esc(m.text);
+          }
+          return '<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">' +
+            '<div class="avatar p' + m.who + '" style="width:30px;height:30px;font-size:12px;cursor:default">' + (p.avatar ? '<img src="' + p.avatar + '" style="width:100%;height:100%;object-fit:cover"/>' : esc(p.name.slice(0, 1))) + "</div>" +
+            '<div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--ink-2)">' + esc(p.name) + " · " + fmtTime(m.ts) + '</div><div style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">' + body + "</div></div></div>";
+        }).join("")
+      : '<div class="empty-tip">还没有悄悄话，快去说第一句吧</div>';
+    // 那年今日 + 今日情话
+    var mem = memoryToday();
+    var mc = $("memoryCard");
+    if (mem.length) {
+      mc.style.display = "block";
+      $("homeMemory").innerHTML = mem.slice(0, 9).map(function(o){
+        return '<div class="mem-cell" data-mem="' + o.p.id + '"><img src="' + (o.p.thumb || o.p.src) + '" alt=""/><span class="mem-yr">' + (new Date().getFullYear() - o.year) + "年前</span></div>";
+      }).join("");
+      Array.prototype.forEach.call($("homeMemory").querySelectorAll("[data-mem]"), function(c){ c.onclick = function(){ var fp = findPhoto(c.dataset.mem); if (fp) openViewer(fp.photo); }; });
+    } else { mc.style.display = "none"; }
+    $("homeLove").textContent = todayLove();
+    if ($("memView")) $("memView").onclick = openMemorySheet;
+  }
+  // ===== 每日想你打卡 =====
+  function missDays(who) { return (data.miss || []).filter(function (m) { return m.who === who; }); }
+  function missDone(who, date) { date = date || todayStr(); return missDays(who).some(function (m) { return m.date === date; }); }
+  function missStreak(who) {
+    var dates = {}; missDays(who).forEach(function (m) { dates[m.date] = 1; });
+    var streak = 0, d = new Date();
+    if (!dates[todayStr()]) d = new Date(Date.now() - 86400000); // 今天没打则从昨天起算
+    while (dates[todayStr(d)]) { streak++; d = new Date(d.getTime() - 86400000); }
+    return streak;
+  }
+  function renderMiss() {
+    if (!$("missHeart")) return;
+    var mine = missDone(me), ta = missDone(1 - me);
+    $("missTip").textContent = mine ? ("你今天已经想 TA 啦" + (ta ? "，TA 也想你 💕" : "，等 TA 也来打卡吧")) : "点一下，告诉 TA 你今天想 TA 了";
+    $("missStreak").textContent = missStreak(me);
+    $("missTotal").textContent = missDays(me).length;
+    $("missHeart").style.opacity = mine ? "1" : ".55";
+  }
+  function doMiss() {
+    if (missDone(me)) { toast("今天已经想过 TA 啦，明天再来 💗"); return; }
+    (data.miss || (data.miss = [])).push({ id: uid(), who: me, date: todayStr(), ts: Date.now() });
+    data.tree.growth += 1;
+    save(); renderAll(); toast("已告诉 TA 你今天想 TA 了 💗 恋爱树成长 +1");
+  }
+  $("missHeart").addEventListener("click", doMiss);
+  // ===== 每日任务：随真实行为自动完成，每人每天各 +1 成长值 =====
+  var DAILY_TASKS = [
+    { key: "selfie", name: "拍一张今日自拍" },
+    { key: "msg", name: "说一句悄悄话" },
+    { key: "miss", name: "想你打卡" },
+    { key: "water", name: "给恋爱树浇水" }
+  ];
+  function dailyTaskDone(key, who) {
+    var t = todayStr();
+    if (key === "selfie") return (data.selfies || []).some(function (s) { return s.who === who && s.date === t; });
+    if (key === "miss") return missDone(who, t);
+    if (key === "water") { var ts = data.tree.lastWater[who] || 0; return ts > 0 && todayStr(new Date(ts)) === t; }
+    if (key === "msg") return (data.messages || []).some(function (m) { return m.who === who && todayStr(new Date(m.ts)) === t; });
+    return false;
+  }
+  function claimDaily() {
+    var changed = false;
+    DAILY_TASKS.forEach(function (t) {
+      for (var i = 0; i < 2; i++) {
+        var ck = t.key + i;
+        if (!data.tree.daily.claimed[ck] && dailyTaskDone(t.key, i)) {
+          data.tree.daily.claimed[ck] = true;
+          data.tree.growth += 1;
+          changed = true;
+        }
+      }
+    });
+    return changed;
+  }
+  function waterStreak(who) {
+    var log = (data.tree.waterLog && data.tree.waterLog[who]) || [];
+    var dates = {}; log.forEach(function (d) { dates[d] = 1; });
+    var streak = 0, d = new Date();
+    if (!dates[todayStr(d)]) d = new Date(Date.now() - 86400000);
+    while (dates[todayStr(d)]) { streak++; d = new Date(d.getTime() - 86400000); }
+    return streak;
+  }
+  function renderChat() {
+    $("chatAs").textContent = "以「" + (data.partners[me] ? data.partners[me].name : "?") + "」的身份";
+    var changed = false;
+    data.messages.forEach(function (m) { if (m.who !== me && !(m.read && m.read[me])) { m.read = m.read || {}; m.read[me] = Date.now(); changed = true; } });
+    if (changed) save();
+    var wrap = $("chatList");
+    if (!data.messages.length) { wrap.innerHTML = '<div class="chat-empty">还没有悄悄话，说句甜的吧</div>'; return; }
+    wrap.innerHTML = data.messages.map(function (m) {
+      if (m.type === "recall") {
+        var rn = (data.partners[m.who] || data.partners[0]).name;
+        return '<div class="msg-recall">' + esc(rn) + " 撤回了一条消息</div>";
+      }
+      var mine = m.who === me, p = data.partners[m.who] || data.partners[0];
+      var av = p.avatar ? '<img src="' + p.avatar + '" alt=""/>' : esc(p.name.slice(0, 1));
+      var inner, cls = "";
+      if (m.type === "sticker") {
+        var s = STICKERS.find(function (x) { return x.key === m.key; });
+        inner = s ? ('<span class="sticker"><img src="' + s.img + '" alt="' + s.name + '"/></span>') : ('<span style="font-size:32px">[' + esc(m.name || "表情") + ']</span>');
+        cls = " is-sticker";
+      } else {
+        inner = esc(m.text);
+      }
+      return '<div class="bubble-row' + (mine ? " me" : "") + '" data-id="' + m.id + '">' +
+        '<div class="b-avatar avatar p' + m.who + '">' + av + "</div>" +
+        '<div class="bubble' + cls + '">' + inner + '<span class="b-time">' + fmtTime(m.ts) + "</span>" +
+        (mine ? '<span class="b-read">' + (m.read && m.read[1 - me] ? "已读 ✓" : "送达") + "</span>" : "") +
+        "</div></div>";
+    }).join("");
+    if ($("chatLoveBar")) $("chatLoveBar").textContent = todayLove();
+    scrollChatBottomIfNeeded();
+  }
+  var albumState = { mode: "list", id: null };
+  var albumMode = "normal";   // normal | select | sort
+  var albumSel = {};          // 多选：photo id -> true
+  var sortSrc = null;         // 排序模式：点选交换的源照片 id
+  var viewerAlbumId = null;
+  function curAlbum() { return data.albums.find(function (a) { return a.id === albumState.id; }); }
+  function findPhoto(id) {
+    for (var i = 0; i < data.albums.length; i++) {
+      var p = (data.albums[i].photos || []).find(function (x) { return x.id === id; });
+      if (p) return { album: data.albums[i], photo: p };
+    }
+    return null;
+  }
+  function albumCover(a) {
+    if (!a.photos || !a.photos.length) return "";
+    var cover = a.cover ? a.photos.find(function (x) { return x.id === a.cover; }) : a.photos[0];
+    if (!cover) cover = a.photos[0];
+    return cover ? (cover.thumb || cover.src) : "";
+  }
+  function renderAlbum() {
+    var g = $("photoGrid"), bar = $("albumBar"), title = $("albumTitle"), empty = $("photoEmpty");
+    if (albumState.mode === "list") {
+      bar.style.display = "none";
+      $("albumManageBar").style.display = "none";
+      $("albumCap").style.display = "block";
+      $("albumCap").innerHTML = albumCapacityHTML();
+      title.innerHTML = '<svg class="ic t-ic"><use href="#i-photo"/></svg>我们的相册';
+      var cards = data.albums.map(function (a) {
+        var cover = albumCover(a);
+        return '<div class="album-card" data-album="' + a.id + '">' +
+          (cover ? '<div class="album-cover"><img src="' + cover + '" alt="" loading="lazy"/></div>' : '<div class="album-cover empty">' + icon("photo") + "</div>") +
+          '<div class="album-meta"><div class="album-name">' + esc(a.name) + '</div><div class="album-count">' + (a.photos ? a.photos.length : 0) + " 张</div></div></div>";
+      }).join("");
+      g.innerHTML = cards + '<div class="album-card new" id="albumNew">' + icon("plus") + "<span>新建相册</span></div>";
+      empty.style.display = "none";
+    } else {
+      var al = curAlbum();
+      if (!al) { albumState = { mode: "list", id: null }; albumMode = "normal"; return renderAlbum(); }
+      bar.style.display = "flex";
+      $("albumCap").style.display = "none";
+      var inManage = (albumMode === "select" || albumMode === "sort");
+      // 管理模式/排序模式下隐藏常规操作，避免误触
+      albumBar.querySelector("#albumManage").style.display = (albumMode !== "normal") ? "none" : "";
+      albumBar.querySelector("#albumSort").style.display = (albumMode === "select") ? "none" : "";
+      albumBar.querySelector("#albumSort").textContent = (albumMode === "sort") ? "完成" : "排序";
+      albumBar.querySelector("#albumRename").style.display = inManage ? "none" : "";
+      albumBar.querySelector("#albumDelete").style.display = inManage ? "none" : "";
+      $("albumManageBar").style.display = (albumMode === "select") ? "flex" : "none";
+      title.innerHTML = '<svg class="ic t-ic"><use href="#i-photo"/></svg>' + esc(al.name);
+      var selMode = albumMode === "select", sortMode = albumMode === "sort";
+      g.innerHTML = '<button class="photo-add" id="photoAddBtn">' + icon("plus") + "<span>添加照片</span></button>" +
+        (al.photos || []).map(function (p, i) {
+          var on = albumSel[p.id] ? " sel" : "";
+          var badge = selMode ? '<div class="ph-sel' + (albumSel[p.id] ? " on" : "") + '">' + (albumSel[p.id] ? icon("check") : "") + "</div>" : "";
+          var rank = sortMode ? '<div class="ph-rank">' + (i + 1) + "</div>" : "";
+          return '<div class="photo-cell' + (selMode ? " selmode" : "") + (sortMode ? " sortmode" : "") + on + '" data-view="' + p.id + '"' + (sortMode ? ' draggable="true"' : "") + ">" + badge + rank + '<img src="' + (p.thumb || p.src) + '" alt="" loading="lazy"/></div>';
+        }).join("");
+      if (albumMode === "sort" && sortSrc) { var sc = g.querySelector('[data-view="' + sortSrc + '"]'); if (sc) sc.classList.add("dragging"); }
+      $("selCount").textContent = "已选 " + Object.keys(albumSel).length + " 张";
+      empty.textContent = "这个相册还没有照片，点 + 添加吧";
+      empty.style.display = (al.photos && al.photos.length) ? "none" : "block";
+    }
+  }
+  function albumCapacityHTML() {
+    var totalOrig = 0; (data.albums || []).forEach(function (a) { (a.photos || []).forEach(function (p) { if (p.src && p.src.indexOf("/uploads/") === 0) totalOrig++; }); });
+    var localKB = Math.round(JSON.stringify(data).length / 1024);
+    var estMB = (totalOrig * 150 / 1024).toFixed(0);
+    var warn = (localKB > 4000 || totalOrig > 1000);
+    var tip = warn
+      ? "空间快满啦，建议：①导出备份文件；②多用「网络图片链接」；③删除不重要的照片"
+      : "原图都在云端，本地只留缩略图，放心存";
+    return '<div class="album-cap' + (warn ? " warn" : "") + '">云端原图 ' + totalOrig + " 张 · 约 " + estMB + " MB ｜ 本地占用 " + localKB + " KB<br/>" + tip + "</div>";
+  }
+  // ===== 每日自拍时间轴 =====
+  function selfieDays(who) {
+    var seen = {};
+    (data.selfies || []).forEach(function (s) { if (s.who === who) seen[s.date] = 1; });
+    return Object.keys(seen).length;
+  }
+  function selfieFor(date, who) {
+    var list = data.selfies || [];
+    for (var i = 0; i < list.length; i++) if (list[i].date === date && list[i].who === who) return list[i];
+    return null;
+  }
+  function sfCard(s, cls, date, isMine) {
+    var today = todayStr();
+    if (s) {
+      return '<div class="sf-card ' + cls + '" data-sfview="' + s.id + '"><img src="' + s.src + '" alt=""/><span class="sf-tag">' + esc((data.partners[s.who] || data.partners[0]).name) + "</span></div>";
+    }
+    if (date !== today) return '<div class="sf-card ' + cls + '"><div class="sf-ph">这天没拍</div></div>';
+    if (isMine) return '<div class="sf-card ' + cls + '"><div class="sf-ph">你的位置还空着<br/>每天一张，记录今天的自己</div><div style="padding:0 6px 10px"><button class="mini-btn b" id="sfShoot2">自拍一下</button></div></div>';
+    return '<div class="sf-card ' + cls + '"><div class="sf-ph">' + esc(data.partners[1 - me].name) + "还没发呢<br/>戳一下，让TA把这张交出来</div><div style=\"padding:0 6px 10px\"><button class=\"mini-btn p\" id=\"sfUrge\">催TA发</button></div></div>";
+  }
+  function renderSelfie() {
+    $("sfAv0").outerHTML = avatarHTML(data.partners[0], 0, 'id="sfAv0"');
+    $("sfAv1").outerHTML = avatarHTML(data.partners[1], 1, 'id="sfAv1"');
+    $("sfStat").innerHTML = "我拍了 <b>" + selfieDays(me) + "</b> 天 · " + esc(data.partners[1 - me].name) + "拍了 <b>" + selfieDays(1 - me) + "</b> 天";
+    var today = todayStr();
+    $("sfShootLbl").textContent = selfieFor(today, me) ? "重拍今天的" : "今天拍一张";
+    var dates = {};
+    (data.selfies || []).forEach(function (s) { dates[s.date] = 1; });
+    dates[today] = 1;
+    var list = Object.keys(dates).sort().reverse();
+    $("sfTimeline").innerHTML = list.map(function (d) {
+      var dl = new Date(d + "T00:00:00");
+      var dsub = (dl.getMonth() + 1) + "月" + dl.getDate() + "日";
+      var dlbl = d === today ? "今天" : (d === todayStr(new Date(Date.now() - 86400000)) ? "昨天" : dsub);
+      return '<div class="sf-day"><div class="sf-rail"><div class="sf-dlbl">' + dlbl + '</div><div class="sf-dsub">' + dsub + '</div><svg class="ic fill sf-dot"><use href="#i-heart"/></svg></div>' +
+        '<div class="sf-row">' + sfCard(selfieFor(d, me), "mine", d, true) +
+        '<svg class="ic fill sf-mid"><use href="#i-heart"/></svg>' +
+        sfCard(selfieFor(d, 1 - me), "ta", d, false) + "</div></div>";
+    }).join("");
+  }
+  function renderUs() {
+    $("usAv0").outerHTML = avatarHTML(data.partners[0], 0, 'id="usAv0" style="width:44px;height:44px;cursor:default"');
+    $("usNames").textContent = data.partners[0].name + "  ·  " + data.partners[1].name;
+    $("usSub").textContent = data.startedDate ? "已在一起 " + loveDays() + " 天" : "去设置你们的在一起日期吧";
+    $("miProfileSub").textContent = data.partners[me].name + "（我）";
+    $("miAnniSub").textContent = data.anniversaries.length ? data.anniversaries.length + " 个" : "";
+    $("miMoodSub").textContent = data.moods.length ? data.moods.length + " 条" : "";
+    $("miTreeSub").textContent = treeStage().stage.name;
+    var sbSub = $("miSbSub"); if (sbSub) sbSub.textContent = sbReady() ? "Supabase 已启用" : (room ? "默认后端" : "默认后端");
+    $("miPrivSub").textContent = encPwd ? "已开启 · 云端只存密文" : "未开启";
+    $("miIdSub").textContent = data.partners[me].name;
+  }
+
+  function scrollChatBottom() { var w = $("chatList"); if (!w || !w.offsetParent) return; w.scrollTop = w.scrollHeight; }
+  function scrollChatBottomIfNeeded() { var w = $("chatList"); if (!w || !w.offsetParent) return; var atBottom = w.scrollHeight - w.scrollTop - w.clientHeight < 80; if (atBottom) w.scrollTop = w.scrollHeight; }
+  function goTab(tab) {
+    document.querySelectorAll(".tabbar button").forEach(function (b) { b.classList.toggle("on", b.dataset.tab === tab); });
+    document.querySelectorAll(".view").forEach(function (v) { v.classList.toggle("on", v.id === "view-" + tab); });
+    window.scrollTo(0, 0);
+    if (tab === "chat") setTimeout(scrollChatBottom, 60);
+  }
+  document.querySelector(".tabbar").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-tab]"); if (b) goTab(b.dataset.tab);
+  });
+  document.addEventListener("click", function (e) {
+    var g = e.target.closest("[data-go]"); if (!g) return;
+    var t = g.dataset.go;
+    if (t === "mood") { openMoodSheet(); return; }
+    if (t === "anni") { openAnniSheet(); return; }
+    if (t === "tree") { openTreeSheet(); return; }
+    goTab(t);
+  });
+
+  function sendMsg() {
+    var inp = $("chatInput"), text = inp.value.trim();
+    if (!text) { toast("写点什么再发送吧"); return; }
+    data.messages.push({ id: uid(), who: me, text: text, ts: Date.now(), read: {} });
+    inp.value = ""; save(); renderAll(); setTimeout(scrollChatBottom, 0);
+  }
+  $("chatSend").addEventListener("click", sendMsg);
+  $("chatInput").addEventListener("keydown", function (e) { if (e.key === "Enter") sendMsg(); });
+  // ===== 悄悄话增强：动态表情 / 快捷问候 / 情话 / 长按菜单（仿 QQ） =====
+  var STICKERS = [
+    { key: 'heart', name: '爱心', img: '/stickers/heart.webp' },
+    { key: 'sparkheart', name: '闪耀爱心', img: '/stickers/sparkheart.webp' },
+    { key: 'twohearts', name: '双心', img: '/stickers/twohearts.webp' },
+    { key: 'heartfire', name: '爱心火焰', img: '/stickers/heartfire.webp' },
+    { key: 'heartarrow', name: '一箭穿心', img: '/stickers/heartarrow.webp' },
+    { key: 'beatingheart', name: '跳动的心', img: '/stickers/beatingheart.webp' },
+    { key: 'revolvingheart', name: '旋转双心', img: '/stickers/revolvingheart.webp' },
+    { key: 'facehearts', name: '满脸爱心', img: '/stickers/facehearts.webp' },
+    { key: 'kiss', name: '飞吻', img: '/stickers/kiss.webp' },
+    { key: 'joy', name: '笑哭', img: '/stickers/joy.webp' },
+    { key: 'sob', name: '大哭', img: '/stickers/sob.webp' },
+    { key: 'beam', name: '灿烂笑', img: '/stickers/beam.webp' },
+    { key: 'hug', name: '抱抱', img: '/stickers/hug.webp' },
+    { key: 'angry', name: '生气', img: '/stickers/angry.webp' },
+    { key: 'wow', name: '惊讶', img: '/stickers/wow.webp' },
+    { key: 'sparkles', name: '闪亮星星', img: '/stickers/sparkles.webp' },
+    { key: 'party', name: '庆祝彩带', img: '/stickers/party.webp' },
+    { key: 'rose', name: '玫瑰', img: '/stickers/rose.webp' },
+    { key: 'cake', name: '蛋糕', img: '/stickers/cake.webp' },
+    { key: 'loveletter', name: '情书', img: '/stickers/loveletter.webp' }
+  ]
+  function sendSticker(key) {
+    var s = STICKERS.find(function (x) { return x.key === key; }); if (!s) return;
+    data.messages.push({ id: uid(), who: me, type: "sticker", key: s.key, name: s.name, ts: Date.now(), read: {} });
+    save(); renderAll(); setTimeout(scrollChatBottom, 0);
+  }
+  $("emojiBtn").addEventListener("click", function () {
+    var p = $("emojiPanel");
+    if (p.style.display === "none") {
+      p.innerHTML = '<div class="sheet-head"><span class="t">动态表情</span><button class="x" id="emojiClose" title="收起">✕</button></div>' +
+        STICKERS.map(function (s) {
+          return '<button type="button" class="sticker-item" data-key="' + s.key + '" title="' + s.name + '"><span class="sticker"><img src="' + s.img + '" alt="' + s.name + '" loading="lazy"/></span></button>';
+        }).join("");
+      p.querySelectorAll("[data-key]").forEach(function (b) {
+        b.addEventListener("click", function () { sendSticker(b.dataset.key); p.style.display = "none"; document.body.classList.remove("emoji-open"); });
+      });
+      var ec = $("emojiClose"); if (ec) ec.addEventListener("click", function () { p.style.display = "none"; document.body.classList.remove("emoji-open"); });
+      p.style.display = "grid"; document.body.classList.add("emoji-open");
+    } else { p.style.display = "none"; document.body.classList.remove("emoji-open"); }
+  });
+  document.addEventListener("click", function (e) {
+    var p = $("emojiPanel");
+    if (p && p.style.display !== "none" && !e.target.closest("#emojiPanel") && !e.target.closest("#emojiBtn")) { p.style.display = "none"; document.body.classList.remove("emoji-open"); }
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-qk]"), function (b) { b.addEventListener("click", function () { sendMsgText(b.dataset.qk); }); });
+  if ($("chatLove")) $("chatLove").addEventListener("click", function () { sendMsgText(todayLove()); });
+  function sendMsgText(t) { var inp = $("chatInput"); inp.value = t; sendMsg(); }
+
+  // 长按消息弹出操作菜单：复制 / 撤回（仿 QQ）
+  var pressTimer = null, pressXY = { x: 0, y: 0 }, menuJustOpened = 0;
+  function closeMsgMenu() { var m = $("msgMenu"); if (m) m.remove(); }
+  function openMsgMenu(id, x, y) {
+    closeMsgMenu();
+    var rp = document.querySelector('.bubble-row[data-id="' + id + '"]'); if (rp) rp.classList.remove("pressing");
+    try { var sel = window.getSelection(); if (sel && sel.removeAllRanges) sel.removeAllRanges(); } catch (e) {}
+    var m = data.messages.find(function (x) { return x.id === id; }); if (!m) return;
+    var mine = m.who === me, items = '<button data-act="copy">复制</button>';
+    if (mine && m.type !== "recall") items += '<button data-act="recall" class="danger">撤回</button>';
+    var box = document.createElement("div");
+    box.id = "msgMenu"; box.className = "msg-menu"; box.innerHTML = items;
+    document.body.appendChild(box);
+    var r = box.getBoundingClientRect();
+    box.style.left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) + "px";
+    box.style.top = Math.max(8, Math.min(y, window.innerHeight - r.height - 8)) + "px";
+    box.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-act]"); if (!b) return;
+      if (b.dataset.act === "copy") copyText(m.type === "sticker" ? ("[" + m.name + "]") : m.text, "已复制");
+      else if (b.dataset.act === "recall") recallMessage(id);
+      closeMsgMenu();
+    });
+    menuJustOpened = Date.now();
+  }
+  function recallMessage(id) {
+    var i = data.messages.findIndex(function (x) { return x.id === id; }); if (i < 0) return;
+    var m = data.messages[i];
+    tomb("messages", id);
+    data.messages[i] = { id: uid(), type: "recall", who: m.who, ts: Date.now() };
+    save(); renderAll(); toast("已撤回");
+  }
+  function startPress(e) {
+    var row = e.target.closest(".bubble-row"); if (!row) return;
+    var pt = e.touches ? e.touches[0] : e;
+    pressXY = { x: pt.clientX, y: pt.clientY };
+    row.classList.add("pressing");
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(function () { openMsgMenu(row.dataset.id, pressXY.x, pressXY.y); }, 360);
+  }
+  function cancelPress() { clearTimeout(pressTimer); var p = document.querySelector(".bubble-row.pressing"); if (p) p.classList.remove("pressing"); }
+  $("chatList").addEventListener("touchstart", startPress, { passive: true });
+  $("chatList").addEventListener("touchend", cancelPress);
+  $("chatList").addEventListener("touchmove", cancelPress, { passive: true });
+  $("chatList").addEventListener("mousedown", function (e) { if (e.button !== 0) return; startPress(e); });
+  $("chatList").addEventListener("mouseup", cancelPress);
+  $("chatList").addEventListener("mouseleave", cancelPress);
+  document.addEventListener("contextmenu", function (e) {
+    var row = e.target.closest(".bubble-row");
+    if (row) { e.preventDefault(); openMsgMenu(row.dataset.id, e.clientX, e.clientY); }
+  });
+  document.addEventListener("click", function (e) {
+    if (Date.now() - menuJustOpened < 350) return;
+    if (!e.target.closest("#msgMenu")) closeMsgMenu();
+  });
+  window.addEventListener("scroll", closeMsgMenu, true);
+
+  function openMoodSheet() {
+    var done = data.moods.some(function (m) { return m.date === todayStr() && m.who === me; });
+    var html = '<div class="mood-bar">' + MOODS.map(function (m) {
+      return '<button data-mood="' + m.id + '"><svg class="ic m-face"><use href="#i-' + m.icon + '"/></svg><span>' + m.name + "</span></button>";
+    }).join("") + '</div><input class="mood-note" id="moodNote" maxlength="60" placeholder="用一句话记录今天…" /><button class="primary-btn" id="moodSave">打卡</button>';
+    if (done) html = '<div class="empty-tip" style="padding:4px 0 14px">今天已经打过卡啦（再次提交会更新今天）</div>' + html;
+    openSheet("今日心情打卡", html);
+    $("sheetBody").querySelectorAll("[data-mood]").forEach(function (b) {
+      b.addEventListener("click", function () { $("sheetBody").querySelectorAll("[data-mood]").forEach(function (x) { x.classList.toggle("on", x === b); }); });
+    });
+    $("moodSave").addEventListener("click", function () {
+      var on = $("sheetBody").querySelector("[data-mood].on");
+      if (!on) { toast("先选一个心情吧"); return; }
+      var note = ($("moodNote").value || "").trim();
+      data.moods = data.moods.filter(function (m) { return !(m.date === todayStr() && m.who === me); });
+      data.moods.push({ id: uid(), who: me, date: todayStr(), mood: on.dataset.mood, note: note, ts: Date.now() });
+      save(); closeSheet(); renderAll(); toast("打卡成功，今天也要甜甜的");
+    });
+  }
+  function openMoodTimeline() {
+    var list = data.moods.slice().sort(function (a, b) { return b.ts - a.ts; });
+    var html = list.length ? list.map(function (m) {
+      var md = moodById(m.mood), p = data.partners[m.who] || data.partners[0];
+      return '<div class="mood-tl"><div class="mt-face">' + icon(md.icon) + "</div>" +
+        '<div class="mt-body"><div class="mt-head"><b>' + esc(p.name) + "</b><span>" + m.date + "</span><span>·</span><span>" + md.name + "</span></div>" +
+        (m.note ? '<div class="mt-text">' + esc(m.note) + "</div>" : "") + "</div></div>";
+    }).join("") : '<div class="empty-tip">还没有心情记录</div>';
+    html += '<button class="ghost-btn" id="moodCheckBtn">今日打卡</button>';
+    openSheet("心情日记", html);
+    $("moodCheckBtn").addEventListener("click", openMoodSheet);
+  }
+
+  function openAnniSheet() {
+    var list = data.anniversaries.map(function (a) { var i = anniInfo(a); return i ? { a: a, i: i } : null; }).filter(Boolean);
+    list.sort(function (x, y) { return x.i.next - y.i.next; });
+    var html = list.map(function (o) {
+      return '<div class="anni-item"><div class="anni-date"><b>' + o.i.day + "</b><i>" + o.i.month + "月</i></div>" +
+        '<div class="anni-info"><div class="t">' + esc(o.a.title) + '</div><div class="d">' + esc(o.a.date) + "</div></div>" +
+        '<div class="anni-count' + (o.i.isToday ? " today" : "") + '"><b>' + (o.i.isToday ? "今天" : o.i.next) + "</b><i>" + (o.i.isToday ? "" : "天后") + "</i></div>" +
+        '<button class="del-btn" data-annidel="' + o.a.id + '">' + icon("trash") + "</button></div>";
+    }).join("") || '<div class="empty-tip">添加属于你们的纪念日吧</div>';
+    html += '<div class="field" style="margin-top:16px"><label>名称</label><input type="text" id="anTitle" maxlength="20" placeholder="如：领证纪念日 / TA的生日" /></div>' +
+      '<div class="field"><label>日期</label><input type="date" id="anDate" /></div>' +
+      '<button class="primary-btn" id="anAdd">添加纪念日</button>';
+    openSheet("纪念日", html);
+    $("sheetBody").querySelectorAll("[data-annidel]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        data.anniversaries = data.anniversaries.filter(function (a) { return a.id !== b.dataset.annidel; });
+        tomb("anniversaries", b.dataset.annidel);
+        save(); renderAll(); openAnniSheet(); toast("已删除");
+      });
+    });
+    $("anAdd").addEventListener("click", function () {
+      var t = $("anTitle").value.trim(), d = $("anDate").value;
+      if (!t) { toast("给纪念日起个名字吧"); return; }
+      if (!d) { toast("选择一个日期"); return; }
+      data.anniversaries.push({ id: uid(), title: t, date: d });
+      save(); renderAll(); openAnniSheet(); toast("已添加纪念日");
+    });
+  }
+
+  function treeCooldown(ts, hours) { return Date.now() - (ts || 0) > hours * 3600 * 1000; }
+  function recomputePet() {
+    var p = data.tree.pet;
+    var eh = Math.floor((Date.now() - (p.lastFed || 0)) / 3600000);
+    var em = Math.floor((Date.now() - (p.lastPlay || 0)) / 3600000);
+    p.hunger = Math.max(0, Math.min(100, 100 - eh * 8));
+    p.mood = Math.max(0, Math.min(100, 100 - em * 6));
+  }
+  // ===== 奶龙宠物（SVG 可动形象）=====
+  function petSVG() {
+    var lvl = data.tree.pet.lvl || 1;
+    var acc = "";
+    if (lvl >= 8) acc += '<path d="M48 12 L52 4 L56 9 L60 2 L64 9 L68 4 L72 12 Z" fill="#ffcf3f" stroke="#e8a90c" stroke-width="1" stroke-linejoin="round"/>';
+    else if (lvl >= 3) acc += '<path d="M60 13 C59 7 62 3 68 2 C67 8 64 12 60 13 Z" fill="#6fbf73"/><path d="M60 13 C61 8 59 5 55 4 C56 9 58 12 60 13 Z" fill="#8fd3a8"/>';
+    var blush = lvl >= 5 ? '<ellipse cx="40" cy="57" rx="4.5" ry="2.6" fill="#ffb3c7" opacity=".7"/><ellipse cx="80" cy="57" rx="4.5" ry="2.6" fill="#ffb3c7" opacity=".7"/>' : "";
+    return '<svg viewBox="0 0 120 118" width="128" height="126">' +
+      "<defs>" +
+      '<linearGradient id="pgBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe98f"/><stop offset="1" stop-color="#ffd21e"/></linearGradient>' +
+      '<radialGradient id="pgGlow" cx=".5" cy=".45" r=".6"><stop offset="0" stop-color="#ffe9a0" stop-opacity=".6"/><stop offset="1" stop-color="#ffe9a0" stop-opacity="0"/></radialGradient>' +
+      "</defs>" +
+      '<circle cx="60" cy="62" r="54" fill="url(#pgGlow)"/>' +
+      '<ellipse cx="60" cy="111" rx="27" ry="5" fill="rgba(120,90,40,.14)"/>' +
+      '<g class="pet-bob">' +
+      acc +
+      '<ellipse cx="28" cy="64" rx="6" ry="10" fill="#ffd21e" transform="rotate(16 28 64)"/>' +
+      '<ellipse cx="92" cy="64" rx="6" ry="10" fill="#ffd21e" transform="rotate(-16 92 64)"/>' +
+      '<path d="M60 14 C44 14 33 28 30 48 C27 70 33 96 60 96 C87 96 93 70 90 48 C87 28 76 14 60 14 Z" fill="url(#pgBody)"/>' +
+      '<ellipse cx="60" cy="76" rx="20" ry="15" fill="#fff3c4" opacity=".65"/>' +
+      '<ellipse cx="46" cy="97" rx="9" ry="5" fill="#ffd21e"/><ellipse cx="74" cy="97" rx="9" ry="5" fill="#ffd21e"/>' +
+      '<circle cx="47" cy="46" r="8" fill="#fff"/><circle cx="73" cy="46" r="8" fill="#fff"/>' +
+      '<circle cx="47" cy="46" r="5.6" fill="#cfe08a"/><circle cx="73" cy="46" r="5.6" fill="#cfe08a"/>' +
+      '<circle cx="47" cy="46" r="3.7" fill="#26221c"/><circle cx="73" cy="46" r="3.7" fill="#26221c"/>' +
+      '<circle cx="48.4" cy="44.4" r="1.3" fill="#fff"/><circle cx="74.4" cy="44.4" r="1.3" fill="#fff"/>' +
+      '<rect class="pet-lid" x="39" y="37" width="16" height="18" rx="8" fill="#ffd845" style="transform-origin:47px 37px"/>' +
+      '<rect class="pet-lid" x="65" y="37" width="16" height="18" rx="8" fill="#ffd845" style="transform-origin:73px 37px"/>' +
+      '<path d="M54 62 Q60 66 66 62" stroke="#8a5a2b" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+      blush +
+      "</g></svg>";
+  }
+  function petHearts() {
+    var st = $("petStage"); if (!st) return;
+    for (var i = 0; i < 3; i++) {
+      var h = document.createElement("div"); h.className = "pet-heart"; h.textContent = "♥";
+      h.style.left = (32 + i * 18 + Math.random() * 8) + "%"; h.style.top = "18%";
+      h.style.animationDelay = (i * 0.16) + "s";
+      st.appendChild(h);
+      (function (x) { setTimeout(function () { if (x.parentNode) x.parentNode.removeChild(x); }, 1600); })(h);
+    }
+  }
+  function treeCooldown(ts, hours) { return Date.now() - (ts || 0) > hours * 3600 * 1000; }
+  function recomputePet() {
+    var p = data.tree.pet;
+    var eh = Math.floor((Date.now() - (p.lastFed || 0)) / 3600000);
+    var em = Math.floor((Date.now() - (p.lastPlay || 0)) / 3600000);
+    p.hunger = Math.max(0, Math.min(100, 100 - eh * 8));
+    p.mood = Math.max(0, Math.min(100, 100 - em * 6));
+  }
+  // ===== 互动限制：冷却 + 每日次数上限 =====
+  var ACT_CONF = { water: { hours: 2, cap: 3, name: "浇水" }, feed: { hours: 4, cap: 3, name: "喂食" }, play: { hours: 4, cap: 3, name: "陪玩" } };
+  function dailyActs(key) {
+    if (data.tree.daily.date !== todayStr()) {
+      data.tree.daily.date = todayStr();
+      data.tree.daily.acts = { water: [0, 0], feed: [0, 0], play: [0, 0] };
+      data.tree.daily.claimed = {};
+    }
+    return data.tree.daily.acts[key] || (data.tree.daily.acts[key] = [0, 0]);
+  }
+  function actArr(key) { return key === "water" ? data.tree.lastWater : key === "feed" ? data.tree.feed : data.tree.play; }
+  function canAct(key) {
+    return treeCooldown(Math.max(actArr(key)[0] || 0, actArr(key)[1] || 0), ACT_CONF[key].hours) && dailyActs(key)[me] < ACT_CONF[key].cap;
+  }
+  function actLabel(key) {
+    var c = ACT_CONF[key];
+    if (dailyActs(key)[me] >= c.cap) return "今天" + c.name + "够啦";
+    if (!treeCooldown(Math.max(actArr(key)[0] || 0, actArr(key)[1] || 0), c.hours)) return c.hours + "h 后再" + c.name;
+    return c.name + " " + dailyActs(key)[me] + "/" + c.cap;
+  }
+  function interact(key) {
+    if (!canAct(key)) { toast(actLabel(key)); openTreeSheet(); return; }
+    var before = treeStage().idx;
+    data.tree.growth += 1;
+    dailyActs(key)[me] += 1;
+    if (key === "water") {
+      data.tree.lastWater[me] = Date.now();
+      var wl = data.tree.waterLog || (data.tree.waterLog = {});
+      if (!Array.isArray(wl[me])) wl[me] = [];
+      if (wl[me].indexOf(todayStr()) < 0) wl[me].push(todayStr());
+    }
+    else if (key === "feed") { data.tree.feed[me] = Date.now(); data.tree.pet.hunger = 100; data.tree.pet.lastFed = Date.now(); data.tree.pet.cared = (data.tree.pet.cared || 0) + 1; }
+    else if (key === "play") { data.tree.play[me] = Date.now(); data.tree.pet.mood = 100; data.tree.pet.lastPlay = Date.now(); data.tree.pet.cared = (data.tree.pet.cared || 0) + 1; }
+    data.tree.pet.lvl = 1 + Math.floor((data.tree.pet.cared || 0) / 10);
+    save(); renderAll();
+    toast(treeStage().idx > before ? "升级啦！恋爱树长成了「" + treeStage().stage.name + "」" : ACT_CONF[key].name + "成功，成长值 +1");
+    openTreeSheet();
+    if (key !== "water") petHearts();
+  }
+  function openTreeSheet() {
+    var st = treeStage();
+    var canWater = canAct("water");
+    var html = '<div class="tree-scene">' + treeSVG(220) + "</div>" +
+      '<div class="sign-board"><div class="sign-row"><span>我连续浇树</span><b>' + waterStreak(me) + '</b><span>天</span></div>' +
+      '<div class="sign-row"><span>TA连续浇树</span><b>' + waterStreak(1 - me) + '</b><span>天</span></div></div>' +
+      '<div class="tree-stage" style="padding:12px 0 4px">' +
+      '<div class="tree-name" style="font-size:14px;font-weight:700;color:var(--pink-deep)">' + st.stage.name + '</div><div class="tree-desc" style="font-size:12px;color:var(--ink-2);margin:4px 0 10px">' + st.stage.desc + "</div>" +
+      '<div class="grow-track"><div class="grow-fill" style="width:' + (st.next ? Math.min(100, ((data.tree.growth - st.stage.min) / (st.next - st.stage.min)) * 100) : 100) + '%"></div></div>' +
+      '<div class="grow-lbl">' + (st.next ? "成长值 " + data.tree.growth + "，再 +" + (st.next - data.tree.growth) + " 升级" : "成长值 " + data.tree.growth + " · 已是最高级啦") + "</div></div>" +
+      '<button class="primary-btn" id="actWater" style="background:linear-gradient(135deg,#8fd3a8,#3fae6e);box-shadow:0 6px 16px rgba(63,174,110,.3);margin-top:6px">' + actLabel("water") + " · 成长值 +1</button>";
+    // 每日任务：随真实行为自动完成
+    html += '<div class="tree-section-title">' + icon("check") + "每日任务（完成自动 +1 成长值）</div>";
+    html += DAILY_TASKS.map(function (t) {
+      var d0 = dailyTaskDone(t.key, 0), d1 = dailyTaskDone(t.key, 1);
+      var ic = t.key === "selfie" ? "cam" : t.key === "msg" ? "chat" : t.key === "miss" ? "heart" : "drop";
+      return '<div class="dt-item' + ((d0 || d1) ? " done" : "") + '"><div class="dt-ico">' + icon(ic) + '</div><div class="dt-name">' + t.name + '</div>' +
+        '<div class="dt-who"><span class="p0' + (d0 ? " on" : "") + '">' + esc((data.partners[0].name || "?").slice(0, 1)) + '</span><span class="p1' + (d1 ? " on" : "") + '">' + esc((data.partners[1].name || "?").slice(0, 1)) + "</span></div></div>";
+    }).join("");
+    openSheet("我们的恋爱树", html);
+    $("actWater").addEventListener("click", function () { interact("water"); });
+  }
+  var pickCb = null;
+  $("filePick").addEventListener("change", function () { var f = this.files[0]; this.value = ""; if (f && pickCb) pickCb(f); });
+  function pickImage(cb) { pickCb = cb; $("filePick").click(); }
+  var viewerCur = null;
+  function openViewer(p) {
+    viewerCur = p;
+    var img = $("viewerImg"), v = $("viewer"), del = $("viewerDel");
+    del.style.display = (p.by === me) ? "flex" : "none";
+    v.classList.add("open");
+    v.classList.add("loading");
+    img.className = "";
+    var hasThumb = !!p.thumb && p.thumb !== p.src;
+    function done() { img.classList.add("ready"); v.classList.remove("loading"); }
+    img.onload = done;
+    img.onerror = function () {
+      // 原图加载失败：回退本地缩略图，再不行提示不可用
+      if (hasThumb && img.src !== p.thumb) { img.onerror = function () { v.classList.remove("loading"); toast("原图暂不可用"); }; img.src = p.thumb; }
+      else { v.classList.remove("loading"); toast("原图暂不可用"); }
+    };
+    if (hasThumb) {
+      // 先显示本地缩略图（秒开），原图懒加载完成后淡入替换
+      img.src = p.thumb;
+      var big = new Image();
+      big.onload = function () { if (img.src !== p.src) { img.src = p.src; done(); } };
+      big.onerror = function () { v.classList.remove("loading"); };
+      big.src = p.src;
+    } else {
+      // 无独立缩略图：直接加载原图，加载期间显示骨架屏
+      img.src = p.src;
+    }
+  }
+  function closeViewer() { $("viewer").classList.remove("open"); viewerCur = null; }
+  $("photoGrid").addEventListener("click", function (e) {
+    if (albumState.mode === "list") {
+      if (e.target.closest("#albumNew")) { openAlbumNew(); return; }
+      var ac = e.target.closest("[data-album]");
+      if (ac) { albumState = { mode: "open", id: ac.dataset.album }; albumMode = "normal"; albumSel = {}; sortSrc = null; renderAlbum(); history.pushState({ app: 1 }, ""); }
+      return;
+    }
+    if (e.target.closest("#photoAddBtn")) { openPhotoAdd(); return; }
+    var cell = e.target.closest("[data-view]");
+    if (!cell) return;
+    var id = cell.dataset.view;
+    if (albumMode === "select") {
+      if (albumSel[id]) delete albumSel[id]; else albumSel[id] = true;
+      renderAlbum();
+      return;
+    }
+    if (albumMode === "sort") {
+      if (!sortSrc) { sortSrc = id; renderAlbum(); return; }
+      if (sortSrc === id) { sortSrc = null; renderAlbum(); return; }
+      var sa = curAlbum(); var arr = sa.photos || [];
+      var i = arr.findIndex(function (p) { return p.id === sortSrc; });
+      var j = arr.findIndex(function (p) { return p.id === id; });
+      if (i >= 0 && j >= 0) { var t = arr[i]; arr[i] = arr[j]; arr[j] = t; sortSrc = null; save(); renderAlbum(); }
+      return;
+    }
+    var f = findPhoto(id); if (f) { viewerAlbumId = f.album.id; openViewer(f.photo); }
+  });
+  // 排序模式：桌面端拖拽排序（移动端用点选两张交换）
+  var dragId = null;
+  $("photoGrid").addEventListener("dragstart", function (e) {
+    if (albumMode !== "sort") return;
+    var cell = e.target.closest("[data-view]"); if (!cell) return;
+    dragId = cell.dataset.view; cell.classList.add("dragging");
+    try { e.dataTransfer.setData("text/plain", dragId); } catch (x) {}
+    e.dataTransfer.effectAllowed = "move";
+  });
+  $("photoGrid").addEventListener("dragover", function (e) {
+    if (albumMode !== "sort" || !dragId) return;
+    e.preventDefault();
+    var cell = e.target.closest("[data-view]"); if (!cell || cell.dataset.view === dragId) return;
+    cell.classList.add("drag-over");
+  });
+  $("photoGrid").addEventListener("dragleave", function (e) {
+    var cell = e.target.closest("[data-view]"); if (cell) cell.classList.remove("drag-over");
+  });
+  $("photoGrid").addEventListener("drop", function (e) {
+    if (albumMode !== "sort" || !dragId) return;
+    e.preventDefault();
+    var cell = e.target.closest("[data-view]"); if (!cell) return;
+    var target = cell.dataset.view; cell.classList.remove("drag-over");
+    var sa = curAlbum(); var arr = sa.photos || [];
+    var i = arr.findIndex(function (p) { return p.id === dragId; });
+    var j = arr.findIndex(function (p) { return p.id === target; });
+    if (i >= 0 && j >= 0 && i !== j) { var t = arr.splice(i, 1)[0]; arr.splice(j, 0, t); save(); renderAlbum(); }
+    dragId = null;
+  });
+  $("photoGrid").addEventListener("dragend", function (e) {
+    var cell = e.target.closest("[data-view]"); if (cell) cell.classList.remove("dragging");
+    dragId = null;
+  });
+  $("viewerClose").addEventListener("click", closeViewer);
+  $("viewer").addEventListener("click", function (e) { if (e.target === this) closeViewer(); });
+  $("viewerDel").addEventListener("click", function () {
+    if (!viewerCur) return;
+    var cur = viewerCur;
+    closeViewer();
+    openSheet("删除这张照片？", '<div class="empty-tip" style="padding:4px 0 14px">删除后两人的相册里都会消失，无法恢复</div><button class="primary-btn" id="delYes" style="background:linear-gradient(135deg,#ff7b7b,#e33d3d);box-shadow:0 6px 16px rgba(227,61,61,.3)">确认删除</button><button class="ghost-btn" id="delNo">取消</button>');
+    $("delYes").addEventListener("click", function () {
+      var pid = cur.id, wasSelfie = cur.isSelfie;
+      var target = wasSelfie ? (data.selfies || []).find(function (x) { return x.id === pid; }) : (findPhoto(pid) || {}).photo;
+      // 同步清理云端原图文件，避免孤儿文件积累
+      if (target && target.src && target.src.indexOf("/uploads/") === 0) {
+        fetch("/api/upload/" + encodeURIComponent(target.src.split("/").pop()), { method: "DELETE" }).catch(function () {});
+      }
+      if (wasSelfie) { data.selfies = (data.selfies || []).filter(function (x) { return x.id !== pid; }); tomb("selfies", pid); }
+      else {
+        var fa = findPhoto(pid);
+        if (fa) { fa.album.photos = (fa.album.photos || []).filter(function (x) { return x.id !== pid; }); }
+        tomb("photos", pid);
+      }
+      save(); renderAll(); closeSheet(); toast("已删除");
+    });
+    $("delNo").addEventListener("click", closeSheet);
+  });
+
+  // ===== 自拍交互 =====
+  function shootSelfie() {
+    pickImage(function (f) {
+      compressImage(f, 900, 0.7, function (durl) {
+        data.selfies = (data.selfies || []).filter(function (s) { return !(s.date === todayStr() && s.who === me); });
+        data.selfies.unshift({ id: uid(), date: todayStr(), who: me, src: durl, ts: Date.now() });
+        save(); renderAll(); toast("今天的自拍已打卡，TA马上能看到");
+      });
+    });
+  }
+  $("sfShoot").addEventListener("click", function () {
+    if (selfieFor(todayStr(), me)) {
+      openSheet("重拍今天的？", '<div class="empty-tip" style="padding:4px 0 14px">今天已经拍过了，重拍会替换今天的照片</div><button class="primary-btn" id="sfRedo">重拍并替换</button><button class="ghost-btn" id="sfCancel">取消</button>');
+      $("sfRedo").addEventListener("click", function () { closeSheet(); setTimeout(shootSelfie, 250); });
+      $("sfCancel").addEventListener("click", closeSheet);
+    } else shootSelfie();
+  });
+  $("sfTimeline").addEventListener("click", function (e) {
+    var cell = e.target.closest("[data-sfview]");
+    if (cell) { var s = (data.selfies || []).find(function (x) { return x.id === cell.dataset.sfview; }); if (s) { openViewer({ id: s.id, src: s.src, by: s.who, isSelfie: true }); } return; }
+    if (e.target.closest("#sfShoot2")) { shootSelfie(); return; }
+    if (e.target.closest("#sfUrge")) { copyText("该拍今天的自拍啦，快打开「" + (data.spaceName || "恋人空间") + "」交作业！", "催拍话术已复制，发给TA吧"); }
+  });
+  function openPhotoAdd() {
+    var al = curAlbum();
+    var html = '<button class="ghost-btn" id="phUpload" style="margin-top:0">' + icon("upload") + " 从手机相册选择（自动压缩）</button>" +
+      '<div class="field" style="margin-top:14px"><label>或粘贴网络图片链接</label><input type="url" id="phUrl" placeholder="https://…" /></div>' +
+      '<button class="primary-btn" id="phUrlAdd">添加网络图片</button>';
+    openSheet("添加照片到「" + (al ? al.name : "") + "」", html);
+    $("phUpload").addEventListener("click", function () {
+      pickImage(function (f) {
+        compressImage(f, 1000, 0.72, function (durl) {           // 原图：上云
+          compressImage(f, 240, 0.6, function (thumb) {           // 缩略图：留本地
+            var a = curAlbum(); if (!a) { toast("相册不见了，请重新进入"); return; }
+            uploadImage(durl, function (url) {
+              if (url) {
+                (a.photos || (a.photos = [])).unshift({ id: uid(), src: url, thumb: thumb, ts: Date.now(), by: me });
+                save(); renderAll(); closeSheet(); toast("照片已添加");
+              } else {
+                // 云端上传失败：回退为本地保存，保证功能不中断
+                (a.photos || (a.photos = [])).unshift({ id: uid(), src: durl, ts: Date.now(), by: me });
+                save(); renderAll(); closeSheet(); toast("云端上传失败，已存本地");
+              }
+            });
+          });
+        });
+      });
+    });
+    $("phUrlAdd").addEventListener("click", function () {
+      var u = $("phUrl").value.trim();
+      if (!u) { toast("粘贴一个图片链接吧"); return; }
+      var a = curAlbum(); if (!a) { toast("相册不见了，请重新进入"); return; }
+      (a.photos || (a.photos = [])).unshift({ id: uid(), src: u, thumb: u, ts: Date.now(), by: me });
+      save(); renderAll(); closeSheet(); toast("照片已添加");
+    });
+  }
+  function openAlbumNew() {
+    openSheet("新建相册", '<div class="field"><label>给相册起个名字</label><input type="text" id="albName" maxlength="16" placeholder="例如：旅行、美食、我们的第一次" /></div><button class="primary-btn" id="albCreate">创建</button>');
+    $("albCreate").addEventListener("click", function () {
+      var n = ($("albName").value || "").trim() || "未命名相册";
+      var al = { id: uid(), name: n, photos: [], ts: Date.now() };
+      data.albums.unshift(al); save(); closeSheetUI(); albumState = { mode: "open", id: al.id }; renderAlbum(); history.pushState({ app: 1 }, ""); toast("相册已创建");
+    });
+  }
+  $("albumBack").addEventListener("click", function () { history.back(); });
+  $("albumRename").addEventListener("click", function () {
+    var aid = albumState.id;
+    var al = curAlbum(); if (!al) return;
+    openSheet("重命名相册", '<div class="field"><label>相册名称</label><input type="text" id="albName" maxlength="16" value="' + esc(al.name) + '" /></div><button class="primary-btn" id="albRenameOk">保存</button>');
+    $("albRenameOk").addEventListener("click", function () {
+      var cur = data.albums.find(function (a) { return a.id === aid; });
+      if (!cur) { toast("相册已失效，请重新进入"); return; }
+      cur.name = ($("albName").value || "").trim() || cur.name; save(); renderAll(); closeSheet(); toast("已重命名");
+    });
+  });
+  $("albumDelete").addEventListener("click", function () {
+    var al = curAlbum(); if (!al) return;
+    openSheet("删除相册？", '<div class="empty-tip" style="padding:4px 0 14px">「' + esc(al.name) + '」及其 ' + (al.photos ? al.photos.length : 0) + ' 张照片都会删除，无法恢复</div><button class="primary-btn" id="albDelYes" style="background:linear-gradient(135deg,#ff7b7b,#e33d3d);box-shadow:0 6px 16px rgba(227,61,61,.3)">确认删除</button><button class="ghost-btn" id="albDelNo">取消</button>');
+    $("albDelYes").addEventListener("click", function () {
+      data.albums = data.albums.filter(function (x) { return x.id !== al.id; });
+      tomb("albums", al.id);
+      if (!data.albums.length) data.albums.push({ id: uid(), name: "我们的日常", photos: [], ts: Date.now() });
+      albumState = { mode: "list", id: null }; closeSheet(); save(); renderAll(); toast("相册已删除");
+    });
+    $("albDelNo").addEventListener("click", closeSheet);
+  });
+
+  // ===== 相册批量管理 / 排序 =====
+  $("albumManage").addEventListener("click", function () {
+    if (albumMode === "select") { albumMode = "normal"; albumSel = {}; }
+    else { albumMode = "select"; albumSel = {}; sortSrc = null; }
+    renderAlbum();
+  });
+  $("albumSort").addEventListener("click", function () {
+    if (albumMode === "sort") { albumMode = "normal"; sortSrc = null; renderAlbum(); }
+    else { albumMode = "sort"; sortSrc = null; albumSel = {}; toast("拖动照片排序，或点两张照片交换位置"); }
+    renderAlbum();
+  });
+  $("selAll").addEventListener("click", function () {
+    var al = curAlbum(); if (!al) return;
+    var all = (al.photos || []).map(function (p) { return p.id; });
+    if (Object.keys(albumSel).length === all.length) albumSel = {};
+    else { albumSel = {}; all.forEach(function (id) { albumSel[id] = true; }); }
+    renderAlbum();
+  });
+  $("selDone").addEventListener("click", function () { albumMode = "normal"; albumSel = {}; sortSrc = null; renderAlbum(); });
+  $("selDelete").addEventListener("click", function () {
+    var ids = Object.keys(albumSel); if (!ids.length) { toast("先选几张照片"); return; }
+    openSheet("删除选中的 " + ids.length + " 张照片？", '<div class="empty-tip" style="padding:4px 0 14px">删除后两人的相册里都会消失，无法恢复</div><button class="primary-btn" id="selDelYes" style="background:linear-gradient(135deg,#ff7b7b,#e33d3d);box-shadow:0 6px 16px rgba(227,61,61,.3)">确认删除</button><button class="ghost-btn" id="selDelNo">取消</button>');
+    $("selDelYes").addEventListener("click", function () {
+      var al = curAlbum(); if (!al) { closeSheet(); return; }
+      (al.photos || []).forEach(function (p) {
+        if (albumSel[p.id] && p.src && p.src.indexOf("/uploads/") === 0) fetch("/api/upload/" + encodeURIComponent(p.src.split("/").pop()), { method: "DELETE" }).catch(function () {});
+        if (albumSel[p.id]) tomb("photos", p.id);
+      });
+      al.photos = (al.photos || []).filter(function (p) { return !albumSel[p.id]; });
+      if (al.cover && albumSel[al.cover]) al.cover = (al.photos[0] || {}).id || null;
+      albumSel = {}; albumMode = "normal";
+      save(); renderAlbum(); closeSheet(); toast("已删除 " + ids.length + " 张");
+    });
+    $("selDelNo").addEventListener("click", closeSheet);
+  });
+  $("selMove").addEventListener("click", function () {
+    var ids = Object.keys(albumSel); if (!ids.length) { toast("先选几张照片"); return; }
+    if (data.albums.length < 2) { toast("至少需要两个相册才能移动"); return; }
+    var others = data.albums.filter(function (a) { return a.id !== albumState.id; });
+    var html = others.map(function (a) { return '<button class="ghost-btn" data-mv="' + a.id + '" style="margin-top:8px">' + icon("photo") + " 移动到「" + esc(a.name) + "」</button>"; }).join("");
+    openSheet("移动 " + ids.length + " 张照片到", html);
+    Array.prototype.forEach.call($("sheetBody").querySelectorAll("[data-mv]"), function (btn) {
+      btn.addEventListener("click", function () {
+        var target = data.albums.find(function (a) { return a.id === btn.dataset.mv; });
+        var al = curAlbum(); if (!target || !al) { closeSheet(); return; }
+        var moving = (al.photos || []).filter(function (p) { return albumSel[p.id]; });
+        moving.forEach(function (p) { tomb("photos", p.id); });
+        al.photos = (al.photos || []).filter(function (p) { return !albumSel[p.id]; });
+        if (al.cover && albumSel[al.cover]) al.cover = (al.photos[0] || {}).id || null;
+        target.photos = (target.photos || []).concat(moving);
+        albumSel = {}; albumMode = "normal";
+        save(); renderAlbum(); closeSheet(); toast("已移动到「" + target.name + "」");
+      });
+    });
+  });
+  $("selCover").addEventListener("click", function () {
+    var ids = Object.keys(albumSel); if (ids.length !== 1) { toast("选一张照片设为封面"); return; }
+    var al = curAlbum(); if (!al) return;
+    al.cover = ids[0];
+    albumSel = {}; albumMode = "normal";
+    save(); renderAlbum(); closeSheet(); toast("已设为封面");
+  });
+
+  function openProfile() {
+    var myIdx = me, taIdx = 1 - me;
+    var html = '<div class="avatar-edit">' +
+      '<button class="av-btn" id="avTaBtn"><div class="avatar p' + taIdx + '">' + (data.partners[taIdx].avatar ? '<img src="' + data.partners[taIdx].avatar + '"/>' : esc(data.partners[taIdx].name.slice(0, 1))) + '<div class="cam">' + icon("cam") + "</div></div>TA 的头像</button>" +
+      '<button class="av-btn" id="avMyBtn"><div class="avatar p' + myIdx + '">' + (data.partners[myIdx].avatar ? '<img src="' + data.partners[myIdx].avatar + '"/>' : esc(data.partners[myIdx].name.slice(0, 1))) + '<div class="cam">' + icon("cam") + "</div></div>我的头像</button></div>" +
+      '<div class="field"><label>空间名称</label><input type="text" id="pfSpace" maxlength="16" value="' + esc(data.spaceName) + '" /></div>' +
+      '<div class="field"><label>我的昵称</label><input type="text" id="pfMyName" maxlength="10" value="' + esc(data.partners[myIdx].name) + '" /></div>' +
+      '<div class="field"><label>TA 的昵称</label><input type="text" id="pfTaName" maxlength="10" value="' + esc(data.partners[taIdx].name) + '" /></div>' +
+      '<div class="field"><label>在一起的日期（用来计算在一起天数）</label><input type="date" id="pfStart" value="' + esc(data.startedDate) + '" /></div>' +
+      '<button class="primary-btn" id="pfSave">保存</button>';
+    openSheet("恋爱资料", html);
+    function setAv(idx) {
+      pickImage(function (f) { cropImage(f, function (durl) { data.partners[idx].avatar = durl; save(); renderAll(); openProfile(); toast("头像已更新"); }, 320); });
+    }
+    $("avTaBtn").addEventListener("click", function () { setAv(taIdx); });
+    $("avMyBtn").addEventListener("click", function () { setAv(myIdx); });
+    $("pfSave").addEventListener("click", function () {
+      data.spaceName = $("pfSpace").value.trim() || "恋人空间";
+      data.partners[myIdx].name = $("pfMyName").value.trim() || (myIdx === 0 ? "宝贝" : "我");
+      data.partners[taIdx].name = $("pfTaName").value.trim() || (taIdx === 0 ? "宝贝" : "我");
+      data.startedDate = $("pfStart").value;
+      save(); renderAll(); closeSheet(); toast("已保存");
+    });
+  }
+
+  function openIdentity() {
+    var html = '<div style="font-size:13px;color:var(--ink-2);margin-bottom:12px">选择你现在是谁，留言和打卡会以这个身份发出。</div><div class="idpick">' +
+      [0, 1].map(function (i) {
+        var p = data.partners[i];
+        return '<button data-id="' + i + '"' + (me === i ? ' class="on"' : "") + ">" +
+          '<div class="avatar p' + i + '">' + (p.avatar ? '<img src="' + p.avatar + '"/>' : esc(p.name.slice(0, 1))) + "</div>" + esc(p.name) + "</button>";
+      }).join("") + "</div>";
+    openSheet("切换身份", html);
+    $("sheetBody").querySelectorAll("[data-id]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        me = parseInt(b.dataset.id, 10); localStorage.setItem(LS_ID, String(me));
+        renderAll(); closeSheet(); toast("现在是「" + data.partners[me].name + "」");
+      });
+    });
+  }
+
+  function buildShareURL(dropPhotos) {
+    var payload = clone(data);
+    if (dropPhotos) payload.photos = (payload.photos || []).filter(function (p) { return !p.src || p.src.indexOf("data:") !== 0; });
+    return location.origin + location.pathname + "#d=" + b64encode(JSON.stringify(payload));
+  }
+  function doShare() {
+    var url = buildShareURL(false);
+    if (url.length > 60000) {
+      openSheet("分享", '<div class="empty-tip" style="padding:8px 0 14px">相册里本地上传的照片太多，链接放不下。<br/>建议用「网络图片链接」或备份文件发给TA。</div><button class="ghost-btn" id="shCopyLite" style="margin-top:0">复制不含照片的同步链接</button>');
+      $("shCopyLite").addEventListener("click", function () { copyText(buildShareURL(true), "同步链接已复制，发给TA打开即同步"); });
+      return;
+    }
+    copyText(url, "同步链接已复制，发给TA打开即同步");
+  }
+  function copyText(text, okMsg) {
+    function fallback() {
+      var ta = document.createElement("textarea"); ta.value = text; ta.style.cssText = "position:fixed;opacity:0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); toast(okMsg || "已复制"); } catch (e) {
+        openSheet("请手动复制", '<textarea style="width:100%;height:120px;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:12px">' + esc(text) + "</textarea>");
+      }
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast(okMsg || "已复制"); }, fallback);
+    } else fallback();
+  }
+  function openBackup() {
+    var html = '<div style="font-size:13px;color:var(--ink-2);margin-bottom:12px">备份文件包含全部数据，可在另一台设备导入恢复。</div>' +
+      '<button class="ghost-btn" id="bkExport" style="margin-top:0">' + icon("download") + " 导出备份文件</button>" +
+      '<button class="ghost-btn" id="bkImport">' + icon("upload") + " 导入备份文件</button>" +
+      '<button class="ghost-btn" id="bkShareUrl">' + icon("link") + " 复制同步链接（发给TA）</button>";
+    openSheet("备份与恢复", html);
+    $("bkExport").addEventListener("click", function () {
+      function dl(blob, name) {
+        var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+        document.body.appendChild(a); a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+      }
+      var snap = clone(data);
+      // 收集所有云端原图文件名
+      var names = {};
+      (snap.albums || []).forEach(function (al) {
+        (al.photos || []).forEach(function (p) {
+          if (p.src && p.src.indexOf("/uploads/") === 0) names[p.src.split("/").pop()] = true;
+        });
+      });
+      var keys = Object.keys(names);
+      function done(images) {
+        var blob = new Blob([JSON.stringify({ version: 2, data: snap, images: images || {} })], { type: "application/json" });
+        dl(blob, "loverspace-backup-" + todayStr() + ".json");
+        toast("备份文件已导出" + (keys.length ? "（含 " + Object.keys(images || {}).length + " 张原图）" : ""));
+        closeSheet();
+      }
+      if (!keys.length) return done({});
+      toast("正在打包原图 " + keys.length + " 张…");
+      Promise.all(keys.map(function (nm) {
+        return fetch("/uploads/" + nm).then(function (r) { return r.blob(); }).then(function (b) {
+          return new Promise(function (res) {
+            var fr = new FileReader();
+            fr.onload = function () { names[nm] = fr.result; res(); };
+            fr.onerror = function () { names[nm] = null; res(); };
+            fr.readAsDataURL(b);
+          });
+        }).catch(function () { names[nm] = null; });
+      })).then(function () {
+        var images = {}; keys.forEach(function (nm) { if (names[nm]) images[nm] = names[nm]; });
+        done(images);
+      });
+    });
+    $("bkImport").addEventListener("click", function () {
+      var inp = document.createElement("input"); inp.type = "file"; inp.accept = ".json,application/json";
+      inp.onchange = function () {
+        var f = inp.files[0]; if (!f) return;
+        var r = new FileReader();
+        r.onload = function () {
+          try {
+            var bundle = JSON.parse(r.result);
+            var d = bundle.data || bundle; // 兼容旧版（无 version/images 的纯 data 备份）
+            if (!d || !d.partners) throw 0;
+            for (var k in DEFAULT) if (!(k in d)) d[k] = clone(DEFAULT[k]);
+            data = d; data._updated = Date.now();
+            var imgs = bundle.images || {};
+            var keys = Object.keys(imgs);
+            function finish() { save(); renderAll(); closeSheet(); toast("导入成功" + (keys.length ? "（已恢复 " + keys.length + " 张原图）" : "")); }
+            if (!keys.length) return finish();
+            toast("正在恢复原图 " + keys.length + " 张…");
+            fetch("/api/restore-images", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ images: imgs }) })
+              .then(function () { finish(); }).catch(function () { finish(); });
+          } catch (e) { toast("文件格式不对，导入失败"); }
+        };
+        r.readAsText(f);
+      };
+      inp.click();
+    });
+    $("bkShareUrl").addEventListener("click", function () { closeSheet(); setTimeout(doShare, 200); });
+  }
+  function openSbConfig() {
+    var html = '<div class="field"><label>Supabase 项目 URL</label><input id="sbUrl" value="' + esc(SB_URL) + '" placeholder="https://xxxx.supabase.co" /></div>' +
+      '<div class="field"><label>anon key（公开密钥，前端可用）</label><input id="sbKey" value="' + esc(SB_KEY) + '" placeholder="eyJhbGciOi..." /></div>' +
+      '<button class="primary-btn" id="sbSave">保存并启用</button>' +
+      '<div class="gate-note" style="margin-top:14px">启用后所有数据走 Supabase 云端（全球托管、公网稳定可达），空间码机制不变。需先在 Supabase 建好 rooms 表并开放 anon 读写权限。两手机各填一次即可。</div>';
+    openSheet("后端配置", html);
+    $("sbSave").addEventListener("click", function () {
+      SB_URL = ($("sbUrl").value || "").trim();
+      SB_KEY = ($("sbKey").value || "").trim();
+      localStorage.setItem("ls.sburl", SB_URL);
+      localStorage.setItem("ls.sbkey", SB_KEY);
+      if (SB_URL && SB_KEY) { localStorage.setItem("ls.backend", "sb"); USE_SB = true; }
+      else { localStorage.setItem("ls.backend", "local"); USE_SB = false; }
+      $("miSbSub").textContent = sbReady() ? "Supabase 已启用" : "默认后端";
+      backend.enabled = false; backend.ts = 0;
+      closeSheet();
+      toast(sbReady() ? "已启用 Supabase，刷新页面后生效" : "已清空，改回默认后端");
+    });
+  }
+  function openPrivacy() {
+    var html;
+    if (encPwd) {
+      html = '<div class="empty-tip" style="padding:2px 0 12px"><svg class="ic" style="width:22px;height:22px;color:var(--pink)"><use href="#i-lock"/></svg><br/>已开启端到端加密<br/>云端只存密文，服务器也看不到你们的内容</div>' +
+        '<div class="field"><label>更换加密密码（两人要填一样的）</label><input type="password" id="pvNew" /></div>' +
+        '<button class="primary-btn" id="pvSave">保存新密码</button>' +
+        '<button class="ghost-btn" id="pvOff" style="border-color:#f0c4d2;color:#d66a92">关闭加密（云端将改存明文）</button>';
+    } else {
+      html = '<div class="empty-tip" style="padding:2px 0 12px">未开启加密。开启后所有内容上传前先用密码加密，<br/>云端只存密文，服务器看不到悄悄话和照片。</div>' +
+        '<div class="field"><label>设置加密密码（两人要填一样的）</label><input type="password" id="pvNew" /></div>' +
+        '<button class="primary-btn" id="pvSave">开启加密</button>';
+    }
+    html += '<div class="gate-note" style="margin-top:12px">改密码后，对方打开 App 会要求输入新密码解锁。密码忘了无法找回云端内容（本机备份不受影响）。手机本机存储仍为明文，请保管好手机。</div>';
+    openSheet("加密与隐私", html);
+    $("pvSave").addEventListener("click", function () {
+      var v = ($("pvNew").value || "");
+      if (v.length < 4) { toast("密码至少 4 位"); return; }
+      setEncPwd(v);
+      save(); renderAll(); closeSheet(); toast("已开启端到端加密，云端只存密文");
+    });
+    if ($("pvOff")) $("pvOff").addEventListener("click", function () {
+      setEncPwd("");
+      save(); renderAll(); closeSheet(); toast("已关闭加密，云端改存明文");
+    });
+  }
+  function openSettings() {
+    var roomLine = room
+      ? '<div class="field"><label>共享空间码（发给另一半一起加入）</label><div style="display:flex;gap:8px"><input type="text" id="roomCode" value="' + room + '" readonly style="text-align:center;letter-spacing:3px;font-weight:700;color:var(--pink-deep)"/><button class="ghost-btn" id="copyRoom" style="margin-top:0;flex:none;width:auto;padding:0 16px">复制</button></div></div>'
+      : '<div class="field"><label>当前为本地模式。用「发布」后通过「创建/加入空间码」即可云端实时同步。</label></div>';
+    var html = roomLine +
+      '<div class="field"><label>主题色</label><div class="theme-colors" id="themeColors">' + THEME_COLORS.map(function(c){return '<button type="button" class="tc" data-c="'+c+'" style="background:'+c+'"></button>';}).join("") + '</div></div>' +
+      '<div class="field"><label>外观模式</label><div class="seg" id="themeDark"><button type="button" data-d="0">浅色</button><button type="button" data-d="1">暗黑</button></div></div>' +
+      '<div class="field"><label>字体</label><div class="seg" id="themeFont">' + THEME_FONTS.map(function(f){return '<button type="button" data-f="'+f[0]+'">'+f[1]+'</button>';}).join("") + '</div></div>' +
+      '<div class="field"><label>空间名称</label><input type="text" id="stSpace" maxlength="16" value="' + esc(data.spaceName) + '" /></div>' +
+      '<div class="field"><label>在一起日期</label><input type="date" id="stStart" value="' + esc(data.startedDate) + '" /></div>' +
+      '<button class="primary-btn" id="stSave">保存</button>' +
+      '<button class="ghost-btn" id="stLeave" style="border-color:#f0c4d2;color:#d66a92">退出空间 / 切换空间码</button>' +
+      '<button class="ghost-btn" id="stClear" style="border-color:#f0c4d2;color:#d66a92">清空全部数据（慎点）</button>';
+    openSheet("设置", html);
+    var themeBind = function(cid, attr, getv, setv) {
+      var box = $(cid); if (!box) return;
+      box.querySelectorAll("button").forEach(function(b){
+        b.classList.toggle("on", String(getv()) === b.getAttribute(attr));
+        b.addEventListener("click", function(){
+          setv(b.getAttribute(attr));
+          box.querySelectorAll("button").forEach(function(x){ x.classList.toggle("on", x === b); });
+          applyTheme(); save();
+        });
+      });
+    };
+    themeBind("themeColors", "data-c", function(){return (data.theme.color||"#ff7ba9").toLowerCase();}, function(v){data.theme.color=v;});
+    themeBind("themeDark", "data-d", function(){return data.theme.dark?"1":"0";}, function(v){data.theme.dark=(v==="1");});
+    themeBind("themeFont", "data-f", function(){return data.theme.font||"default";}, function(v){data.theme.font=v;});
+    if ($("copyRoom")) $("copyRoom").addEventListener("click", function () { copyText(room, "空间码已复制：" + room); });
+    $("stSave").addEventListener("click", function () {
+      data.spaceName = $("stSpace").value.trim() || "恋人空间"; data.startedDate = $("stStart").value;
+      save(); renderAll(); closeSheet(); toast("已保存");
+    });
+    $("stLeave").addEventListener("click", function () {
+      openSheet("切换空间？", '<div class="empty-tip" style="padding:6px 0 16px">将断开当前空间。重新打开页面可创建或加入新空间。</div><button class="primary-btn" id="leaveYes">退出当前空间</button><button class="ghost-btn" id="leaveNo">取消</button>');
+      $("leaveYes").addEventListener("click", function () { localStorage.removeItem(LS_ROOM); toast("已退出，刷新页面可换空间"); closeSheet(); });
+      $("leaveNo").addEventListener("click", closeSheet);
+    });
+    $("stClear").addEventListener("click", function () {
+      openSheet("确认清空？", '<div class="empty-tip" style="padding:6px 0 16px">所有留言、照片、纪念日都会被清空，无法恢复。</div><button class="primary-btn" id="clearYes" style="background:linear-gradient(135deg,#ff7b7b,#e33d3d);box-shadow:0 6px 16px rgba(227,61,61,.3)">确认清空</button><button class="ghost-btn" id="clearNo">取消</button>');
+      $("clearYes").addEventListener("click", function () { data = clone(DEFAULT); save(); renderAll(); closeSheet(); toast("已清空"); });
+      $("clearNo").addEventListener("click", closeSheet);
+    });
+  }
+
+  function tryImportFromHash() {
+    var m = location.hash.match(/#d=([^&]+)/);
+    if (!m) return;
+    try {
+      var d = JSON.parse(b64decode(m[1]));
+      if (d && d.partners) { loadLocal(); data = merge(data, d); data._updated = Date.now(); }
+    } catch (e) {}
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+
+  function bindGate() {
+    var gate = $("roomGate");
+    function hide() { gate.classList.add("hide"); }
+    $("gateCreate").addEventListener("click", function () {
+      var btn = this;
+      btn.disabled = true; btn.textContent = "探测云端…";
+      $("gateErr").textContent = "";
+      probe(function (t) { btn.textContent = t; }).then(function (mode) {
+        if (!mode) {
+          btn.disabled = false; btn.textContent = "创建共享空间";
+          $("gateErr").textContent = "内置云端和 Supabase 都连不上，请检查网络后重试";
+          return;
+        }
+        chooseBackend(mode);
+        btn.textContent = "创建中…";
+        var tries = 0;
+        function attempt() {
+          tries++;
+          roomApi("POST").then(function (r) {
+            if (r && r.id) {
+              room = r.id; localStorage.setItem(LS_ROOM, room); backend.enabled = true;
+              setEncPwd(($("gatePwd").value || "").trim());
+              hide(); bootApp(); toast("空间已创建（" + cloudName() + "），把空间码「" + room + "」发给TA一起加入");
+            } else if (tries < 4) {
+              btn.textContent = "连不上，正在重试 " + (tries + 1) + "/4…";
+              setTimeout(attempt, 2000);
+            } else {
+              btn.disabled = false; btn.textContent = "创建共享空间";
+              $("gateErr").textContent = "创建失败" + (r && r.error ? "：" + r.error : "");
+            }
+          });
+        }
+        attempt();
+      });
+    });
+    $("gateJoin").addEventListener("click", function () {
+      var code = ($("gateCode").value || "").trim().toUpperCase();
+      if (!code) { $("gateErr").textContent = "请输入空间码"; return; }
+      var btn = this;
+      btn.disabled = true; btn.textContent = "连接云端中…";
+      $("gateErr").textContent = "";
+      var tries = 0;
+      function attempt() {
+        tries++;
+        localRequest("GET", code).then(function (a) {
+          function done(mode, r) {
+            chooseBackend(mode);
+            me = 1; localStorage.setItem(LS_ID, "1");
+            room = code; localStorage.setItem(LS_ROOM, room); backend.enabled = true;
+            setEncPwd(($("gatePwd").value || "").trim());
+            hide(); bootApp(); toast("已加入空间 " + code + "（" + cloudName() + "）");
+          }
+          if (a && a.exists === true) return done("local", a);
+          var sbP = sbReady() ? sbRequest("GET", code) : Promise.resolve(null);
+          sbP.then(function (b) {
+            if (b && b.exists === true) return done("sb", b);
+            if ((a && !a.error) || (b && !b.error)) {
+              btn.disabled = false; btn.textContent = "加入已有空间";
+              $("gateErr").textContent = "空间码「" + code + "」不存在，请找对方核对一下";
+            } else if (tries < 4) {
+              btn.textContent = "连不上，正在重试 " + (tries + 1) + "/4…";
+              setTimeout(attempt, 2000);
+            } else {
+              btn.disabled = false; btn.textContent = "加入已有空间";
+              $("gateErr").textContent = "云端都连不上" + (a && a.error ? "（" + a.error + "）" : "");
+            }
+          });
+        });
+      }
+      attempt();
+    });
+    $("gateLocal").addEventListener("click", function () { localMode = true; hide(); bootApp(); });
+    // 已有房间码：直接“进入我的空间”，避免每次重新创建
+    if (room) {
+      var ge = $("gateEnter");
+      ge.style.display = "";
+      ge.textContent = "进入我的空间（" + room + "）";
+      ge.addEventListener("click", function () { hide(); bootApp(); });
+    }
+  }
+  async function bootApp() {
+    loadLocal();
+    await fetchServer();
+    saveLocal();
+    renderAll();
+    appReady = true;
+    startPoll();
+    if (room && !backend.enabled) toast("云端暂时连不上，会自动重试连接…");
+  }
+
+  $("shareTopBtn").addEventListener("click", doShare);
+  $("setTopBtn").addEventListener("click", openSettings);
+  function lockPortrait() {
+    if (screen.orientation && screen.orientation.lock) { try { screen.orientation.lock("portrait").catch(function () {}); } catch (e) {} }
+  }
+  function enterFs() {
+    try {
+      var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+      if (fsEl) { lockPortrait(); return; }
+      var el = document.documentElement;
+      var p = null;
+      if (el.requestFullscreen) p = el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) p = el.webkitRequestFullscreen();
+      else { toast("当前浏览器不支持全屏"); return; }
+      if (p && p.then) p.then(lockPortrait).catch(function () {});
+    } catch (e) { toast("当前浏览器不支持全屏"); }
+  }
+  function exitFs() {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+    if (screen.orientation && screen.orientation.unlock) { try { screen.orientation.unlock(); } catch (e) {} }
+  }
+  var fsManuallyExited = false;
+  var appReady = false;
+  function detachAutoFs() {
+    document.removeEventListener("pointerdown", autoFs);
+    document.removeEventListener("touchstart", autoFs);
+  }
+  // 进入网页：主界面就绪后，第一次用户手势自动进入竖屏全屏；持续重试直到真正进入（避免欢迎页点击时视图切换取消全屏请求）
+  function autoFs() {
+    if (fsManuallyExited) { detachAutoFs(); return; }
+    var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+    if (fsEl) { detachAutoFs(); return; }
+    if (appReady) enterFs();
+  }
+  document.addEventListener("pointerdown", autoFs);
+  document.addEventListener("touchstart", autoFs);
+  $("fsBtn").addEventListener("click", function () {
+    if (document.fullscreenElement || document.webkitFullscreenElement) { exitFs(); fsManuallyExited = true; detachAutoFs(); }
+    else { enterFs(); fsManuallyExited = false; }
+  });
+  // 切到后台时直接退出全屏，回到前台即普通竖屏模式，避免卡顿与横屏伪竖屏问题
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) exitFs();
+  });
+  document.addEventListener("fullscreenchange", syncFsMode);
+  document.addEventListener("webkitfullscreenchange", syncFsMode);
+  function syncFsMode() {
+    var fs = document.fullscreenElement || document.webkitFullscreenElement;
+    document.body.classList.toggle("fs-mode", !!fs);
+    var b = $("fsBtn"); if (b) b.textContent = fs ? "⤡" : "⛶";
+    if (fs) { lockPortrait(); detachAutoFs(); }  }
+
+  /* 顶部状态栏：实时时间 + 每日更新情话（按日期取，当天固定） */
+  (function () {
+    var sbq = $("sbQuote");
+    var QUOTES = [
+      "遇见你，是我所有运气的总和。",
+      "山河远阔，人间烟火，无一是你，无一不是你。",
+      "我想变得有趣，变得特别，变成你眼里的一点光。",
+      "你的名字，是我心动的开关。",
+      "世界很大，但因你，我有了归处。",
+      "春风十里，不如你。",
+      "我把所有的温柔都留给了你。",
+      "被你爱着，是我此生最大的幸运。",
+      "你是我平淡生活里的那束光。",
+      "喜欢你，是我做过最勇敢的事。",
+      "想和你一起浪费时光，把日子过成诗。",
+      "你是我藏在心底最甜的秘密。",
+      "余生很长，请多多指教。",
+      "因为是你，所以值得。",
+      "你笑起来，全世界都亮了。",
+      "这一生，只够爱一个人，那个人是你。",
+      "我的欢喜，都与你有关。",
+      "想牵着你的手，从心动走到古稀。",
+      "你是我的今天，也是我的明天。",
+      "万物皆有裂痕，那是光照进来的地方——比如你。",
+      "喜欢你，是始料未及的温柔。",
+      "你是我所有计划里，最不想改的那一项。",
+      "有你在，便是最好的时光。",
+      "我把浪漫存进每一天，等你来取。",
+      "你是我的软肋，也是我的铠甲。",
+      "心动不是答案，心定才是。",
+      "愿有岁月可回首，且以深情共白头。",
+      "想和你虚度时光，比如低头看鱼。",
+      "你是我疲惫生活里的英雄梦想。",
+      "所有的不期而遇，都是你。",
+      "我喜欢的样子，你都有。",
+      "陪你奇奇怪怪，懂你可可爱爱。",
+      "你是我这辈子最想留住的风景。",
+      "风很自由，我想和你一起走。",
+      "你的出现，让我相信了爱情。",
+      "星河滚烫，你是人间理想。",
+      "我绕过江山错落，才发现你是人间星火。",
+      "想把你写进诗里，又怕韵脚太俗。",
+      "你是我藏在云层里的月亮。",
+      "慢慢来，我们有一辈子。",
+      "你是我所有温柔的来处与归途。",
+      "哪怕世界荒芜，你仍是我的信徒。",
+      "喜欢是棋逢对手，爱是甘拜下风。",
+      "你是我写过最美的情书。",
+      "想和你一起，把平凡过成节日。",
+      "你是我的小确幸，也是大欢喜。",
+      "世界再吵，有你便安静。",
+      "我把最真的喜欢，都藏进了日常。",
+      "你是我不想和别人分享的宝贝。",
+      "愿得一人心，白首不相离。",
+      "你是我所有温柔的尽头。",
+      "爱你是我的本能。",
+      "想和你一起慢慢变老。",
+      "你是我目光所及，皆是欢喜。",
+      "所有的美好，都因你而具象。",
+      "你是我心尖上的朱砂痣。",
+      "有你，便有了四季。",
+      "你是我所有温柔的理由。"
+    ];
+    function dailyQuote() {
+      var now = new Date();
+      var start = new Date(now.getFullYear(), 0, 0);
+      var day = Math.floor((now - start) / 86400000);
+      return QUOTES[day % QUOTES.length];
+    }
+    function tickClock() {
+      var d = new Date();
+      var h = d.getHours(), m = d.getMinutes();
+      var t = (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m;
+      var sc = $("sbClock"); if (sc) sc.textContent = t;
+    }
+    if (sbq) sbq.textContent = dailyQuote();
+    tickClock();
+    setInterval(tickClock, 10000);
+  })();
+
+  /* 键盘弹出适配：用 visualViewport 算出键盘遮挡高度 --kb，
+     输入条 fixed 抬到键盘上方、底栏隐藏；全屏模式下视口不 resize，此方案也能生效 */
+  (function () {
+    var vv = window.visualViewport;
+    if (!vv) return;
+    var wasOpen = false;
+    function onVV() {
+      var kb = Math.round(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+      var open = kb > 120;
+      document.body.style.setProperty("--kb", kb + "px");
+      if (open !== wasOpen) {
+        wasOpen = open;
+        document.body.classList.toggle("kb-open", open);
+        if (open && document.getElementById("view-chat") && document.getElementById("view-chat").style.display !== "none") {
+          setTimeout(scrollChatBottom, 60);
+        }
+      }
+    }
+    vv.addEventListener("resize", onVV);
+    vv.addEventListener("scroll", onVV);
+    onVV();
+  })();
+
+  $("mask").addEventListener("click", closeSheet);
+  $("sheetClose").addEventListener("click", closeSheet);
+  $("miProfile").addEventListener("click", openProfile);
+  $("miAnni").addEventListener("click", openAnniSheet);
+  $("miMood").addEventListener("click", openMoodTimeline);
+  $("miTree").addEventListener("click", openTreeSheet);
+  $("miId").addEventListener("click", openIdentity);
+  $("miShare").addEventListener("click", doShare);
+  $("miPriv").addEventListener("click", openPrivacy);
+  $("miBackup").addEventListener("click", openBackup);
+  $("miSb").addEventListener("click", openSbConfig);
+  $("miSet").addEventListener("click", openSettings);
+  document.getElementById("app").addEventListener("click", function (e) {
+    if (e.target.closest("#homeAv0") || e.target.closest("#homeAv1")) openProfile();
+  });
+
+  tryImportFromHash();
+  if (room) { $("roomGate").classList.add("hide"); bootApp(); } else { bindGate(); }
+
+  // ===== 移动端返回键：子界面优先关闭，根界面两次返回才退出 =====
+  // 手机实体返回键 / 滑动返回都会触发 popstate，用 History API 拦截
+  var lastBack = 0;
+  function topLayer() {
+    if ($("viewer") && $("viewer").classList.contains("open")) return "viewer";
+    if ($("sheet") && $("sheet").classList.contains("open")) return "sheet";
+    if (albumState && albumState.mode === "open") return "album";
+    return null;
+  }
+  function appBack() {
+    // 相册处于管理/排序模式 -> 返回先退出模式（不退出相册）
+    if (albumState.mode === "open" && albumMode !== "normal") {
+      albumMode = "normal"; albumSel = {}; sortSrc = null; renderAlbum(); return;
+    }
+    var top = topLayer();
+    // 照片查看器打开 -> 先关照片（最顶层，优先级最高）
+    if (top === "viewer") { closeViewer(); return; }
+    // 有弹窗 -> 仅关闭弹窗（打开时已压入一层历史，返回手势会自动退掉该层，无需再补压）
+    if (top === "sheet") { closeSheetUI(); return; }
+    // 相册打开了 -> 只退回相册列表（打开时已压入一层历史，返回键自动退掉该层）
+    if (top === "album") { albumState = { mode: "list", id: null }; albumMode = "normal"; albumSel = {}; sortSrc = null; renderAlbum(); return; }
+    // 根界面：连续两次返回才退出
+    var now = Date.now();
+    if (now - lastBack < 2000) {
+      lastBack = 0;
+      // 真正离开：退掉我们加的“守卫”历史并退出应用
+      try { history.go(-history.length); } catch (e) {}
+      setTimeout(function () { try { history.back(); } catch (e) {} }, 40);
+      return;
+    }
+    lastBack = now;
+    toast("再按一次退出");
+    history.pushState({ app: 1 }, "");
+    setTimeout(function () { if (Date.now() - lastBack < 2000) lastBack = 0; }, 2000);
+  }
+  window.addEventListener("popstate", appBack);
+  // 启动时为根界面加一道“守卫”历史，保证返回键可被拦截（不会被直接关站）
+  history.pushState({ app: 1 }, "");
+})();
+</script>
+</body>
+</html>

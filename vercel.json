@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/room.mjs": { "maxDuration": 10 },
+    "api/upload.mjs": { "maxDuration": 30 },
+    "api/restore-images.mjs": { "maxDuration": 30 }
+  }
+}
