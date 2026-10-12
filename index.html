@@ -804,7 +804,15 @@
     if (!Array.isArray(data.miss)) data.miss = [];
     if (!data._deleted.albums) data._deleted.albums = [];
   }
-  function saveLocal() { data._updated = Math.max(Date.now(), (data._updated || 0) + 1); try { localStorage.setItem(LS_DATA, JSON.stringify(data)); } catch (e) {} }
+  function saveLocal() { try { localStorage.setItem(LS_DATA, JSON.stringify(data)); } catch (e) {} }
+  // 本地是否有真实内容（防止全新 App 把默认空数据推上云端覆盖真实数据）
+  function hasRealContent() {
+    var p0 = data.partners && data.partners[0], p1 = data.partners && data.partners[1];
+    return !!(((data.messages && data.messages.length) || (data.photos && data.photos.length)) ||
+      (p0 && p0.avatar) || (p1 && p1.avatar) ||
+      (p0 && p0.name && p0.name !== "宝贝") || (p1 && p1.name && p1.name !== "我") ||
+      (data.spaceName && data.spaceName !== "恋人空间") || data.startedDate);
+  }
 
   function api(path, opts) {
     var o = opts || {};
@@ -987,6 +995,7 @@
     return roomGet(room).then(applyRemote);
   }
   function save() {
+    data._updated = Math.max(Date.now(), (data._updated || 0) + 1);
     saveLocal();
     if (backend.enabled && room) {
       var payloadP = (encPwd && subtle) ? encryptData(data).catch(function () { return null; }) : Promise.resolve(data);
@@ -996,13 +1005,27 @@
       });
     }
   }
-  // 把本地数据推回云端（带 _updated 守卫，仅当本地比云端新才接受，避免覆盖对方更新）
+  // 把本地数据推回云端（带 _updated 守卫 + 内容守卫：本地比云端新且有真实内容才推，避免全新 App 用默认空数据覆盖云端）
   function pushLocal() {
     if (!backend.enabled || !room) return;
+    if (!hasRealContent() && (backend.ts || 0) > 0) return;
     var payloadP = (encPwd && subtle) ? encryptData(data).catch(function () { return null; }) : Promise.resolve(data);
     payloadP.then(function (payload) {
       if (!payload) return;
       roomPut(room, payload).then(function (r) { if (r && r.ts) backend.ts = r.ts; });
+    });
+  }
+  // 立即同步：先拉云端合并（消息/照片按 id 并集），再把本地真实数据推上去。用于把只存在本机的数据补同步到云端。
+  function forceSync() {
+    if (!room) { toast("请先加入空间再同步"); return; }
+    if (!backend.enabled) { toast("正在连接云端…"); probe(function (t) { toast(t); }).then(function () { if (backend.enabled) forceSyncCore(); else toast("云端连接失败，稍后重试"); }); return; }
+    forceSyncCore();
+  }
+  function forceSyncCore() {
+    toast("正在与云端同步…");
+    fetchServer().then(function () {
+      save(); renderAll();
+      toast("同步完成 ✅ 数据已合并并上传云端");
     });
   }
   function poll() {
@@ -1060,15 +1083,26 @@
     var res = clone(local);
     var lUpd = local._updated || 0, rUpd = remote._updated || 0;
     var newer = rUpd >= lUpd ? remote : local;
-    res.spaceName = newer.spaceName;
-    res.startedDate = newer.startedDate;
-    for (var i = 0; i < 2; i++) {
-      var rn = newer.partners[i] ? newer.partners[i].name : "";
-      var ln = local.partners[i] ? local.partners[i].name : "";
-      res.partners[i].name = rn || ln || (i === 0 ? "宝贝" : "我");
-      res.partners[i].avatar = (newer.partners[i] && newer.partners[i].avatar) || local.partners[i].avatar;
-    }
     var delMes = mergeDel(local._deleted && local._deleted.messages, remote._deleted && remote._deleted.messages);
+    (function () {
+      function isDefName(i, n) { return !n || n === (i === 0 ? "宝贝" : "我"); }
+      function isDefSpace(s) { return !s || s === "恋人空间"; }
+      function pick(remoteVal, localVal, isDef, prefer) {
+        var rDef = isDef(remoteVal), lDef = isDef(localVal);
+        if (!rDef && lDef) return remoteVal;
+        if (rDef && !lDef) return localVal;
+        if (!rDef && !lDef) return prefer >= 0 ? (prefer ? remoteVal : localVal) : (localVal || remoteVal);
+        return localVal || remoteVal;
+      }
+      res.spaceName = pick(remote.spaceName, local.spaceName, isDefSpace, rUpd >= lUpd ? 1 : 0);
+      res.startedDate = pick(remote.startedDate, local.startedDate, function (v) { return !v; }, rUpd >= lUpd ? 1 : 0);
+      for (var i = 0; i < 2; i++) {
+        res.partners[i].name = pick(remote.partners[i] ? remote.partners[i].name : "", local.partners[i] ? local.partners[i].name : "", function (n) { return isDefName(i, n); }, rUpd >= lUpd ? 1 : 0);
+        var rAv = remote.partners[i] ? remote.partners[i].avatar : null;
+        var lAv = local.partners[i] ? local.partners[i].avatar : null;
+        res.partners[i].avatar = rAv || lAv || null;
+      }
+    })();
     var delAnni = mergeDel(local._deleted && local._deleted.anniversaries, remote._deleted && remote._deleted.anniversaries);
     var delMood = mergeDel(local._deleted && local._deleted.moods, remote._deleted && remote._deleted.moods);
     var delPhoto = mergeDel(local._deleted && local._deleted.photos, remote._deleted && remote._deleted.photos);
@@ -2470,6 +2504,7 @@
       '<div class="field"><label>空间名称</label><input type="text" id="stSpace" maxlength="16" value="' + esc(data.spaceName) + '" /></div>' +
       '<div class="field"><label>在一起日期</label><input type="date" id="stStart" value="' + esc(data.startedDate) + '" /></div>' +
       '<button class="primary-btn" id="stSave">保存</button>' +
+      '<button class="ghost-btn" id="stSync" style="border-color:#ffb3c9;color:#e85d8a">🔄 立即同步（把本机数据同步到云端）</button>' +
       '<button class="ghost-btn" id="stLeave" style="border-color:#f0c4d2;color:#d66a92">退出空间 / 切换空间码</button>' +
       '<button class="ghost-btn" id="stClear" style="border-color:#f0c4d2;color:#d66a92">清空全部数据（慎点）</button>';
     openSheet("设置", html);
@@ -2492,6 +2527,7 @@
       data.spaceName = $("stSpace").value.trim() || "恋人空间"; data.startedDate = $("stStart").value;
       save(); renderAll(); closeSheet(); toast("已保存");
     });
+    if ($("stSync")) $("stSync").addEventListener("click", function () { forceSync(); });
     $("stLeave").addEventListener("click", function () {
       openSheet("切换空间？", '<div class="empty-tip" style="padding:6px 0 16px">将断开当前空间。重新打开页面可创建或加入新空间。</div><button class="primary-btn" id="leaveYes">退出当前空间</button><button class="ghost-btn" id="leaveNo">取消</button>');
       $("leaveYes").addEventListener("click", function () { localStorage.removeItem(LS_ROOM); toast("已退出，刷新页面可换空间"); closeSheet(); });
