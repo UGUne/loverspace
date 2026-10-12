@@ -31,12 +31,27 @@ App 是 WebView 加载网页，**不经过微信**，所以平台网关按 `Micr
 任选一种能挂**持久磁盘**的平台（否则重启会清空聊天/照片）：
 
 ### 方式 A：Render（最简单，推荐）
-1. 把本仓库推到 GitHub。
-2. Render → **New** → **Blueprint** → 连接仓库。它会自动读取 `render.yaml`，创建：
-   - 一个 Web 服务（跑 `server.js`，`npm start`）
-   - 一个 1GB 持久磁盘，挂载到 `/app/data`（数据落这里，重启不清空）
-3. 部署完成后，Render 给你一个 `https://loverspace-xxxx.onrender.com` 这样的地址。
-   > 免费档会休眠（首次打开慢几秒），付费档常驻。地址拿到后进入第 2 步。
+
+**第 0 步：把代码放到 GitHub**（沙箱里仓库已 `git init` + 提交好，分支 `master`，已排除私密数据）
+- **路 a（让我代推，最省事）**：你去 GitHub → Settings → Developer settings →
+  Personal access tokens 生成一个有 `repo` 权限的 token，发给我，我直接帮你建仓库并推送。
+- **路 b（你自己推）**：把本工程下载到本地（或从沙箱 `git bundle`/打包），在本地
+  ```bash
+  git init && git remote add origin https://github.com/你的名/loverspace.git
+  git add -A && git commit -m init && git push -u origin main
+  ```
+  （沙箱里已是提交好的仓库，路 b 也可直接在能联网的机器上 `git clone` 沙箱或拷文件后推送。）
+
+**第 1 步：Render 导入**
+1. 打开 https://render.com 注册/登录 → **New** → **Blueprint**。
+2. 授权并选择刚才的 GitHub 仓库，Render 会自动读取 `render.yaml`，一次性创建：
+   - 一个 Web 服务（Docker 跑 `server.js`，`npm start`）
+   - 一个 1GB 持久磁盘，挂载到 `/app/data`（聊天与照片落这里，重启/重新部署不清空）
+3. 点 **Apply** / **Deploy**，等几分钟构建完成。
+
+**第 2 步：拿到地址**
+部署完成后 Render 给你一个形如 `https://loverspace-xxxx.onrender.com` 的地址。
+> 免费档会休眠（首次打开慢几秒），付费档常驻。地址拿到后进入本文「第 2 步：把后端地址告诉 App」。
 
 ### 方式 B：Railway / 任意支持 Docker 的平台 / 自有 VPS
 - 用仓库里的 `Dockerfile`（已 `EXPOSE 3000`、`VOLUME /app/data`）。
