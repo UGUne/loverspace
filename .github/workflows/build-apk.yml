@@ -42,6 +42,9 @@ jobs:
           echo "SDK 安装完成："
           ls "$SDK"
 
+      - name: Install app dependencies (Capacitor CLI)
+        run: npm ci
+
       - name: Inject backend URL into app
         run: |
           if [ -z "$BACKEND_URL" ]; then
@@ -49,8 +52,10 @@ jobs:
           else
             echo "注入后端地址: $BACKEND_URL"
             sed -i "s#https://REPLACE_WITH_YOUR_BACKEND_URL#$BACKEND_URL#g" capacitor.config.json
-            sed -i "s#https://REPLACE_WITH_YOUR_BACKEND_URL#$BACKEND_URL#g" android/app/src/main/assets/capacitor.config.json
           fi
+
+      - name: Capacitor sync (生成安卓嵌入配置与资源)
+        run: npx cap sync android
 
       - name: Build Debug APK
         run: |
