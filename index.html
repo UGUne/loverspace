@@ -996,18 +996,27 @@
       });
     }
   }
+  // 把本地数据推回云端（带 _updated 守卫，仅当本地比云端新才接受，避免覆盖对方更新）
+  function pushLocal() {
+    if (!backend.enabled || !room) return;
+    var payloadP = (encPwd && subtle) ? encryptData(data).catch(function () { return null; }) : Promise.resolve(data);
+    payloadP.then(function (payload) {
+      if (!payload) return;
+      roomPut(room, payload).then(function (r) { if (r && r.ts) backend.ts = r.ts; });
+    });
+  }
   function poll() {
     if (!room) return;
     if (!backend.enabled) {
       fetchServer().then(function (ok) {
-        if (ok) { saveLocal(); renderAll(); toast("已连上云端（" + cloudName() + "），同步已开启"); return; }
+        if (ok) { saveLocal(); renderAll(); if ((data._updated || 0) > (backend.ts || 0)) pushLocal(); toast("已连上云端（" + cloudName() + "），同步已开启"); return; }
         // 当前云端不可达 → 自动切换另一个再试
         var alt = usingSb() ? "local" : "sb";
         if (alt === "sb" && !sbReady()) return;
         var prev = USE_SB;
         USE_SB = (alt === "sb");
         fetchServer().then(function (ok2) {
-          if (ok2) { chooseBackend(alt); saveLocal(); renderAll(); toast("已切换到" + cloudName() + "，同步已开启"); }
+          if (ok2) { chooseBackend(alt); saveLocal(); renderAll(); if ((data._updated || 0) > (backend.ts || 0)) pushLocal(); toast("已切换到" + cloudName() + "，同步已开启"); }
           else { USE_SB = prev; }
         });
       });
@@ -1015,7 +1024,12 @@
     }
     roomGet(room).then(function (r) {
       if (!r || !r.data) return;
-      applyRemote(r).then(function (ok) { if (ok) { saveLocal(); renderAll(); } });
+      applyRemote(r).then(function (ok) {
+        if (!ok) return;
+        saveLocal(); renderAll();
+        // 双向同步：本地若比云端新（如网页端刚改了昵称但上次推送失败），把本地改动推回云端
+        if ((data._updated || 0) > (backend.ts || 0)) pushLocal();
+      });
     });
   }
   function startPoll() {
@@ -1049,7 +1063,9 @@
     res.spaceName = newer.spaceName;
     res.startedDate = newer.startedDate;
     for (var i = 0; i < 2; i++) {
-      res.partners[i].name = (newer.partners[i] ? newer.partners[i].name : local.partners[i].name);
+      var rn = newer.partners[i] ? newer.partners[i].name : "";
+      var ln = local.partners[i] ? local.partners[i].name : "";
+      res.partners[i].name = rn || ln || (i === 0 ? "宝贝" : "我");
       res.partners[i].avatar = (newer.partners[i] && newer.partners[i].avatar) || local.partners[i].avatar;
     }
     var delMes = mergeDel(local._deleted && local._deleted.messages, remote._deleted && remote._deleted.messages);
