@@ -737,6 +737,7 @@
 <div class="viewer" id="viewer"><div class="skel"></div><button id="viewerClose"><svg class="ic" style="width:18px;height:18px"><use href="#i-x"/></svg></button><img id="viewerImg" alt="" /><button class="v-del" id="viewerDel"><svg class="ic"><use href="#i-trash"/></svg>删除照片</button></div>
 <div id="toast"></div>
 <input type="file" id="filePick" accept="image/*" style="display:none" />
+<input type="file" id="fileCamera" accept="image/*" capture="environment" style="display:none" />
 
 <script>
 (function () {
@@ -2046,7 +2047,14 @@
   }
   var pickCb = null;
   $("filePick").addEventListener("change", function () { var f = this.files[0]; this.value = ""; if (f && pickCb) pickCb(f); });
-  function pickImage(cb) { pickCb = cb; $("filePick").click(); }
+  $("fileCamera").addEventListener("change", function () { var f = this.files[0]; this.value = ""; if (f && pickCb) pickCb(f); });
+  function pickImage(cb, useCamera) { pickCb = cb; $(useCamera ? "fileCamera" : "filePick").click(); }
+  // 弹出「拍照 / 相册」二选一菜单（需要给用户选择图片来源时使用）
+  function pickImageMenu(cb) {
+    openSheet("选择图片来源", '<button class="ghost-btn" id="piCam" style="margin-top:0">📷 拍照</button><button class="ghost-btn" id="piAlbum">🖼 从手机相册选择</button>');
+    $("piCam").addEventListener("click", function () { var w = function (f) { closeSheet(); cb(f); }; pickImage(w, true); });
+    $("piAlbum").addEventListener("click", function () { var w = function (f) { closeSheet(); cb(f); }; pickImage(w, false); });
+  }
   var viewerCur = null;
   function openViewer(p) {
     viewerCur = p;
@@ -2163,7 +2171,7 @@
 
   // ===== 自拍交互 =====
   function shootSelfie() {
-    pickImage(function (f) {
+    pickImageMenu(function (f) {
       compressImage(f, 900, 0.7, function (durl) {
         data.selfies = (data.selfies || []).filter(function (s) { return !(s.date === todayStr() && s.who === me); });
         data.selfies.unshift({ id: uid(), date: todayStr(), who: me, src: durl, ts: Date.now() });
@@ -2186,11 +2194,12 @@
   });
   function openPhotoAdd() {
     var al = curAlbum();
-    var html = '<button class="ghost-btn" id="phUpload" style="margin-top:0">' + icon("upload") + " 从手机相册选择（自动压缩）</button>" +
+    var html = '<button class="ghost-btn" id="phCam" style="margin-top:0">📷 拍照上传</button>' +
+      '<button class="ghost-btn" id="phUpload">🖼 从手机相册选择（自动压缩）</button>' +
       '<div class="field" style="margin-top:14px"><label>或粘贴网络图片链接</label><input type="url" id="phUrl" placeholder="https://…" /></div>' +
       '<button class="primary-btn" id="phUrlAdd">添加网络图片</button>';
     openSheet("添加照片到「" + (al ? al.name : "") + "」", html);
-    $("phUpload").addEventListener("click", function () {
+    function addFromInput(useCamera) {
       pickImage(function (f) {
         compressImage(f, 1000, 0.72, function (durl) {           // 原图：上云
           compressImage(f, 240, 0.6, function (thumb) {           // 缩略图：留本地
@@ -2207,8 +2216,10 @@
             });
           });
         });
-      });
-    });
+      }, useCamera);
+    }
+    $("phCam").addEventListener("click", function () { addFromInput(true); });
+    $("phUpload").addEventListener("click", function () { addFromInput(false); });
     $("phUrlAdd").addEventListener("click", function () {
       var u = $("phUrl").value.trim();
       if (!u) { toast("粘贴一个图片链接吧"); return; }
@@ -2323,7 +2334,7 @@
       '<button class="primary-btn" id="pfSave">保存</button>';
     openSheet("恋爱资料", html);
     function setAv(idx) {
-      pickImage(function (f) { cropImage(f, function (durl) { data.partners[idx].avatar = durl; save(); renderAll(); openProfile(); toast("头像已更新"); }, 320); });
+      pickImageMenu(function (f) { cropImage(f, function (durl) { data.partners[idx].avatar = durl; save(); renderAll(); openProfile(); toast("头像已更新"); }, 320); });
     }
     $("avTaBtn").addEventListener("click", function () { setAv(taIdx); });
     $("avMyBtn").addEventListener("click", function () { setAv(myIdx); });
