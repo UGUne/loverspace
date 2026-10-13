@@ -10,6 +10,12 @@ services:
     envVars:
       - key: PORT
         value: "3000"
+      # 极光 JPush 推送凭证：用 sync:false 让 Render 部署时在后台手动填写，
+      # 密钥不进 git（本仓库为 public，写死会泄露）。值见聊天记录。
+      - key: JPUSH_APPKEY
+        sync: false
+      - key: JPUSH_MASTERSECRET
+        sync: false
     # 持久磁盘：所有空间数据(rooms.json)与上传照片(uploads/)都落在这里，重启不清空
     disks:
       - name: loverspace-data
