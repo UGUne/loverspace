@@ -807,8 +807,6 @@
       var t = todayStr();
       if ((data.tree.lastWater[i] || 0) > 0 && todayStr(new Date(data.tree.lastWater[i])) === t && data.tree.waterLog[i].indexOf(t) < 0) data.tree.waterLog[i].push(t);
     });
-    // 成长值一次性清零（resetAt 同步到双方，避免合并恢复旧值）
-    if (!data.tree.resetAt) { data.tree.resetAt = Date.now(); data.tree.growth = 0; }
     if (!Array.isArray(data.miss)) data.miss = [];
     if (!data._deleted.albums) data._deleted.albums = [];
   }
@@ -1124,11 +1122,9 @@
     res.albums = mergeAlbums(local.albums, remote.albums, delAlb, delPhoto);
     res.miss = mergeArr(local.miss, remote.miss, []);
     res._deleted = { messages: delMes, anniversaries: delAnni, moods: delMood, photos: delPhoto, selfies: delSelfie, albums: delAlb };
+    // 成长值取双方较大值，绝不丢失任何一边的增长进度（不再用 resetAt 比较，避免一方空数据清零另一方）
+    var growthSync = Math.max(local.tree.growth || 0, remote.tree.growth || 0);
     var lra = local.tree.resetAt || 0, rra = remote.tree.resetAt || 0;
-    var growthSync;
-    if (rra > lra) growthSync = remote.tree.growth || 0;
-    else if (lra > rra) growthSync = local.tree.growth || 0;
-    else growthSync = Math.max(local.tree.growth || 0, remote.tree.growth || 0);
     res.tree = {
       growth: growthSync,
       resetAt: Math.max(lra, rra),
