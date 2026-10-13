@@ -371,6 +371,14 @@
   /* 恋爱树动效 */
   .tree-scene { border-radius: 18px; overflow: hidden; background: #e9f8ff; line-height: 0; box-shadow: inset 0 0 0 1px rgba(255,255,255,.5); }
   .tree-scene svg { width: 100%; height: auto; }
+  .tree-scene { position: relative; }
+  @keyframes tFall { 0% { transform: translateY(0); opacity: .9; } 100% { transform: translateY(120px); opacity: 0; } }
+  .petal-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
+  .petal { position: absolute; top: -18px; background: radial-gradient(circle at 30% 30%, #ffd6e6, #ff7fb0); border-radius: 60% 0 60% 0; opacity: .92; animation: petalFall linear infinite; }
+  @keyframes petalFall { 0% { transform: translateY(-18px) rotate(0deg); opacity: 0; } 12% { opacity: .95; } 100% { transform: translateY(270px) rotate(320deg); opacity: .25; } }
+  .tree-banner { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 6; background: linear-gradient(135deg, rgba(255,123,173,.95), rgba(242,85,141,.95)); color: #fff; font-size: 13px; font-weight: 600; padding: 8px 12px; border-radius: 12px; text-align: center; box-shadow: 0 4px 12px rgba(242,85,141,.35); animation: bannerPop .4s ease; }
+  @keyframes bannerPop { 0% { transform: translateY(-8px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+  .home-special { margin: 0 14px 12px; background: linear-gradient(135deg,#ff9ec0,#f2558d); color: #fff; font-size: 13px; font-weight: 600; padding: 10px 14px; border-radius: 14px; text-align: center; box-shadow: 0 6px 16px rgba(242,85,141,.3); }
   .sign-board { position: relative; background: linear-gradient(135deg,#dda36b,#b97b3f); border: 3px solid #8a5a33; border-radius: 12px; padding: 8px 16px; color: #fff; margin: 12px auto 0; max-width: 250px; box-shadow: 0 4px 10px rgba(138,90,51,.25); }
   .sign-board::before, .sign-board::after { content: ""; position: absolute; top: 50%; width: 7px; height: 7px; border-radius: 50%; background: #6b4423; transform: translateY(-50%); }
   .sign-board::before { left: 8px; }
@@ -589,6 +597,8 @@
       </div>
     </div>
 
+    <div class="home-special" id="homeSpecial" style="display:none"></div>
+
     <div class="card loveword-card">
       <div class="card-title"><svg class="ic t-ic"><use href="#i-heart"/></svg>今日情话<span style="margin-left:auto;font-size:12px;color:var(--ink-2)">每日一句</span></div>
       <div class="loveword" id="homeLove"></div>
@@ -777,6 +787,7 @@
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function loadLocal() {
     try { data = JSON.parse(localStorage.getItem(LS_DATA)); } catch (e) { data = null; }
+    if (!data || typeof data !== "object") { try { var bk = JSON.parse(localStorage.getItem("loverspace.backup.v1")); if (bk && bk.data) data = bk.data; } catch (e) {} }
     if (!data || typeof data !== "object") data = clone(DEFAULT);
     for (var k in DEFAULT) if (!(k in data)) data[k] = clone(DEFAULT[k]);
     if (!data.tree || typeof data.tree !== "object") data.tree = { growth: 0, lastWater: [0, 0] };
@@ -810,7 +821,7 @@
     if (!Array.isArray(data.miss)) data.miss = [];
     if (!data._deleted.albums) data._deleted.albums = [];
   }
-  function saveLocal() { try { localStorage.setItem(LS_DATA, JSON.stringify(data)); } catch (e) {} }
+  function saveLocal() { try { localStorage.setItem(LS_DATA, JSON.stringify(data)); } catch (e) {} try { localStorage.setItem("loverspace.backup.v1", JSON.stringify({ ts: Date.now(), data: data })); } catch (e) {} }
   // 本地是否有真实内容（防止全新 App 把默认空数据推上云端覆盖真实数据）
   function hasRealContent() {
     var p0 = data.partners && data.partners[0], p1 = data.partners && data.partners[1];
@@ -1390,6 +1401,16 @@
     var next = idx + 1 < TREE_STAGES.length ? TREE_STAGES[idx + 1].min : null;
     return { idx: idx, stage: TREE_STAGES[idx], next: next };
   }
+  // 检测今天是否为恋爱纪念日（在一起日期）或任意一个自定义纪念日
+  function specialDayToday() {
+    var now = new Date(), md = (now.getMonth() + 1) + "-" + now.getDate();
+    if (data.startedDate && data.startedDate.slice(5) === md) return { name: "恋爱纪念日", label: "今天是第 " + loveDays() + " 天 💞" };
+    for (var k = 0; k < (data.anniversaries || []).length; k++) {
+      var a = data.anniversaries[k];
+      if (a && a.date && a.date.slice(5) === md) return { name: a.title || "纪念日", label: "今天是 " + (a.title || "纪念日") + " 🌸" };
+    }
+    return null;
+  }
   function treeSVG(size) {
     var st = treeStage(), i = st.idx;
     var s = (size || 160);
@@ -1422,6 +1443,10 @@
         for (var fi = 0; fi < fp2.length; fi++) {
           parts.push('<g><circle cx="' + (fp2[fi][0] - 2) + '" cy="' + fp2[fi][1] + '" r="2" fill="#fff"/><circle cx="' + (fp2[fi][0] + 2) + '" cy="' + fp2[fi][1] + '" r="2" fill="#fff"/><circle cx="' + fp2[fi][0] + '" cy="' + (fp2[fi][1] - 2) + '" r="2" fill="#fff"/><circle cx="' + fp2[fi][0] + '" cy="' + (fp2[fi][1] + 2) + '" r="2" fill="#fff"/><circle cx="' + fp2[fi][0] + '" cy="' + fp2[fi][1] + '" r="1.3" fill="#ffd21e"/></g>');
         }
+      }
+      if (i >= 4) {
+        var fp3 = [[46, 44], [112, 40], [70, 64], [124, 70], [58, 92]];
+        for (var fj = 0; fj < fp3.length; fj++) parts.push('<circle class="t-fall f' + ((fj % 3) + 1) + '" cx="' + fp3[fj][0] + '" cy="' + fp3[fj][1] + '" r="2.6" fill="#ff9ec8"/>');
       }
       parts.push("</g></g>");
     }
@@ -1487,6 +1512,9 @@
             '<div class="anni-count' + (o.i.isToday ? " today" : "") + '"><b>' + (o.i.isToday ? "今天" : o.i.next) + "</b><i>" + (o.i.isToday ? "" : "天后") + "</i></div></div>";
         }).join("")
       : '<div class="empty-tip">还没有纪念日，去添加一个吧</div>';
+    var sp2 = specialDayToday();
+    var hs = document.getElementById("homeSpecial");
+    if (sp2) { hs.style.display = "block"; hs.textContent = "🌸 " + sp2.name + " · " + sp2.label; } else { hs.style.display = "none"; }
     var msgs = data.messages.slice(-2).reverse();
     $("homeMsgs").innerHTML = msgs.length
       ? msgs.map(function (m) {
@@ -2029,7 +2057,18 @@
   function openTreeSheet() {
     var st = treeStage();
     var canWater = canAct("water");
-    var html = '<div class="tree-scene">' + treeSVG(220) + "</div>" +
+    var sp = specialDayToday();
+    var sceneExtra = "";
+    if (sp || st.idx >= 4) {
+      var pCount = sp ? 16 : 9, petals = "";
+      for (var pI = 0; pI < pCount; pI++) {
+        var pl = Math.round(Math.random() * 92 + 2), pd = (sp ? 3.4 : 5) + Math.random() * 2.6, pdl = Math.random() * 4, psz = 10 + Math.round(Math.random() * 6);
+        petals += '<i class="petal" style="left:' + pl + "%;width:" + psz + "px;height:" + psz + "px;animation-duration:" + pd.toFixed(1) + "s;animation-delay:" + pdl.toFixed(1) + 's"></i>';
+      }
+      sceneExtra = '<div class="petal-layer">' + petals + "</div>";
+      if (sp) sceneExtra += '<div class="tree-banner">🌸 ' + sp.name + " · " + sp.label + "</div>";
+    }
+    var html = '<div class="tree-scene">' + treeSVG(220) + sceneExtra + "</div>" +
       '<div class="sign-board"><div class="sign-row"><span>我连续浇树</span><b>' + waterStreak(me) + '</b><span>天</span></div>' +
       '<div class="sign-row"><span>TA连续浇树</span><b>' + waterStreak(1 - me) + '</b><span>天</span></div></div>' +
       '<div class="tree-stage" style="padding:12px 0 4px">' +
@@ -2672,6 +2711,7 @@
     renderAll();
     appReady = true;
     startPoll();
+    if (backend.enabled && (backend.ts || 0) > 0 && (data._updated || 0) > (backend.ts || 0) && hasRealContent()) setTimeout(function () { toast("本机有内容未同步到云端，去设置点「立即同步」"); }, 1200);
     if (room && !backend.enabled) toast("云端暂时连不上，会自动重试连接…");
   }
 
