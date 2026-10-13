@@ -13,6 +13,12 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">#ffa3c0</item>
+        <!-- Android 12+ 系统启动画面：去掉 launcher 图标，仅留粉色底，与网页启动图无缝衔接 -->
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_transparent</item>
+        <item name="android:windowSplashScreenBackground">#ffa3c0</item>
+        <item name="android:windowSplashScreenBrandingImage">@null</item>
+        <!-- 旧版 Android 冷启动窗口底色，同样用粉色避免白闪 -->
+        <item name="android:windowBackground">#ffa3c0</item>
     </style>
 
 </resources>
