@@ -791,7 +791,8 @@
     selfies: [],
     miss: [],
     _deleted: { messages: [], anniversaries: [], moods: [], photos: [], selfies: [], albums: [] },
-    theme: { color: "#ff7ba9", dark: false, font: "default" }
+    theme: { color: "#ff7ba9", dark: false, font: "default" },
+    selfieUrge: null
   };
   var data = null;
   var me = parseInt(localStorage.getItem(LS_ID) || "0", 10) || 0;
@@ -987,12 +988,55 @@
     if (r.data.enc === 1) {
       if (!subtle || !encPwd) { askPassword(); return Promise.resolve(false); }
       return decryptData(r.data).then(function (d) {
-        if (d && d.partners) { data = merge(data, d); backend.ts = r.ts || 0; return true; }
+        if (d && d.partners) { data = merge(data, d); backend.ts = r.ts || 0; detectNewContent(); return true; }
         return false;
       }).catch(function () { askPassword("解锁失败，密码好像不对"); return false; });
     }
     data = merge(data, r.data); backend.ts = r.ts || 0;
+    detectNewContent();
     return Promise.resolve(true);
+  }
+
+  // ===== App 本地通知（需 Capacitor 本地通知插件；网页版没有 Capacitor 时静默降级）=====
+  var seenMsgIds = {}, seenUrgeTs = 0, notifPrimed = false;
+  function notify(title, body) {
+    try {
+      var C = window.Capacitor;
+      if (!C || !C.Plugins || !C.Plugins.LocalNotifications) return;
+      C.Plugins.LocalNotifications.schedule({
+        notifications: [{ id: Math.floor(Math.random() * 1000000), title: title, body: (body || "").slice(0, 120), visibility: 1 }]
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  function ensureNotifPerm() {
+    try {
+      var C = window.Capacitor;
+      if (!C || !C.Plugins || !C.Plugins.LocalNotifications) return;
+      if (C.Plugins.LocalNotifications.requestPermissions) C.Plugins.LocalNotifications.requestPermissions().catch(function () {});
+    } catch (e) {}
+  }
+  // 合并云端后检测「对方新消息 / 对方催促自拍」，触发本地通知；首次合并只静默填充，不弹通知（避免启动全量轰炸）
+  function detectNewContent() {
+    if (!notifPrimed) {
+      (data.messages || []).forEach(function (m) { seenMsgIds[m.id] = 1; });
+      if (data.selfieUrge && data.selfieUrge.ts) seenUrgeTs = data.selfieUrge.ts;
+      notifPrimed = true;
+      return;
+    }
+    (data.messages || []).forEach(function (m) {
+      if (!seenMsgIds[m.id]) {
+        seenMsgIds[m.id] = 1;
+        if (m.who !== me) {
+          var txt = m.type === "sticker" ? ("[" + (m.name || "表情") + "]") : (m.text || "");
+          notify("TA发来悄悄话 💌", txt.slice(0, 60));
+        }
+      }
+    });
+    var u = data.selfieUrge;
+    if (u && u.who !== me && u.ts !== seenUrgeTs) {
+      seenUrgeTs = u.ts;
+      notify("TA催你拍自拍啦 📷", "快去「自拍」打卡今天的自己");
+    }
   }
 
   // 探测可用的云端：同源优先，返回 "local" / "sb" / null（都不可用）
@@ -1205,6 +1249,8 @@
         return out;
       })()
     };
+    var lu = local.selfieUrge, ru = remote.selfieUrge;
+    res.selfieUrge = (ru && ru.ts && (!lu || ru.ts > lu.ts)) ? ru : (lu || null);
     res._updated = Math.max(lUpd, rUpd);
     return res;
   }
@@ -2284,7 +2330,7 @@
     var cell = e.target.closest("[data-sfview]");
     if (cell) { var s = (data.selfies || []).find(function (x) { return x.id === cell.dataset.sfview; }); if (s) { openViewer({ id: s.id, src: s.src, by: s.who, isSelfie: true }); } return; }
     if (e.target.closest("#sfShoot2")) { shootSelfie(); return; }
-    if (e.target.closest("#sfUrge")) { copyText("该拍今天的自拍啦，快打开「" + (data.spaceName || "恋人空间") + "」交作业！", "催拍话术已复制，发给TA吧"); }
+    if (e.target.closest("#sfUrge")) { data.selfieUrge = { who: me, ts: Date.now() }; save(); copyText("该拍今天的自拍啦，快打开「" + (data.spaceName || "恋人空间") + "」交作业！", "已提醒TA 📷（话术已复制，也可直接发给TA）"); }
   });
   function openPhotoAdd() {
     var al = curAlbum();
@@ -2763,6 +2809,7 @@
     renderAll();
     appReady = true;
     startPoll();
+    setTimeout(ensureNotifPerm, 1500);
     if (backend.enabled && (backend.ts || 0) > 0 && (data._updated || 0) > (backend.ts || 0) && hasRealContent()) setTimeout(function () { toast("本机有内容未同步到云端，去设置点「立即同步」"); }, 1200);
     if (room && !backend.enabled) toast("云端暂时连不上，会自动重试连接…");
   }
