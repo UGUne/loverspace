@@ -68,42 +68,9 @@ jobs:
             sed -i "s#https://REPLACE_WITH_YOUR_BACKEND_URL#$BACKEND_URL#g" capacitor.config.json
           fi
 
-      - name: 集成极光 JPush + 厂商通道（需配置 JPUSH_APPKEY 等 Secrets）
-        run: |
-          if [ -z "$JPUSH_APPKEY" ]; then
-            echo "::warning::未设置 JPUSH_APPKEY，跳过 JPush 集成，构建普通包（无推送）。配置 Secrets 后重新出包即可启用推送。"
-            exit 0
-          fi
-          echo "注入 JPush 并集成厂商通道插件…"
-          npx cap plugin add @youyiying/jpush-phonegap-plugin-vendor-channel --variable APP_KEY="$JPUSH_APPKEY" || echo "::warning::cap plugin add 失败，将以无推送方式构建"
-          python3 - <<'PY'
-          import os, json
-          pc = {"applicationId":"com.loverspace.app","JPUSH_APPKEY":os.environ.get("JPUSH_APPKEY",""),"JPUSH_CHANNEL":"developer-default"}
-          def s(k,v):
-              if v: pc[k]=v
-          xa=os.environ.get("XIAOMI_APPID",""); xk=os.environ.get("XIAOMI_APPKEY","")
-          s("XIAOMI_APPID", ("MI-"+xa) if xa else "")
-          s("XIAOMI_APPKEY", ("MI-"+xk) if xk else "")
-          oa=os.environ.get("OPPO_APPID",""); ok=os.environ.get("OPPO_APPKEY",""); osc=os.environ.get("OPPO_APPSECRET","")
-          s("OPPO_APPID", ("OP-"+oa) if oa else "")
-          s("OPPO_APPKEY", ("OP-"+ok) if ok else "")
-          s("OPPO_APPSECRET", ("OP-"+osc) if osc else "")
-          s("VIVO_APPKEY", os.environ.get("VIVO_APPKEY",""))
-          s("VIVO_APPID", os.environ.get("VIVO_APPID",""))
-          with open("push_config.json","w") as f:
-              json.dump(pc,f,indent=2,ensure_ascii=False)
-          print("push_config.json:", list(pc.keys()))
-          ag = (os.environ.get("HUAWEI_AGCONNECT") or "").strip()
-          if ag:
-              raw = ag
-              if not ag.startswith("{"):
-                  import base64
-                  try: raw = base64.b64decode(ag).decode("utf-8")
-                  except Exception: raw = ag
-              with open("android/app/agconnect-services.json","w") as f:
-                  f.write(raw)
-              print("agconnect-services.json written")
-          PY
+      # 极光 JPush 为原生集成：SDK 依赖写在 app/android/app/build.gradle，
+      # AppKey / Vivo 凭证经 build.gradle 的 manifestPlaceholders（读取 CI 环境变量）注入。
+      # 无需 cap plugin add，也无需 push_config.json。未配置 JPUSH_APPKEY 时依赖为空、编译不受影响。
 
       - name: Capacitor sync (生成安卓嵌入配置与资源)
         run: npx cap sync android

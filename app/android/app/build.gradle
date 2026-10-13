@@ -11,10 +11,19 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+            // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
+        // 极光 JPush：AppKey 来自 CI 注入的环境变量；vivo 厂商通道凭证同样来自环境变量。
+        // 本地开发无环境变量时为空字符串，仅导致推送不可用，不影响编译。
+        manifestPlaceholders = [
+            JPUSH_PKGNAME : "com.loverspace.app",
+            JPUSH_APPKEY  : (System.getenv("JPUSH_APPKEY") ?: ""),
+            JPUSH_CHANNEL : "developer-default",
+            VIVO_APPKEY   : (System.getenv("VIVO_APPKEY") ?: ""),
+            VIVO_APPID    : (System.getenv("VIVO_APPID") ?: "")
+        ]
     }
     // Release 签名：由 CI 从 Secrets 注入环境变量（KEYSTORE_FILE / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD）
     // 未注入时 release 构建不应用签名配置，可由 CI 回退到 assembleDebug，保证普通包仍可构建。
@@ -45,6 +54,9 @@ android {
 }
 
 repositories {
+    mavenCentral()
+    maven { url 'https://maven.jiguang.cn/nexus/content/repositories/releases/' }
+    maven { url 'https://repo.jiguang.cn/repository/maven-public/' }
     flatDir{
         dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
     }
@@ -60,6 +72,9 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+    // 极光 JPush 推送（长连接 + 厂商通道）。5.0+ 自动拉取 JCore，无需单独配置。
+    implementation 'cn.jiguang.sdk:jpush:5.7.0'
+    implementation 'cn.jiguang.sdk.plugin:vivo:5.7.0'
 }
 
 apply from: 'capacitor.build.gradle'

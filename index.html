@@ -1017,48 +1017,35 @@
   }
   // ===== 极光 JPush 推送（厂商通道：杀后台/锁屏也能送达） =====
   // 与本地通知互补：本地通知覆盖「App 在线」场景，JPush 厂商通道覆盖「App 被杀」场景。
-  // 定向方式：每台设备注册别名 ls_<房间>_<身份a/b>，后端按对方别名推送，无需自维护 token 库。
-  function jpushPlugin() {
-    try { var C = window.Capacitor; if (C && C.Plugins && C.Plugins.JPush) return C.Plugins.JPush; } catch (e) {}
-    try { if (window.JPush) return window.JPush; } catch (e2) {} // Cordova 系插件（jpush-phonegap-plugin / @youyiying）暴露为全局 window.JPush
+  // 推送：原生集成极光 JPush，App 内通过 window.LoverspaceNative 桥调用。无桥时自动回退本地通知。
+  function jpushNative() {
+    try { if (window.LoverspaceNative) return window.LoverspaceNative; } catch (e) {}
     return null;
   }
   function initJPush() {
-    var J = jpushPlugin(); if (!J) return; // 非 Capacitor / 插件缺失 → 仅靠本地通知兜底
-    try { if (J.init) J.init().catch(function () {}); else if (J.startJPush) J.startJPush().catch(function () {}); } catch (e) {}
-    setTimeout(setJPushAlias, 1000); // 等 SDK 注册完成再设别名
-    try {
-      if (J.addListener) {
-        ["notificationOpen", "openNotification", "receiveNotification"].forEach(function (n) {
-          try { J.addListener(n, function (e) { if (n !== "receiveNotification") jpushRoute(e); }).catch(function () {}); } catch (e2) {}
-        });
-      }
-    } catch (e) {}
-    // 兼容 Cordova 式插件（jpush.openNotification 事件）
-    try { document.addEventListener("jpush.openNotification", function (e) { jpushRoute(e); }, false); } catch (e) {}
+    var N = jpushNative(); if (!N) return; // 无原生桥 → 仅靠本地通知兜底
+    setTimeout(setJPushAlias, 1500); // 等 SDK 注册完成再设别名
   }
   function setJPushAlias() {
-    var J = jpushPlugin(); if (!J) return;
+    var N = jpushNative(); if (!N) return;
     var r = (localStorage.getItem(LS_ROOM) || "").trim(); if (!r) return;
     var m = parseInt(localStorage.getItem(LS_ID) || "0", 10) || 0;
     var alias = "ls_" + r + "_" + (m === 1 ? "b" : "a");
-    try { if (J.setAlias) J.setAlias({ alias: alias }).catch(function () {}); } catch (e) {}
+    try { N.setAlias(alias); } catch (e) {}
   }
   function clearJPushAlias() {
-    var J = jpushPlugin(); if (!J) return;
-    try { if (J.deleteAlias) J.deleteAlias().catch(function () {}); } catch (e) {}
+    var N = jpushNative(); if (!N) return;
+    try { N.clearAlias(); } catch (e) {}
   }
-  var pendingJpush = null;
-  function jpushRoute(e) {
-    var type = "";
+  // 通知点击后由原生把上次推送类型存下，启动后据此跳转到聊天 / 自拍页
+  function flushPendingJpush() {
+    var N = jpushNative(); if (!N || !N.getLastPush) return;
     try {
-      var ex = (e && (e.extras || (e.data && e.data.extras) || (e.notification && e.notification.extras))) || {};
-      type = ex.type || "";
-    } catch (ee) {}
-    var t = (type === "urge") ? "selfie" : "chat";
-    if (appReady) goTab(t); else pendingJpush = t; // 未就绪时先记下，bootApp 后再跳
+      var t = N.getLastPush();
+      if (t === "urge") goTab("selfie");
+      else if (t === "msg") goTab("chat");
+    } catch (e) {}
   }
-  function flushPendingJpush() { if (pendingJpush) { var t = pendingJpush; pendingJpush = null; goTab(t); } }
   function pushNotify(roomId, fromRole, type, text) {
     if (!roomId) return;
     try {

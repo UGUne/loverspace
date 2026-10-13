@@ -1,20 +1,8 @@
-# 依赖
-node_modules/
-
-# 运行时私有数据：空间数据 + 上传照片（绝不入库，由部署平台的持久盘承载）
-data/
-
-# 备份（含私密导出）
-backups/
-
-# 工程/工具目录
-.codebuddy/
-.cloudstudio
-
-# 日志
-*.log
-
-# Android 构建产物
-android/.gradle/
-android/**/build/
-app/android/.gradle/
+*.zip
+apk_out/
+apk_out2/
+cilogs/
+ci_logs.zip
+apk2.zip
+loverspace-release.apk
+loverspace.keystore
