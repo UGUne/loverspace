@@ -389,11 +389,11 @@
     40% { transform: rotate(-5deg); } 54% { transform: rotate(4deg); } 68% { transform: rotate(-2.5deg); }
     82% { transform: rotate(1.5deg); } 100% { transform: rotate(0); }
   }
-  .tree-pop { position: fixed; pointer-events: none; z-index: 99999; transform: translate(-50%,-50%); animation: treePop 1.1s ease-out forwards; filter: drop-shadow(0 2px 3px rgba(0,0,0,.12)); }
-  @keyframes treePop {
-    0% { transform: translate(-50%,-50%) scale(.4); opacity: 0; }
-    18% { opacity: 1; }
-    100% { transform: translate(-50%,-130%) scale(1.2); opacity: 0; }
+  .tree-pop { position: fixed; pointer-events: none; z-index: 99999; transform: translate(-50%,-50%); animation: treeDrop 1.5s ease-in forwards; filter: drop-shadow(0 2px 3px rgba(0,0,0,.12)); }
+  @keyframes treeDrop {
+    0% { transform: translate(-50%,-50%) scale(.5) rotate(0deg); opacity: 0; }
+    14% { opacity: 1; }
+    100% { transform: translate(-50%, 96px) scale(1.18) rotate(220deg); opacity: 0; }
   }
   .sign-board { position: relative; background: linear-gradient(135deg,#dda36b,#b97b3f); border: 3px solid #8a5a33; border-radius: 12px; padding: 8px 16px; color: #fff; margin: 12px auto 0; max-width: 250px; box-shadow: 0 4px 10px rgba(138,90,51,.25); }
   .sign-board::before, .sign-board::after { content: ""; position: absolute; top: 50%; width: 7px; height: 7px; border-radius: 50%; background: #6b4423; transform: translateY(-50%); }
@@ -1817,21 +1817,21 @@
       sway.classList.add("shake");
       sway.addEventListener("animationend", function () { sway.classList.remove("shake"); }, { once: true });
     }
-    var x, y;
-    if (ev) { x = ev.clientX; y = ev.clientY; }
-    else { var r = container.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + r.height / 2; }
+    // 表情从树冠区域（容器上方中心）成片向下飘落，而不是从手指点击点冒出
+    var rect = container.getBoundingClientRect();
+    var baseY = rect.top + rect.height * 0.14;
     var bloom = (typeof treeStage === "function" && data.tree) ? treeStage().idx >= 4 : false;
     var emo = bloom ? ["🌸", "🍃", "💮", "🌿", "🌷"] : ["💕", "💗", "✨", "💞", "🌸"];
-    for (var k = 0; k < 6; k++) {
+    for (var k = 0; k < 7; k++) {
       var el = document.createElement("span");
       el.className = "tree-pop";
       el.textContent = emo[Math.floor(Math.random() * emo.length)];
-      el.style.left = x + "px";
-      el.style.top = y + "px";
-      el.style.fontSize = (15 + Math.random() * 11).toFixed(0) + "px";
-      el.style.animationDelay = (Math.random() * 0.25).toFixed(2) + "s";
+      el.style.left = (rect.left + rect.width * (0.3 + Math.random() * 0.4)) + "px";
+      el.style.top = (baseY + Math.random() * rect.height * 0.14) + "px";
+      el.style.fontSize = (14 + Math.random() * 10).toFixed(0) + "px";
+      el.style.animationDelay = (Math.random() * 0.3).toFixed(2) + "s";
       document.body.appendChild(el);
-      (function (node) { setTimeout(function () { if (node.parentNode) node.parentNode.removeChild(node); }, 1450); })(el);
+      (function (node) { setTimeout(function () { if (node.parentNode) node.parentNode.removeChild(node); }, 1550); })(el);
     }
   }
 
