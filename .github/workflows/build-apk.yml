@@ -43,7 +43,7 @@ jobs:
           ls "$SDK"
 
       - name: Install app dependencies (Capacitor CLI)
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Inject backend URL into app
         run: |
