@@ -127,6 +127,51 @@ app.put("/api/room/:id", function (req, res) {
   res.json({ id: id, ts: r.ts });
 });
 
+// 极光 JPush 推送：对方发消息 / 催自拍时，推送通知到另一台设备（靠别名定向，无需自维护 token 库）
+// 仅当配置了 JPUSH_APPKEY / JPUSH_MASTERSECRET 才真正发送；缺凭证则静默跳过（本地通知兜底仍生效）
+// body: { room, fromRole:"a"|"b", type:"msg"|"urge", text? }
+app.post("/api/push/notify", async function (req, res) {
+  var APPKEY = process.env.JPUSH_APPKEY;
+  var SECRET = process.env.JPUSH_MASTERSECRET;
+  if (!APPKEY || !SECRET) return res.json({ ok: false, skipped: "no-cred" });
+  try {
+    var body = req.body || {};
+    var room = String(body.room || "").toUpperCase();
+    var fromRole = (body.fromRole === "b") ? "b" : "a";
+    var type = (body.type === "urge") ? "urge" : "msg";
+    if (!room) return res.status(400).json({ error: "bad" });
+    var otherAlias = "ls_" + room + "_" + (fromRole === "a" ? "b" : "a");
+    var preview = body.text ? (String(body.text).slice(0, 30)) : "";
+    var alert = (type === "urge" ? "TA催你拍自拍啦 📷" : ("TA发来悄悄话 💌" + (preview ? ("：" + preview) : "")));
+    var payload = {
+      platform: ["android"],
+      audience: { alias: [otherAlias] },
+      notification: {
+        alert: alert,
+        android: {
+          alert: alert,
+          title: "恋人空间",
+          extras: { type: type, room: room }
+        }
+      },
+      options: { time_to_live: 86400 }
+    };
+    var auth = Buffer.from(APPKEY + ":" + SECRET).toString("base64");
+    var r = await fetch("https://api.jpush.cn/v3/push", {
+      method: "POST",
+      headers: {
+        "Authorization": "Basic " + auth,
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      body: JSON.stringify(payload)
+    });
+    var txt = await r.text();
+    res.json({ ok: r.ok, status: r.status, raw: txt.slice(0, 200) });
+  } catch (e) {
+    res.json({ ok: false, error: String((e && e.message) || e) });
+  }
+});
+
 // 首页：托管单文件应用
 app.get("/", function (req, res) {
   res.sendFile(path.join(__dirname, "index.html"));

@@ -15,6 +15,20 @@ jobs:
       BACKEND_URL: ${{ vars.BACKEND_URL }}   # 仓库 Settings → Secrets and variables → Variables 里设置
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+      # ===== 极光 JPush + 厂商通道密钥（仓库 Settings → Secrets 中配置；不配置则跳过推送，构建普通包） =====
+      JPUSH_APPKEY: ${{ secrets.JPUSH_APPKEY }}        # 极光 AppKey（也是 SDK 初始化用的 APP_KEY）
+      XIAOMI_APPID: ${{ secrets.XIAOMI_APPID }}        # 小米（值需带 MI- 前缀，脚本自动加）
+      XIAOMI_APPKEY: ${{ secrets.XIAOMI_APPKEY }}
+      OPPO_APPID: ${{ secrets.OPPO_APPID }}            # OPPO（值需带 OP- 前缀，脚本自动加）
+      OPPO_APPKEY: ${{ secrets.OPPO_APPKEY }}
+      OPPO_APPSECRET: ${{ secrets.OPPO_APPSECRET }}
+      VIVO_APPKEY: ${{ secrets.VIVO_APPKEY }}          # Vivo
+      VIVO_APPID: ${{ secrets.VIVO_APPID }}
+      HUAWEI_AGCONNECT: ${{ secrets.HUAWEI_AGCONNECT }} # 华为 agconnect-services.json 内容（base64 或直接贴 JSON）
+      KEYSTORE_FILE_BASE64: ${{ secrets.KEYSTORE_FILE_BASE64 }} # Release 签名 keystore（base64）
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
     defaults:
       run:
         working-directory: app
@@ -54,19 +68,73 @@ jobs:
             sed -i "s#https://REPLACE_WITH_YOUR_BACKEND_URL#$BACKEND_URL#g" capacitor.config.json
           fi
 
+      - name: 集成极光 JPush + 厂商通道（需配置 JPUSH_APPKEY 等 Secrets）
+        run: |
+          if [ -z "$JPUSH_APPKEY" ]; then
+            echo "::warning::未设置 JPUSH_APPKEY，跳过 JPush 集成，构建普通包（无推送）。配置 Secrets 后重新出包即可启用推送。"
+            exit 0
+          fi
+          echo "注入 JPush 并集成厂商通道插件…"
+          npx cap plugin add @youyiying/jpush-phonegap-plugin-vendor-channel --variable APP_KEY="$JPUSH_APPKEY" || echo "::warning::cap plugin add 失败，将以无推送方式构建"
+          python3 - <<'PY'
+          import os, json
+          pc = {"applicationId":"com.loverspace.app","JPUSH_APPKEY":os.environ.get("JPUSH_APPKEY",""),"JPUSH_CHANNEL":"developer-default"}
+          def s(k,v):
+              if v: pc[k]=v
+          xa=os.environ.get("XIAOMI_APPID",""); xk=os.environ.get("XIAOMI_APPKEY","")
+          s("XIAOMI_APPID", ("MI-"+xa) if xa else "")
+          s("XIAOMI_APPKEY", ("MI-"+xk) if xk else "")
+          oa=os.environ.get("OPPO_APPID",""); ok=os.environ.get("OPPO_APPKEY",""); osc=os.environ.get("OPPO_APPSECRET","")
+          s("OPPO_APPID", ("OP-"+oa) if oa else "")
+          s("OPPO_APPKEY", ("OP-"+ok) if ok else "")
+          s("OPPO_APPSECRET", ("OP-"+osc) if osc else "")
+          s("VIVO_APPKEY", os.environ.get("VIVO_APPKEY",""))
+          s("VIVO_APPID", os.environ.get("VIVO_APPID",""))
+          with open("push_config.json","w") as f:
+              json.dump(pc,f,indent=2,ensure_ascii=False)
+          print("push_config.json:", list(pc.keys()))
+          ag = (os.environ.get("HUAWEI_AGCONNECT") or "").strip()
+          if ag:
+              raw = ag
+              if not ag.startswith("{"):
+                  import base64
+                  try: raw = base64.b64decode(ag).decode("utf-8")
+                  except Exception: raw = ag
+              with open("android/app/agconnect-services.json","w") as f:
+                  f.write(raw)
+              print("agconnect-services.json written")
+          PY
+
       - name: Capacitor sync (生成安卓嵌入配置与资源)
         run: npx cap sync android
 
-      - name: Build Debug APK
+      - name: 准备签名密钥（Release）
+        run: |
+          if [ -n "$KEYSTORE_FILE_BASE64" ]; then
+            echo "$KEYSTORE_FILE_BASE64" | base64 -d > "$PWD/android/loverspace.keystore"
+            {
+              echo "KEYSTORE_FILE=$PWD/android/loverspace.keystore"
+              echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "KEY_ALIAS=$KEY_ALIAS"
+              echo "KEY_PASSWORD=$KEY_PASSWORD"
+              echo "BUILD_TASK=assembleRelease"
+            } >> "$GITHUB_ENV"
+            echo "将构建 Release 包（已配置签名）"
+          else
+            echo "BUILD_TASK=assembleDebug" >> "$GITHUB_ENV"
+            echo "::warning::未设置 KEYSTORE_FILE_BASE64，将构建 Debug 包（厂商通道需 Release 签名，请在 Secrets 配置后重新出包）"
+          fi
+
+      - name: Build APK
         run: |
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew "$BUILD_TASK" --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: loverspace-apk
-          path: app/android/app/build/outputs/apk/debug/*.apk
+          path: app/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error

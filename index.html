@@ -1015,6 +1015,60 @@
       if (C.Plugins.LocalNotifications.requestPermissions) C.Plugins.LocalNotifications.requestPermissions().catch(function () {});
     } catch (e) {}
   }
+  // ===== 极光 JPush 推送（厂商通道：杀后台/锁屏也能送达） =====
+  // 与本地通知互补：本地通知覆盖「App 在线」场景，JPush 厂商通道覆盖「App 被杀」场景。
+  // 定向方式：每台设备注册别名 ls_<房间>_<身份a/b>，后端按对方别名推送，无需自维护 token 库。
+  function jpushPlugin() {
+    try { var C = window.Capacitor; if (C && C.Plugins && C.Plugins.JPush) return C.Plugins.JPush; } catch (e) {}
+    try { if (window.JPush) return window.JPush; } catch (e2) {} // Cordova 系插件（jpush-phonegap-plugin / @youyiying）暴露为全局 window.JPush
+    return null;
+  }
+  function initJPush() {
+    var J = jpushPlugin(); if (!J) return; // 非 Capacitor / 插件缺失 → 仅靠本地通知兜底
+    try { if (J.init) J.init().catch(function () {}); else if (J.startJPush) J.startJPush().catch(function () {}); } catch (e) {}
+    setTimeout(setJPushAlias, 1000); // 等 SDK 注册完成再设别名
+    try {
+      if (J.addListener) {
+        ["notificationOpen", "openNotification", "receiveNotification"].forEach(function (n) {
+          try { J.addListener(n, function (e) { if (n !== "receiveNotification") jpushRoute(e); }).catch(function () {}); } catch (e2) {}
+        });
+      }
+    } catch (e) {}
+    // 兼容 Cordova 式插件（jpush.openNotification 事件）
+    try { document.addEventListener("jpush.openNotification", function (e) { jpushRoute(e); }, false); } catch (e) {}
+  }
+  function setJPushAlias() {
+    var J = jpushPlugin(); if (!J) return;
+    var r = (localStorage.getItem(LS_ROOM) || "").trim(); if (!r) return;
+    var m = parseInt(localStorage.getItem(LS_ID) || "0", 10) || 0;
+    var alias = "ls_" + r + "_" + (m === 1 ? "b" : "a");
+    try { if (J.setAlias) J.setAlias({ alias: alias }).catch(function () {}); } catch (e) {}
+  }
+  function clearJPushAlias() {
+    var J = jpushPlugin(); if (!J) return;
+    try { if (J.deleteAlias) J.deleteAlias().catch(function () {}); } catch (e) {}
+  }
+  var pendingJpush = null;
+  function jpushRoute(e) {
+    var type = "";
+    try {
+      var ex = (e && (e.extras || (e.data && e.data.extras) || (e.notification && e.notification.extras))) || {};
+      type = ex.type || "";
+    } catch (ee) {}
+    var t = (type === "urge") ? "selfie" : "chat";
+    if (appReady) goTab(t); else pendingJpush = t; // 未就绪时先记下，bootApp 后再跳
+  }
+  function flushPendingJpush() { if (pendingJpush) { var t = pendingJpush; pendingJpush = null; goTab(t); } }
+  function pushNotify(roomId, fromRole, type, text) {
+    if (!roomId) return;
+    try {
+      fetch("/api/push/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ room: roomId, fromRole: fromRole, type: type, text: text || "" })
+      }).catch(function () {});
+    } catch (e) {}
+  }
   // 合并云端后检测「对方新消息 / 对方催促自拍」，触发本地通知；首次合并只静默填充，不弹通知（避免启动全量轰炸）
   function detectNewContent() {
     if (!notifPrimed) {
@@ -1132,9 +1186,24 @@
       });
     });
   }
+  var POLL_FG = 6000, POLL_BG = 30000; // 前台6秒、后台30秒：降低待机耗电；情侣消息晚到些无妨
+  function isAppBg() { try { return document.hidden || !document.hasFocus(); } catch (e) { return !!document.hidden; } }
+  function pollDelay() { return isAppBg() ? POLL_BG : POLL_FG; }
+  function schedulePoll() {
+    if (!room) return;
+    if (pollTimer) clearTimeout(pollTimer);
+    pollTimer = setTimeout(function () { poll(); schedulePoll(); }, pollDelay());
+  }
   function startPoll() {
     if (pollTimer || !room) return;
-    pollTimer = setInterval(poll, 4000);
+    schedulePoll();
+  }
+  // 前后台切换时按新节奏重排轮询（前台快、后台慢），降低待机耗电；不依赖原生，远程网页即生效
+  if (!window.__pollVisBound) {
+    window.__pollVisBound = true;
+    document.addEventListener("visibilitychange", function () { if (pollTimer) schedulePoll(); });
+    window.addEventListener("focus", function () { if (pollTimer) schedulePoll(); });
+    window.addEventListener("blur", function () { if (pollTimer) schedulePoll(); });
   }
 
   function unionById(a, b) {
@@ -1886,6 +1955,7 @@
     if (!text) { toast("写点什么再发送吧"); return; }
     data.messages.push({ id: uid(), who: me, text: text, ts: Date.now(), read: {} });
     inp.value = ""; save(); renderAll(); setTimeout(scrollChatBottom, 0);
+    if (backend && backend.enabled && room) pushNotify(room, (me === 0 ? "a" : "b"), "msg", text);
   }
   $("chatSend").addEventListener("click", sendMsg);
   $("chatInput").addEventListener("keydown", function (e) { if (e.key === "Enter") sendMsg(); });
@@ -1916,6 +1986,7 @@
     var s = STICKERS.find(function (x) { return x.key === key; }); if (!s) return;
     data.messages.push({ id: uid(), who: me, type: "sticker", key: s.key, name: s.name, ts: Date.now(), read: {} });
     save(); renderAll(); setTimeout(scrollChatBottom, 0);
+    if (backend && backend.enabled && room) pushNotify(room, (me === 0 ? "a" : "b"), "msg", s.name);
   }
   $("emojiBtn").addEventListener("click", function () {
     var p = $("emojiPanel");
@@ -2330,7 +2401,7 @@
     var cell = e.target.closest("[data-sfview]");
     if (cell) { var s = (data.selfies || []).find(function (x) { return x.id === cell.dataset.sfview; }); if (s) { openViewer({ id: s.id, src: s.src, by: s.who, isSelfie: true }); } return; }
     if (e.target.closest("#sfShoot2")) { shootSelfie(); return; }
-    if (e.target.closest("#sfUrge")) { data.selfieUrge = { who: me, ts: Date.now() }; save(); copyText("该拍今天的自拍啦，快打开「" + (data.spaceName || "恋人空间") + "」交作业！", "已提醒TA 📷（话术已复制，也可直接发给TA）"); }
+    if (e.target.closest("#sfUrge")) { data.selfieUrge = { who: me, ts: Date.now() }; save(); if (backend && backend.enabled && room) pushNotify(room, (me === 0 ? "a" : "b"), "urge"); copyText("该拍今天的自拍啦，快打开「" + (data.spaceName || "恋人空间") + "」交作业！", "已提醒TA 📷（话术已复制，也可直接发给TA）"); }
   });
   function openPhotoAdd() {
     var al = curAlbum();
@@ -2659,7 +2730,16 @@
       '<button class="ghost-btn" id="stSplash" style="margin-top:8px">🖼 更换启动图（自定义 DIY）</button>' +
       '<button class="ghost-btn" id="stResetSplash">↺ 恢复默认启动图</button>' +
       '<button class="ghost-btn" id="stLeave" style="border-color:#f0c4d2;color:#d66a92">退出空间 / 切换空间码</button>' +
-      '<button class="ghost-btn" id="stClear" style="border-color:#f0c4d2;color:#d66a92">清空全部数据（慎点）</button>';
+      '<button class="ghost-btn" id="stClear" style="border-color:#f0c4d2;color:#d66a92">清空全部数据（慎点）</button>' +
+      '<div class="field" style="margin-top:14px;padding:13px 14px;background:var(--pink-bg);border-radius:14px">' +
+      '<div style="font-weight:700;color:var(--pink-deep);margin-bottom:6px">📨 让消息提醒更及时（保活设置）</div>' +
+      '<div style="font-size:13px;color:var(--ink-2);line-height:1.7">当前用「本地通知 + 后台轮询」接收 TA 的悄悄话 / 催自拍。App 在后台时若被系统清理就收不到，请按你的手机做以下设置（你们都是 vivo）：</div>' +
+      '<div style="font-size:13px;color:var(--ink);line-height:1.95;margin-top:8px">' +
+      '① 设置 → 电池 → 后台耗电管理 → 恋人空间 → 设为「允许后台高耗电」<br/>' +
+      '② 设置 → 应用与权限 → 应用管理 → 恋人空间 → 权限 → 自启动 → 允许<br/>' +
+      '③ 多任务卡片 → 下拉把本 App 锁定（防误清）<br/>' +
+      '④ 设置 → 通知 → 恋人空间 → 允许通知 / 悬浮通知 / 锁屏通知 全部打开' +
+      '</div></div>';
     openSheet("设置", html);
     var themeBind = function(cid, attr, getv, setv) {
       var box = $(cid); if (!box) return;
@@ -2702,7 +2782,7 @@
     });
     $("stLeave").addEventListener("click", function () {
       openSheet("切换空间？", '<div class="empty-tip" style="padding:6px 0 16px">将断开当前空间。重新打开页面可创建或加入新空间。</div><button class="primary-btn" id="leaveYes">退出当前空间</button><button class="ghost-btn" id="leaveNo">取消</button>');
-      $("leaveYes").addEventListener("click", function () { localStorage.removeItem(LS_ROOM); toast("已退出，刷新页面可换空间"); closeSheet(); });
+      $("leaveYes").addEventListener("click", function () { localStorage.removeItem(LS_ROOM); clearJPushAlias(); toast("已退出，刷新页面可换空间"); closeSheet(); });
       $("leaveNo").addEventListener("click", closeSheet);
     });
     $("stClear").addEventListener("click", function () {
@@ -2808,6 +2888,8 @@
     saveLocal();
     renderAll();
     appReady = true;
+    initJPush();
+    flushPendingJpush();
     startPoll();
     setTimeout(ensureNotifPerm, 1500);
     if (backend.enabled && (backend.ts || 0) > 0 && (data._updated || 0) > (backend.ts || 0) && hasRealContent()) setTimeout(function () { toast("本机有内容未同步到云端，去设置点「立即同步」"); }, 1200);

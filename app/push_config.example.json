@@ -1,0 +1,15 @@
+{
+  "applicationId": "com.loverspace.app",
+  "JPUSH_APPKEY": "你的极光AppKey",
+  "JPUSH_CHANNEL": "developer-default",
+  "MEIZU_APPKEY": "MZ-魅族APPKEY（可选）",
+  "MEIZU_APPID": "MZ-魅族APPID（可选）",
+  "XIAOMI_APPID": "MI-小米APPID",
+  "XIAOMI_APPKEY": "MI-小米APPKEY",
+  "OPPO_APPKEY": "OP-OPPO_APPKEY",
+  "OPPO_APPID": "OP-OPPO_APPID",
+  "OPPO_APPSECRET": "OP-OPPO_APPSECRET",
+  "VIVO_APPKEY": "VIVO_APPKEY",
+  "VIVO_APPID": "VIVO_APPID",
+  "HONOR_APPID": "荣耀APPID（可选）"
+}

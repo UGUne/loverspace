@@ -16,10 +16,30 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Release 签名：由 CI 从 Secrets 注入环境变量（KEYSTORE_FILE / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD）
+    // 未注入时 release 构建不应用签名配置，可由 CI 回退到 assembleDebug，保证普通包仍可构建。
+    signingConfigs {
+        release {
+            def ksFile = System.getenv('KEYSTORE_FILE')
+            def ksPass = System.getenv('KEYSTORE_PASSWORD')
+            def kAlias = System.getenv('KEY_ALIAS')
+            def kPass  = System.getenv('KEY_PASSWORD')
+            if (ksFile != null && ksPass != null && kAlias != null && kPass != null) {
+                storeFile file(ksFile)
+                storePassword ksPass
+                keyAlias kAlias
+                keyPassword kPass
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            def ksFile = System.getenv('KEYSTORE_FILE')
+            if (ksFile != null) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
