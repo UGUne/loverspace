@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import cn.jpush.android.api.JPushMessageReceiver;
+import cn.jpush.android.service.JPushMessageReceiver;
 import cn.jpush.android.api.NotificationMessage;
 import org.json.JSONObject;
 
