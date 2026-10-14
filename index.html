@@ -1034,13 +1034,14 @@
       d.textContent = msg;
     } catch (e) {}
   }
+  var PUSH_BUILD = "v1030c"; // 推送诊断版本标记：确认手机加载的是哪版网页
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
   }
-  // 等 JPush 注册完成（拿到 RegistrationID）再设别名，否则 setAlias 会静默失败；最多重试约 20s
+  // 等 JPush 注册完成（拿到 RegistrationID）再设别名；最多重试约 40s
   function ensureAlias(att) {
     var N = jpushNative();
-    if (!N) { showPushNote("⚠️ 未启用推送：请确认安装的是 GitHub 上的「推送版」APK（含 JPush），debug 版无此能力"); return; }
+    if (!N) { showPushNote("⚠️[" + PUSH_BUILD + "] 未启用推送：请装GitHub上的「推送版」APK"); return; }
     var r = (localStorage.getItem(LS_ROOM) || "").trim(); if (!r) return;
     var m = parseInt(localStorage.getItem(LS_ID) || "0", 10) || 0;
     var alias = "ls_" + r + "_" + (m === 1 ? "b" : "a");
@@ -1050,9 +1051,12 @@
       if (typeof N.getRegId === "function") rid = N.getRegId();
       else if (typeof N.getRegistrationID === "function") rid = N.getRegistrationID();
     } catch (e) {}
-    if (!rid && att < 20) { setTimeout(function () { ensureAlias(att + 1); }, 1000); return; }
-    if (!rid) { showPushNote("⚠️ 推送注册超时：请检查网络/通知权限，或重装推送版 APK"); return; }
-    try { N.setAlias(alias); console.log("[JPush] setAlias", alias, "rid=", rid); showPushNote("✅ 推送通道已连接（" + alias + "）"); } catch (e) {}
+    if (!rid && att < 40) {
+      if (att % 10 === 0) showPushNote("⏳[" + PUSH_BUILD + "] 推送注册中…(" + att + "s) 桥✅");
+      setTimeout(function () { ensureAlias(att + 1); }, 1000); return;
+    }
+    if (!rid) { showPushNote("⚠️[" + PUSH_BUILD + "] 桥✅但JPush未返回ID：查网络/通知权限/重装"); return; }
+    try { N.setAlias(alias); console.log("[JPush] setAlias", alias, "rid=", rid); showPushNote("✅[" + PUSH_BUILD + "] 推送已连接（" + alias + "）"); } catch (e) {}
   }
   function setJPushAlias() { ensureAlias(); }
   function clearJPushAlias() {
