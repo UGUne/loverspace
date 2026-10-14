@@ -22,10 +22,16 @@ public class MainActivity extends BridgeActivity {
     }
     // 初始化极光 JPush（推送长连接 + 厂商通道）。缺 AppKey 时初始化会静默失败，不影响主流程。
     // 开启 debug 日志：release 包里也能从 logcat 抓到 SDK 的注册错误详情（供 getPushLog 读取）。
+    // init 若抛异常，记录到 prefs（getPushDiag 的 initEx 字段），因为"静默吞掉异常"正是无日志的常见原因。
     try {
       JPushInterface.setDebugMode(true);
       JPushInterface.init(getApplicationContext());
-    } catch (Throwable t) {}
+    } catch (Throwable t) {
+      try {
+        getSharedPreferences("ls_push", Context.MODE_PRIVATE)
+            .edit().putString("init_ex", String.valueOf(t)).apply();
+      } catch (Throwable ignore) {}
+    }
     // 给前端网页暴露原生桥，用于设置别名 / 读取通知点击类型
     if (getBridge() != null && getBridge().getWebView() != null) {
       getBridge().getWebView().addJavascriptInterface(new LsNative(getApplicationContext()), "LoverspaceNative");
@@ -68,6 +74,7 @@ public class MainActivity extends BridgeActivity {
         o.put("appkey", getManifestAppKey(ctx));
         o.put("pkg", ctx.getPackageName());
         o.put("stopped", JPushInterface.isPushStopped(ctx));
+        o.put("initEx", sp.getString("init_ex", ""));
         o.put("ts", System.currentTimeMillis());
       } catch (Throwable t) {
         try { o.put("ex", String.valueOf(t)); } catch (Throwable ignore) {}
@@ -84,21 +91,24 @@ public class MainActivity extends BridgeActivity {
     }
     // 抓取本机 logcat 中极光 SDK 的日志（JIGUANG/JPush/JCore/vivo 相关），
     // 用于在无法连接电脑调试时，直接在 App 里看到注册失败的底层错误。
+    // 读取前先强制重新 init 并等待 3s，确保抓到“新鲜”的初始化日志（否则被 WebView 日志冲掉）。
     @JavascriptInterface
     public String getPushLog() {
       StringBuilder sb = new StringBuilder();
       java.io.BufferedReader r = null;
       try {
-        // -d 导出已有缓冲；-t 800 限制行数；-v time 带时间戳
+        try { JPushInterface.init(ctx); } catch (Throwable t) {}
+        try { Thread.sleep(3000); } catch (Throwable ignore) {}
+        // -d 导出已有缓冲；-t 8000 限制行数；-v time 带时间戳
         Process p = Runtime.getRuntime().exec(new String[]{
-            "logcat", "-d", "-v", "time", "-t", "2000"});
+            "logcat", "-d", "-v", "time", "-t", "8000"});
         r = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()), 8192);
         String line;
         int kept = 0;
-        while ((line = r.readLine()) != null && kept < 120) {
-          if (line.contains("JIGUANG") || line.contains("JPush") || line.contains("JCore")
-              || line.contains("jpush") || line.contains("vivo push") || line.contains("VivoPush")
-              || line.contains("PushMessageReceiver")) {
+        while ((line = r.readLine()) != null && kept < 200) {
+          String low = line.toLowerCase();
+          if (low.contains("jiguang") || low.contains("jpush") || low.contains("jcore")
+              || low.contains("vivo") || low.contains("push") || low.contains("jg")) {
             sb.append(line).append('\n');
             kept++;
           }
