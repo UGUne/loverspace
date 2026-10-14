@@ -1067,14 +1067,26 @@
         ov = document.createElement("div");
         ov.id = "pushLogOverlay";
         ov.style.cssText = "position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.85);color:#0f0;font-family:monospace;font-size:11px;overflow:auto;padding:12px;white-space:pre-wrap;word-break:break-all";
-        ov.onclick = function () { ov.style.display = "none"; };
         (document.body || document.documentElement).appendChild(ov);
       }
-      ov.textContent = text + "\n\n（点击任意处关闭）";
+      var btn = document.createElement("button");
+      btn.textContent = "📋 复制全部";
+      btn.setAttribute("data-copybtn", "1");
+      btn.style.cssText = "position:fixed;right:12px;top:12px;z-index:10001;background:#fff;color:#111;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.4)";
+      var body = document.createElement("div");
+      body.style.cssText = "white-space:pre-wrap;word-break:break-all";
+      body.textContent = text + "\n\n（点右上角「📋 复制全部」，把文字直接粘贴发给我；点空白处关闭）";
+      ov.textContent = "";
+      ov.appendChild(btn);
+      ov.appendChild(body);
       ov.style.display = "block";
+      ov.onclick = function (ev) {
+        if (ev.target === btn) { copyText(text, "已复制，直接粘贴发给我即可 ✅"); return; }
+        ov.style.display = "none";
+      };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1018a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1018b"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -2810,6 +2822,8 @@
       '<div class="field"><label>在一起日期</label><input type="date" id="stStart" value="' + esc(data.startedDate) + '" /></div>' +
       '<button class="primary-btn" id="stSave">保存</button>' +
       '<button class="ghost-btn" id="stSync" style="border-color:#ffb3c9;color:#e85d8a">🔄 立即同步（把本机数据同步到云端）</button>' +
+      '<button class="ghost-btn" id="stDiag" style="margin-top:8px;border-color:#a8d0f5;color:#3a7bd5">🔧 推送诊断（收不到消息时点它）</button>' +
+      '<button class="ghost-btn" id="stReinit" style="margin-top:8px;border-color:#a8d0f5;color:#3a7bd5">🔄 重置推送注册（显示未连接时用）</button>' +
       '<button class="ghost-btn" id="stSplash" style="margin-top:8px">🖼 更换启动图（自定义 DIY）</button>' +
       '<button class="ghost-btn" id="stResetSplash">↺ 恢复默认启动图</button>' +
       '<button class="ghost-btn" id="stLeave" style="border-color:#f0c4d2;color:#d66a92">退出空间 / 切换空间码</button>' +
@@ -2844,6 +2858,30 @@
       save(); renderAll(); closeSheet(); toast("已保存");
     });
     if ($("stSync")) $("stSync").addEventListener("click", function () { forceSync(); });
+    // 推送诊断：一键拉取完整诊断 JSON + 极光/vivo 日志，浮层展示并可「复制全部」粘贴发我
+    if ($("stDiag")) $("stDiag").addEventListener("click", function () {
+      var N = jpushNative();
+      if (!N) { toast("请先安装 GitHub 上的「推送版」APK"); return; }
+      toast("正在拉取诊断，请稍候…");
+      var parts = [];
+      parts.push("=== 推送诊断 [" + PUSH_BUILD + "] " + new Date().toLocaleString() + " ===");
+      parts.push("房间: " + (localStorage.getItem(LS_ROOM) || "(未加入)") + "｜身份: " + (localStorage.getItem(LS_ID) || "?"));
+      try { parts.push("--- diag ---\n" + N.getPushDiag()); } catch (e) { parts.push("getPushDiag 异常: " + e); }
+      try { if (typeof N.getRegId === "function") parts.push("--- regId ---\n" + (N.getRegId() || "(空)")); } catch (e) {}
+      try { if (typeof N.getPushLog === "function") parts.push("--- log ---\n" + N.getPushLog()); } catch (e) { parts.push("getPushLog 异常: " + e); }
+      openLogOverlay(parts.join("\n"));
+    });
+    // 重置推送注册：重新走隐私授权 + init，用于「未连接」时自救
+    if ($("stReinit")) $("stReinit").addEventListener("click", function () {
+      var N = jpushNative();
+      if (!N) { toast("请先安装「推送版」APK"); return; }
+      try {
+        if (typeof N.reinitPush === "function") N.reinitPush();
+        PUSH_REINITED = true;
+        showPushNote("⏳[" + PUSH_BUILD + "] 已重置推送，正在重新注册…");
+        setTimeout(function () { ensureAlias(0); }, 3000);
+      } catch (e) { toast("重置失败: " + e); }
+    });
     if ($("stSplash")) $("stSplash").addEventListener("click", function () {
       closeSheet();
       setTimeout(function () {
