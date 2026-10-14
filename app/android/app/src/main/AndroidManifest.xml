@@ -77,13 +77,27 @@
              必须跑在 :pushcore 进程——极光长连接（ConnectingHelper/TcpRequestManager）就在这个进程，
              进程被认定为前台服务后，vivo 划后台/一键清理不再杀它，长连接保持在线，
              杀后台也能秒收。不依赖厂商通道（未上架应用的 vivo 通道被「测试设备」限制，已确认走不通）。
-             remoteMessaging 类型语义即"与服务器间收发远程消息"，需配套普通权限（安装时自动授予）。 -->
+             remoteMessaging 类型语义即"与服务器间收发远程消息"，需配套普通权限（安装时自动授予）。
+             stopWithTask=false：任务被划掉时不连带停止服务（vivo 一键清理若只是移除任务而非
+             强制停止，服务连带通知都能存活；强制停止场景由 KeepAliveReceiver 的闹钟复活兜底）。 -->
         <service
             android:name=".KeepAliveService"
             android:enabled="true"
             android:exported="false"
             android:process=":pushcore"
+            android:stopWithTask="false"
             android:foregroundServiceType="remoteMessaging" />
+
+        <!-- 保活复活：KeepAliveService 挂的 10 分钟重复闹钟触发，被 ROM 杀掉后定期重启服务。
+             必须静态注册（进程死后 context-register 的接收器收不到广播）。 -->
+        <receiver
+            android:name=".KeepAliveReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.loverspace.app.action.KEEPALIVE_RESURRECT" />
+            </intent-filter>
+        </receiver>
     </application>
 
     <!-- Permissions -->

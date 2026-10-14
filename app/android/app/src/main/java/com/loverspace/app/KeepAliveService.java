@@ -1,5 +1,6 @@
 package com.loverspace.app;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -11,6 +12,7 @@ import android.content.SharedPreferences;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.SystemClock;
 
 import androidx.core.app.NotificationCompat;
 
@@ -34,6 +36,10 @@ public class KeepAliveService extends Service {
   public static final String KEY = "keep_alive";
   private static final String CHANNEL_ID = "ls_keepalive";
   private static final int NOTI_ID = 8801;
+  /** 闹钟复活广播的 Action（KeepAliveReceiver 接收） */
+  public static final String ACTION_RESURRECT = "com.loverspace.app.action.KEEPALIVE_RESURRECT";
+  /** 复活间隔：10 分钟。太短耗电，太长则断连窗口久 */
+  private static final long RESURRECT_INTERVAL_MS = 10 * 60 * 1000L;
 
   @Override
   public void onCreate() {
@@ -54,6 +60,8 @@ public class KeepAliveService extends Service {
       // 个别 ROM 可能拒绝指定 type 的 startForeground：退化为无参版本再试一次
       try { startForeground(NOTI_ID, n); } catch (Throwable ignore) {}
     }
+    // 每次启动都刷新复活闹钟（被杀后靠它定期把服务拉回来）
+    scheduleResurrection(this);
     // 被系统杀掉后尽量自动重启（用户主动"强行停止"除外，系统不会重启）
     return START_STICKY;
   }
@@ -73,7 +81,13 @@ public class KeepAliveService extends Service {
     try {
       ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putBoolean(KEY, on).apply();
     } catch (Throwable ignore) {}
-    if (on) start(ctx); else stop(ctx);
+    if (on) {
+      start(ctx);
+      scheduleResurrection(ctx); // 服务可能启动失败（后台限制），闹钟先挂上兜底
+    } else {
+      cancelResurrection(ctx);
+      stop(ctx);
+    }
   }
 
   public static void start(Context ctx) {
@@ -92,6 +106,37 @@ public class KeepAliveService extends Service {
 
   public static void stop(Context ctx) {
     try { ctx.stopService(new Intent(ctx, KeepAliveService.class)); } catch (Throwable ignore) {}
+  }
+
+  // ===== 闹钟复活机制 =====
+  // vivo/OriginOS 等 ROM 的"一键清理/划掉后台"接近强制停止：FGS 被杀、通知被清、
+  // 连 START_STICKY 都不触发。挂一个每 10 分钟的不精确重复闹钟，被杀后定期尝试重启。
+  // 即便 FGS 启动被 Android 12+ 后台限制拒绝，进程被闹钟唤醒本身就会让 JCore 的
+  // ContentProvider 自动初始化、极光长连接重连，TTL 内的离线消息随后补发到通知栏。
+  private static PendingIntent resurrectPI(Context ctx) {
+    Intent i = new Intent(ctx, KeepAliveReceiver.class).setAction(ACTION_RESURRECT);
+    int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
+    return PendingIntent.getBroadcast(ctx, 0, i, flags);
+  }
+
+  /** 挂上/刷新复活闹钟（重复调用安全，同一 PendingIntent 会被更新） */
+  public static void scheduleResurrection(Context ctx) {
+    try {
+      AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+      if (am == null) return;
+      am.setInexactRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+          SystemClock.elapsedRealtime() + RESURRECT_INTERVAL_MS,
+          RESURRECT_INTERVAL_MS, resurrectPI(ctx));
+    } catch (Throwable ignore) {}
+  }
+
+  /** 取消复活闹钟（用户关闭保活开关时调用，避免空转耗电） */
+  public static void cancelResurrection(Context ctx) {
+    try {
+      AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+      if (am != null) am.cancel(resurrectPI(ctx));
+    } catch (Throwable ignore) {}
   }
 
   private static void ensureChannel(Context ctx) {
