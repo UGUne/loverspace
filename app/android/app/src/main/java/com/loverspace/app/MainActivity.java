@@ -10,7 +10,6 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import org.json.JSONObject;
 import cn.jpush.android.api.JPushInterface;
-import cn.jiguang.api.JCollectionAuth;
 
 public class MainActivity extends BridgeActivity {
   @Override
@@ -22,10 +21,8 @@ public class MainActivity extends BridgeActivity {
       getBridge().getWebView().setBackgroundColor(0xFFffa3c0);
     }
     // 初始化极光 JPush（推送长连接 + 厂商通道）。缺 AppKey 时初始化会静默失败，不影响主流程。
-    // 注意：极光 5.x 要求隐私合规授权（JCollectionAuth.setAuth），未授权时 SDK 拒绝采集、设备不会注册。
     try {
       JPushInterface.setDebugMode(false);
-      try { JCollectionAuth.setAuth(getApplicationContext(), true); } catch (Throwable t) {}
       JPushInterface.init(getApplicationContext());
     } catch (Throwable t) {}
     // 给前端网页暴露原生桥，用于设置别名 / 读取通知点击类型
@@ -76,11 +73,10 @@ public class MainActivity extends BridgeActivity {
       }
       return o.toString();
     }
-    // 重置推送：重新授权隐私合规 + 重新 init，用于注册失败后的手动恢复
+    // 重置推送：重新 init，用于注册失败后的手动恢复
     @JavascriptInterface
     public String reinitPush() {
       try {
-        try { JCollectionAuth.setAuth(ctx, true); } catch (Throwable t) {}
         JPushInterface.init(ctx);
       } catch (Throwable t) {}
       return getPushDiag();
