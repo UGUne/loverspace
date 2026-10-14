@@ -77,6 +77,7 @@ public class MainActivity extends BridgeActivity {
         o.put("stopped", JPushInterface.isPushStopped(ctx));
         o.put("initEx", sp.getString("init_ex", ""));
         o.put("providers", listJpushProviders(ctx));
+        o.put("myServices", listMyServices(ctx));
         o.put("ts", System.currentTimeMillis());
       } catch (Throwable t) {
         try { o.put("ex", String.valueOf(t)); } catch (Throwable ignore) {}
@@ -159,6 +160,25 @@ public class MainActivity extends BridgeActivity {
           String n = pi.packageName + "/" + pi.name;
           String low = n.toLowerCase();
           if (low.contains("jiguang") || low.contains("jpush") || low.contains("jcore")) {
+            arr.put(n);
+          }
+        }
+      }
+      return arr.toString();
+    } catch (Throwable t) { return "ex:" + t; }
+  }
+  // 枚举本应用 Manifest 里声明的 jiguang/jpush/jcore 相关 Service（JCore init 依赖 JCommonService）
+  private static String listMyServices(Context ctx) {
+    try {
+      org.json.JSONArray arr = new org.json.JSONArray();
+      android.content.pm.PackageInfo pi = ctx.getPackageManager().getPackageInfo(
+          ctx.getPackageName(), android.content.pm.PackageManager.GET_SERVICES);
+      if (pi.services != null) {
+        for (android.content.pm.ServiceInfo si : pi.services) {
+          String n = si.packageName + "/" + si.name;
+          String low = n.toLowerCase();
+          if (low.contains("jiguang") || low.contains("jpush") || low.contains("jcore")
+              || low.contains("pushservice")) {
             arr.put(n);
           }
         }

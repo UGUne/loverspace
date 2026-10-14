@@ -48,6 +48,18 @@
                 <category android:name="${applicationId}" />
             </intent-filter>
         </receiver>
+
+        <!-- JCore 2.0+ 必需：自定义 Service 继承 JCommonService，供 JCore 执行 init 等动作。
+             缺失时 runActionWithService(action:init) 找不到 Service，SDK 静默卡死、设备永不注册。 -->
+        <service
+            android:name=".PushService"
+            android:enabled="true"
+            android:exported="false"
+            android:process=":pushcore">
+            <intent-filter>
+                <action android:name="cn.jiguang.user.service.action" />
+            </intent-filter>
+        </service>
     </application>
 
     <!-- Permissions -->
