@@ -15,11 +15,13 @@ android {
             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
-        // 极光 JPush：AppKey 来自 CI 注入的环境变量；vivo 厂商通道凭证同样来自环境变量。
-        // 本地开发无环境变量时为空字符串，仅导致推送不可用，不影响编译。
+        // 极光 JPush：AppKey 是客户端公开标识，本就须编译进 APK（标准做法）。
+        // 优先用 CI 环境变量（便于换账号），为空时回退到内置字面量，保证 APK 一定带 AppKey。
+        // 注意：MasterSecret 才需保密，只在 server.js 用环境变量读取，绝不进仓库。
+        def envJpush = System.getenv("JPUSH_APPKEY")
         manifestPlaceholders = [
             JPUSH_PKGNAME : "com.loverspace.app",
-            JPUSH_APPKEY  : (System.getenv("JPUSH_APPKEY") ?: ""),
+            JPUSH_APPKEY  : (envJpush != null && !envJpush.isEmpty() ? envJpush : "f10d7d29156782a3bf00899d"),
             JPUSH_CHANNEL : "developer-default",
             VIVO_APPKEY   : (System.getenv("VIVO_APPKEY") ?: ""),
             VIVO_APPID    : (System.getenv("VIVO_APPID") ?: "")
