@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -12,6 +13,18 @@
         <!-- 极光 JPush：AppKey / 渠道来自 build.gradle 的 manifestPlaceholders（CI 注入环境变量） -->
         <meta-data android:name="JPUSH_APPKEY" android:value="${JPUSH_APPKEY}" />
         <meta-data android:name="JPUSH_CHANNEL" android:value="${JPUSH_CHANNEL}" />
+
+        <!-- Vivo 厂商通道密钥：vivo 推送 SDK 从这两个 meta-data 读取（极光 vivo 插件的
+             manifestPlaceholders 不会自动注入，必须由开发者在本 Manifest 直接声明并覆盖空值）。
+             缺失时 vivo 注册失败 → 杀后台收不到推送（只有极光自有通道能收，但需 App 进程存活）。 -->
+        <meta-data
+            android:name="com.vivo.push.api_key"
+            android:value="d117ba583b770687b33fccc4b0a98192"
+            tools:replace="android:value" />
+        <meta-data
+            android:name="com.vivo.push.app_id"
+            android:value="106161110"
+            tools:replace="android:value" />
 
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"

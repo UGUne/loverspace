@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import cn.jpush.android.api.JPushInterface;
 import cn.jpush.android.api.NotificationMessage;
 import cn.jpush.android.service.JPushMessageReceiver;
 import org.json.JSONObject;
@@ -39,6 +40,15 @@ public class JPushReceiver extends JPushMessageReceiver {
       SharedPreferences sp = context.getSharedPreferences("ls_push", Context.MODE_PRIVATE);
       if (type != null && !type.isEmpty()) sp.edit().putString("lastPushType", type).apply();
     } catch (Throwable t) {}
+    // 点开通知：清除该条通知并把桌面角标清零（Vivo 等 ROM 的角标不会自动消失）
+    try {
+      if (message != null && message.notificationId > 0) {
+        JPushInterface.clearNotificationById(context, message.notificationId);
+      } else {
+        JPushInterface.clearAllNotifications(context);
+      }
+    } catch (Throwable t) {}
+    try { JPushInterface.setBadgeNumber(context, 0); } catch (Throwable t) {}
     try {
       super.onNotifyMessageOpened(context, message); // SDK 默认：清理通知并打开应用主页（MainActivity）
     } catch (Throwable t) {}
