@@ -25,6 +25,7 @@ public class MainActivity extends BridgeActivity {
     // init 若抛异常，记录到 prefs（getPushDiag 的 initEx 字段），因为"静默吞掉异常"正是无日志的常见原因。
     try {
       JPushInterface.setDebugMode(true);
+      initJCoreSafely(getApplicationContext()); // 反射兜底：确保 JCore 先初始化（Provider 未合并时靠它）
       JPushInterface.init(getApplicationContext());
     } catch (Throwable t) {
       try {
@@ -75,6 +76,7 @@ public class MainActivity extends BridgeActivity {
         o.put("pkg", ctx.getPackageName());
         o.put("stopped", JPushInterface.isPushStopped(ctx));
         o.put("initEx", sp.getString("init_ex", ""));
+        o.put("providers", listJpushProviders(ctx));
         o.put("ts", System.currentTimeMillis());
       } catch (Throwable t) {
         try { o.put("ex", String.valueOf(t)); } catch (Throwable ignore) {}
@@ -85,6 +87,7 @@ public class MainActivity extends BridgeActivity {
     @JavascriptInterface
     public String reinitPush() {
       try {
+        initJCoreSafely(ctx);
         JPushInterface.init(ctx);
       } catch (Throwable t) {}
       return getPushDiag();
@@ -121,6 +124,33 @@ public class MainActivity extends BridgeActivity {
       }
       if (sb.length() == 0) return "(无相关日志)";
       return sb.toString();
+    }
+    // 枚举合并进 APK 的 jiguang/jpush/jcore 相关 Provider（JCore 自动初始化依赖它）。
+    // 若返回空数组 → JCore 的自动初始化 Provider 没合并进来，SDK 就"类都在但不工作"，正是无日志+不注册的根因。
+    private static String listJpushProviders(Context ctx) {
+      try {
+        org.json.JSONArray arr = new org.json.JSONArray();
+        java.util.List<android.content.pm.ProviderInfo> list =
+            ctx.getPackageManager().queryContentProviders(null, 0, 0);
+        if (list != null) {
+          for (android.content.pm.ProviderInfo pi : list) {
+            String n = pi.packageName + "/" + pi.name;
+            String low = n.toLowerCase();
+            if (low.contains("jiguang") || low.contains("jpush") || low.contains("jcore")) {
+              arr.put(n);
+            }
+          }
+        }
+        return arr.toString();
+      } catch (Throwable t) { return "ex:" + t; }
+    }
+    // 反射兜底初始化 JCore（不依赖具体类路径，编译不会挂）。若 JCore 已初始化则为无操作。
+    private static void initJCoreSafely(Context ctx) {
+      try {
+        Class<?> c = Class.forName("cn.jiguang.jcore.JCoreInterface");
+        java.lang.reflect.Method m = c.getMethod("init", Context.class);
+        m.invoke(null, ctx.getApplicationContext());
+      } catch (Throwable ignore) {}
     }
     private static String getManifestAppKey(Context ctx) {
       try {

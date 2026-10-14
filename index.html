@@ -1067,7 +1067,7 @@
       ov.style.display = "block";
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1014d"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1014e"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -1105,7 +1105,8 @@
               + "｜pkg:" + (d.pkg || "?")
               + "｜回调:" + (d.regTs > 0 ? "已触发" : "从未")
               + "｜stopped:" + d.stopped
-              + "｜initEx:" + (d.initEx || "无");
+              + "｜initEx:" + (d.initEx || "无")
+              + "｜prov:" + (d.providers || "?");
       } catch (e) { dmsg += "｜diag:" + diag; }
       showPushNote("⚠️[" + PUSH_BUILD + "] " + dmsg + "（查网络/通知权限/重装）");
       // 拉取本机极光 SDK 日志并展示，点提示条可展开完整日志
