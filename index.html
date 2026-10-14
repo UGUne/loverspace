@@ -224,6 +224,10 @@
   .tabbar .tab-ic { width: 23px; height: 23px; transition: transform .18s; }
   .tabbar .tab-ic .fill-part { opacity: 0; transition: opacity .18s; }
   .tabbar button.on .tab-ic .fill-part { opacity: 1; }
+  /* 底部菜单未读红点：对方发来新消息/催自拍时亮起，点开对应 tab 后熄灭 */
+  .tabbar button .dot { position: absolute; top: 3px; left: calc(50% + 6px); width: 9px; height: 9px; border-radius: 50%; background: #ff3b5c; border: 1.5px solid rgba(255,255,255,.95); display: none; pointer-events: none; }
+  .tabbar button .dot.on { display: block; }
+  body.dark .tabbar button .dot { border-color: rgba(40,32,48,.95); }
 
   .mask { position: fixed; inset: 0; background: rgba(70,40,55,.45); z-index: 90; opacity: 0; pointer-events: none; transition: opacity .2s; }
   .mask.open { opacity: 1; pointer-events: auto; }
@@ -755,9 +759,9 @@
 
   <nav class="tabbar">
     <button data-tab="home" class="on"><svg class="ic tab-ic"><use href="#i-home"/></svg>首页</button>
-    <button data-tab="chat"><svg class="ic tab-ic"><use href="#i-chat"/></svg>悄悄话</button>
+    <button data-tab="chat"><svg class="ic tab-ic"><use href="#i-chat"/></svg>悄悄话<span class="dot" id="dotChat"></span></button>
     <button data-tab="album"><svg class="ic tab-ic"><use href="#i-photo"/></svg>相册</button>
-    <button data-tab="selfie"><svg class="ic tab-ic"><use href="#i-cam"/></svg>自拍</button>
+    <button data-tab="selfie"><svg class="ic tab-ic"><use href="#i-cam"/></svg>自拍<span class="dot" id="dotSelfie"></span></button>
     <button data-tab="us"><svg class="ic tab-ic"><use href="#i-user"/></svg>我们</button>
   </nav>
 </div>
@@ -1086,7 +1090,7 @@
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1018b"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1019a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -1164,6 +1168,24 @@
       }).catch(function () {});
     } catch (e) {}
   }
+  // ===== 底部菜单未读红点（对方新消息/催自拍时亮起，点开对应 tab 熄灭）=====
+  // 纯本地状态（不参与云同步，每台设备各自记自己的已读）
+  var LS_UNREAD = "loverspace.unread.v1";
+  var currentTab = "home";
+  function loadUnread() { try { return JSON.parse(localStorage.getItem(LS_UNREAD) || "{}") || {}; } catch (e) { return {}; } }
+  function saveUnread(u) { try { localStorage.setItem(LS_UNREAD, JSON.stringify(u || {})); } catch (e) {} }
+  function renderDots() {
+    var u = loadUnread();
+    ["chat", "selfie"].forEach(function (t) {
+      var d = document.getElementById("dot" + (t === "chat" ? "Chat" : "Selfie"));
+      if (d) d.classList.toggle("on", !!u[t]);
+    });
+  }
+  function setUnread(tab, on) {
+    var u = loadUnread();
+    if (on) u[tab] = 1; else delete u[tab];
+    saveUnread(u); renderDots();
+  }
   // 合并云端后检测「对方新消息 / 对方催促自拍」，触发本地通知；首次合并只静默填充，不弹通知（避免启动全量轰炸）
   function detectNewContent() {
     if (!notifPrimed) {
@@ -1178,6 +1200,7 @@
         if (m.who !== me) {
           var txt = m.type === "sticker" ? ("[" + (m.name || "表情") + "]") : (m.text || "");
           notify("TA发来悄悄话 💌", txt.slice(0, 60));
+          if (currentTab !== "chat") setUnread("chat", true);
         }
       }
     });
@@ -1185,6 +1208,7 @@
     if (u && u.who !== me && u.ts !== seenUrgeTs) {
       seenUrgeTs = u.ts;
       notify("TA催你拍自拍啦 📷", "快去「自拍」打卡今天的自己");
+      if (currentTab !== "selfie") setUnread("selfie", true);
     }
   }
 
@@ -1994,9 +2018,12 @@
   function scrollChatBottom() { var w = $("chatList"); if (!w || !w.offsetParent) return; w.scrollTop = w.scrollHeight; }
   function scrollChatBottomIfNeeded() { var w = $("chatList"); if (!w || !w.offsetParent) return; var atBottom = w.scrollHeight - w.scrollTop - w.clientHeight < 80; if (atBottom) w.scrollTop = w.scrollHeight; }
   function goTab(tab) {
+    currentTab = tab;
     document.querySelectorAll(".tabbar button").forEach(function (b) { b.classList.toggle("on", b.dataset.tab === tab); });
     document.querySelectorAll(".view").forEach(function (v) { v.classList.toggle("on", v.id === "view-" + tab); });
     window.scrollTo(0, 0);
+    // 打开悄悄话/自拍页 = 已读，熄灭对应红点
+    if (tab === "chat" || tab === "selfie") setUnread(tab, false);
     if (tab === "chat") setTimeout(scrollChatBottom, 60);
   }
   document.querySelector(".tabbar").addEventListener("click", function (e) {
@@ -3009,6 +3036,7 @@
     saveLocal();
     renderAll();
     appReady = true;
+    renderDots();
     initJPush();
     flushPendingJpush();
     startPoll();
