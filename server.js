@@ -143,6 +143,9 @@ app.post("/api/push/notify", async function (req, res) {
     var otherAlias = "ls_" + room + "_" + (fromRole === "a" ? "b" : "a");
     var preview = body.text ? (String(body.text).slice(0, 30)) : "";
     var alert = (type === "urge" ? "TA催你拍自拍啦 📷" : ("TA发来悄悄话 💌" + (preview ? ("：" + preview) : "")));
+    // vivo 通道推送模式：应用未上架/受限阶段必须 push_mode=1（测试模式，仅送测试设备，1000条/天）；
+    // 正式上架后设置环境变量 VIVO_PUSH_MODE=0 切回正式推送
+    var pushMode = (String(process.env.VIVO_PUSH_MODE || "1") === "0") ? 0 : 1;
     var payload = {
       platform: ["android"],
       audience: { alias: [otherAlias] },
@@ -154,7 +157,14 @@ app.post("/api/push/notify", async function (req, res) {
           extras: { type: type, room: room }
         }
       },
-      options: { time_to_live: 86400 }
+      options: {
+        time_to_live: 86400,
+        // classification=1 系统消息（即时聊天类）：vivo 限额高、默认响铃震动外显
+        classification: 1,
+        third_party_channel: {
+          vivo: { push_mode: pushMode }
+        }
+      }
     };
     var auth = Buffer.from(APPKEY + ":" + SECRET).toString("base64");
     var r = await fetch("https://api.jpush.cn/v3/push", {
