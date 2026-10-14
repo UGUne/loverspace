@@ -6,6 +6,9 @@ import android.os.Bundle;
 import android.webkit.JavascriptInterface;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import org.json.JSONObject;
 import cn.jpush.android.api.JPushInterface;
 
 public class MainActivity extends BridgeActivity {
@@ -42,7 +45,44 @@ public class MainActivity extends BridgeActivity {
     }
     @JavascriptInterface
     public String getRegId() {
-      try { return JPushInterface.getRegistrationID(ctx); } catch (Throwable t) { return ""; }
+      try {
+        String rid = JPushInterface.getRegistrationID(ctx);
+        // 同步兜底保存一份，便于诊断读取
+        if (rid != null && !rid.isEmpty()) {
+          SharedPreferences sp = ctx.getSharedPreferences("ls_push", Context.MODE_PRIVATE);
+          sp.edit().putString("jpush_rid", rid).apply();
+        }
+        return rid;
+      } catch (Throwable t) { return ""; }
+    }
+    // 推送底层诊断：返回 AppKey、RegistrationID、最近错误码、推送是否被停止等，用于定位“拿不到 ID”的根因。
+    @JavascriptInterface
+    public String getPushDiag() {
+      JSONObject o = new JSONObject();
+      try {
+        SharedPreferences sp = ctx.getSharedPreferences("ls_push", Context.MODE_PRIVATE);
+        o.put("rid", JPushInterface.getRegistrationID(ctx));
+        o.put("lastRid", sp.getString("jpush_rid", ""));
+        o.put("errCode", sp.getInt("jpush_err", -1));
+        o.put("regTs", sp.getLong("jpush_ts", 0));
+        o.put("appkey", getManifestAppKey(ctx));
+        o.put("stopped", JPushInterface.isPushStopped(ctx));
+        o.put("ts", System.currentTimeMillis());
+      } catch (Throwable t) {
+        try { o.put("ex", String.valueOf(t)); } catch (Throwable ignore) {}
+      }
+      return o.toString();
+    }
+    private static String getManifestAppKey(Context ctx) {
+      try {
+        ApplicationInfo ai = ctx.getPackageManager().getApplicationInfo(
+            ctx.getPackageName(), PackageManager.GET_META_DATA);
+        if (ai.metaData != null) {
+          Object v = ai.metaData.get("JPUSH_APPKEY");
+          return v == null ? "" : String.valueOf(v);
+        }
+      } catch (Throwable t) {}
+      return "";
     }
     // 读取并清除“上次通知点击的类型”（msg / urge），供前端跳转到聊天或自拍页
     @JavascriptInterface
