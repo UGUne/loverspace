@@ -1022,20 +1022,33 @@
     try { if (window.LoverspaceNative) return window.LoverspaceNative; } catch (e) {}
     return null;
   }
+  function showPushNote(msg) {
+    try {
+      var d = document.getElementById("pushNote");
+      if (!d) {
+        d = document.createElement("div");
+        d.id = "pushNote";
+        d.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:9999;background:#ff5252;color:#fff;font-size:12px;line-height:1.4;padding:8px 10px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.3)";
+        (document.body || document.documentElement).appendChild(d);
+      }
+      d.textContent = msg;
+    } catch (e) {}
+  }
   function initJPush() {
-    var N = jpushNative(); if (!N) return; // 无原生桥 → 仅靠本地通知兜底
     ensureAlias(); // 等待 SDK 注册完成后再设别名
   }
   // 等 JPush 注册完成（拿到 RegistrationID）再设别名，否则 setAlias 会静默失败；最多重试约 20s
   function ensureAlias(att) {
-    var N = jpushNative(); if (!N) return;
+    var N = jpushNative();
+    if (!N) { showPushNote("⚠️ 未启用推送：请确认安装的是 GitHub 上的「推送版」APK（含 JPush），debug 版无此能力"); return; }
     var r = (localStorage.getItem(LS_ROOM) || "").trim(); if (!r) return;
     var m = parseInt(localStorage.getItem(LS_ID) || "0", 10) || 0;
     var alias = "ls_" + r + "_" + (m === 1 ? "b" : "a");
     att = att || 0;
     var rid = ""; try { rid = (typeof N.getRegistrationID === "function") ? N.getRegistrationID() : ""; } catch (e) {}
     if (!rid && att < 20) { setTimeout(function () { ensureAlias(att + 1); }, 1000); return; }
-    try { N.setAlias(alias); console.log("[JPush] setAlias", alias, "rid=", rid); } catch (e) {}
+    if (!rid) { showPushNote("⚠️ 推送注册超时：请检查网络/通知权限，或重装推送版 APK"); return; }
+    try { N.setAlias(alias); console.log("[JPush] setAlias", alias, "rid=", rid); showPushNote("✅ 推送通道已连接（" + alias + "）"); } catch (e) {}
   }
   function setJPushAlias() { ensureAlias(); }
   function clearJPushAlias() {
