@@ -21,8 +21,9 @@ public class MainActivity extends BridgeActivity {
       getBridge().getWebView().setBackgroundColor(0xFFffa3c0);
     }
     // 初始化极光 JPush（推送长连接 + 厂商通道）。缺 AppKey 时初始化会静默失败，不影响主流程。
+    // 开启 debug 日志：release 包里也能从 logcat 抓到 SDK 的注册错误详情（供 getPushLog 读取）。
     try {
-      JPushInterface.setDebugMode(false);
+      JPushInterface.setDebugMode(true);
       JPushInterface.init(getApplicationContext());
     } catch (Throwable t) {}
     // 给前端网页暴露原生桥，用于设置别名 / 读取通知点击类型
@@ -80,6 +81,36 @@ public class MainActivity extends BridgeActivity {
         JPushInterface.init(ctx);
       } catch (Throwable t) {}
       return getPushDiag();
+    }
+    // 抓取本机 logcat 中极光 SDK 的日志（JIGUANG/JPush/JCore/vivo 相关），
+    // 用于在无法连接电脑调试时，直接在 App 里看到注册失败的底层错误。
+    @JavascriptInterface
+    public String getPushLog() {
+      StringBuilder sb = new StringBuilder();
+      java.io.BufferedReader r = null;
+      try {
+        // -d 导出已有缓冲；-t 800 限制行数；-v time 带时间戳
+        Process p = Runtime.getRuntime().exec(new String[]{
+            "logcat", "-d", "-v", "time", "-t", "2000"});
+        r = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()), 8192);
+        String line;
+        int kept = 0;
+        while ((line = r.readLine()) != null && kept < 120) {
+          if (line.contains("JIGUANG") || line.contains("JPush") || line.contains("JCore")
+              || line.contains("jpush") || line.contains("vivo push") || line.contains("VivoPush")
+              || line.contains("PushMessageReceiver")) {
+            sb.append(line).append('\n');
+            kept++;
+          }
+        }
+        p.destroy();
+      } catch (Throwable t) {
+        sb.append("logcat-ex:").append(t);
+      } finally {
+        try { if (r != null) r.close(); } catch (Throwable ignore) {}
+      }
+      if (sb.length() == 0) return "(无相关日志)";
+      return sb.toString();
     }
     private static String getManifestAppKey(Context ctx) {
       try {

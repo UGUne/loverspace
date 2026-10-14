@@ -1034,7 +1034,40 @@
       d.textContent = msg;
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1014b"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  // 展示极光 SDK 日志：提示条点一下，弹出可滚动的完整日志浮层（便于截图发我定位）
+  function showPushLogUI(diagMsg, log) {
+    try {
+      var full = (log || "(无相关日志)");
+      // 提取与错误/连接相关的最关键几行，先用短提示显示
+      var lines = full.split("\n").filter(function (l) { return l && l.trim().length; });
+      var errLines = lines.filter(function (l) {
+        return /err|fail|exception|timeout|connect|invalid|1005|6001|1008|network|registr/i.test(l);
+      });
+      var short = errLines.length ? errLines.slice(-4).join(" ｜ ") : "（无 err 关键字）" + lines.slice(-3).join(" ｜ ");
+      var d = document.getElementById("pushNote");
+      if (d) {
+        d.style.cursor = "pointer";
+        d.setAttribute("data-log", full);
+        d.onclick = function () { openLogOverlay(diagMsg + "\n\n" + full); };
+        d.textContent = "⚠️[" + PUSH_BUILD + "] 日志：" + short + "（点此处看完整）";
+      }
+    } catch (e) {}
+  }
+  function openLogOverlay(text) {
+    try {
+      var ov = document.getElementById("pushLogOverlay");
+      if (!ov) {
+        ov = document.createElement("div");
+        ov.id = "pushLogOverlay";
+        ov.style.cssText = "position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.85);color:#0f0;font-family:monospace;font-size:11px;overflow:auto;padding:12px;white-space:pre-wrap;word-break:break-all";
+        ov.onclick = function () { ov.style.display = "none"; };
+        (document.body || document.documentElement).appendChild(ov);
+      }
+      ov.textContent = text + "\n\n（点击任意处关闭）";
+      ov.style.display = "block";
+    } catch (e) {}
+  }
+  var PUSH_BUILD = "v1014c"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -1074,6 +1107,10 @@
               + "｜stopped:" + d.stopped;
       } catch (e) { dmsg += "｜diag:" + diag; }
       showPushNote("⚠️[" + PUSH_BUILD + "] " + dmsg + "（查网络/通知权限/重装）");
+      // 拉取本机极光 SDK 日志并展示，点提示条可展开完整日志
+      try {
+        if (typeof N.getPushLog === "function") showPushLogUI(dmsg, N.getPushLog());
+      } catch (e) {}
       return;
     }
     try { N.setAlias(alias); console.log("[JPush] setAlias", alias, "rid=", rid); showPushNote("✅[" + PUSH_BUILD + "] 推送已连接（" + alias + "）"); } catch (e) {}
