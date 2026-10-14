@@ -154,6 +154,9 @@ app.post("/api/push/notify", async function (req, res) {
         android: {
           alert: alert,
           title: "恋人空间",
+          // 高重要性渠道（App 端 MainActivity 以 IMPORTANCE_HIGH 创建）：
+          // 指定后通知以「顶部横幅」形式弹出；极光默认渠道只有 DEFAULT 级，不弹横幅。
+          channel_id: "ls_message",
           extras: { type: type, room: room }
         }
       },

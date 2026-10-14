@@ -8,10 +8,15 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import org.json.JSONObject;
 import cn.jpush.android.api.JPushInterface;
 
 public class MainActivity extends BridgeActivity {
+  // 高重要性通知渠道：极光推送指定该渠道时以「顶部横幅」形式弹出（IMPORTANCE_DEFAULT 只在通知栏躺着）。
+  // 服务端 /api/push/notify 的 notification.android.channel_id 必须与此一致。
+  public static final String CHANNEL_MSG = "ls_message";
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -33,6 +38,9 @@ public class MainActivity extends BridgeActivity {
             .edit().putString("init_ex", String.valueOf(t)).apply();
       } catch (Throwable ignore) {}
     }
+    // 创建「新消息」高重要性渠道：极光默认渠道是 IMPORTANCE_DEFAULT（有声音但不弹顶部横幅），
+    // 这里自建 IMPORTANCE_HIGH 渠道，服务端推送指定 channel_id=ls_message 即可悬浮提醒。
+    ensureMessageChannel();
     // 恢复常驻保活：用户在设置里开启过（prefs 持久化），重启/杀进程后自动恢复
     try {
       if (KeepAliveService.isEnabled(getApplicationContext())) {
@@ -255,6 +263,24 @@ public class MainActivity extends BridgeActivity {
       Class<?> c = Class.forName("cn.jiguang.jcore.JCoreInterface");
       java.lang.reflect.Method m = c.getMethod("init", Context.class);
       m.invoke(null, ctx.getApplicationContext());
+    } catch (Throwable ignore) {}
+  }
+
+  // 创建高重要性「新消息」通知渠道（Android 8.0+）。渠道一旦创建，重要度即固定、
+  // 后续只能由用户在系统设置里改，所以这里一次性建好 IMPORTANCE_HIGH。
+  private void ensureMessageChannel() {
+    try {
+      if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
+      NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+      if (nm == null) return;
+      if (nm.getNotificationChannel(CHANNEL_MSG) != null) return; // 已存在不重复创建
+      NotificationChannel ch = new NotificationChannel(
+          CHANNEL_MSG, "新消息", NotificationManager.IMPORTANCE_HIGH);
+      ch.setDescription("对方发来悄悄话 / 催自拍时提醒");
+      ch.enableLights(true);
+      ch.setLightColor(0xFFFF3B5C);
+      ch.setShowBadge(true);
+      nm.createNotificationChannel(ch);
     } catch (Throwable ignore) {}
   }
 }
