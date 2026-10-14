@@ -42,12 +42,10 @@ public class MainActivity extends BridgeActivity {
   @Override
   public void onResume() {
     super.onResume();
-    // 回到前台：清掉通知栏推送并把桌面角标清零（Vivo 等 ROM 角标不随通知自动消失，
-    // 用户从图标进入 App 时也不会走通知点击回调，这里兜底）。
-    try {
-      JPushInterface.clearAllNotifications(getApplicationContext());
-      JPushInterface.setBadgeNumber(getApplicationContext(), 0);
-    } catch (Throwable t) {}
+    // 回到前台：只把桌面角标清零，不再清通知栏（用户还没读的通知应保留，
+    // 之前在此处 clearAllNotifications 会误删刚到达、尚未查看的通知）。
+    // 已读的通知由 JPushReceiver.onNotifyMessageOpened（用户真正点开时）负责清除。
+    try { JPushInterface.setBadgeNumber(getApplicationContext(), 0); } catch (Throwable t) {}
   }
 
   // 前端通过 window.LoverspaceNative 调用的原生方法（同步，无回调）
@@ -91,6 +89,7 @@ public class MainActivity extends BridgeActivity {
         o.put("myServices", listMyServices(ctx));
         o.put("vivoMeta", getMetaData(ctx, "com.vivo.push.api_key") + "/" + getMetaData(ctx, "com.vivo.push.app_id"));
         o.put("connState", JPushInterface.getConnectionState(ctx));
+        o.put("vivoReg", getVivoRegLine());
         o.put("ts", System.currentTimeMillis());
       } catch (Throwable t) {
         try { o.put("ex", String.valueOf(t)); } catch (Throwable ignore) {}
@@ -179,6 +178,29 @@ public class MainActivity extends BridgeActivity {
       }
       return arr.toString();
     } catch (Throwable t) { return "ex:" + t; }
+  }
+  // 抓取 logcat 中 vivo 通道注册结果行（判断厂商通道是否真正注册成功）
+  private static String getVivoRegLine() {
+    java.io.BufferedReader r = null;
+    try {
+      Process p = Runtime.getRuntime().exec(new String[]{
+          "logcat", "-d", "-v", "time", "-t", "8000"});
+      r = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()), 8192);
+      String line, last = "";
+      while ((line = r.readLine()) != null) {
+        String low = line.toLowerCase();
+        if (low.contains("vivo") && (low.contains("regist") || low.contains("regid")
+            || low.contains("reg_id") || low.contains("callback") || low.contains("code"))) {
+          last = line;
+        }
+      }
+      p.destroy();
+      return last.isEmpty() ? "(未抓到vivo注册日志)" : last;
+    } catch (Throwable t) {
+      return "ex:" + t;
+    } finally {
+      try { if (r != null) r.close(); } catch (Throwable ignore) {}
+    }
   }
   // 读取任意 meta-data 值（用于验证 vivo 密钥是否真正合并进 Manifest）
   private static String getMetaData(Context ctx, String name) {
