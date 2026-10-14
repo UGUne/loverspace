@@ -125,33 +125,6 @@ public class MainActivity extends BridgeActivity {
       if (sb.length() == 0) return "(无相关日志)";
       return sb.toString();
     }
-    // 枚举合并进 APK 的 jiguang/jpush/jcore 相关 Provider（JCore 自动初始化依赖它）。
-    // 若返回空数组 → JCore 的自动初始化 Provider 没合并进来，SDK 就"类都在但不工作"，正是无日志+不注册的根因。
-    private static String listJpushProviders(Context ctx) {
-      try {
-        org.json.JSONArray arr = new org.json.JSONArray();
-        java.util.List<android.content.pm.ProviderInfo> list =
-            ctx.getPackageManager().queryContentProviders(null, 0, 0);
-        if (list != null) {
-          for (android.content.pm.ProviderInfo pi : list) {
-            String n = pi.packageName + "/" + pi.name;
-            String low = n.toLowerCase();
-            if (low.contains("jiguang") || low.contains("jpush") || low.contains("jcore")) {
-              arr.put(n);
-            }
-          }
-        }
-        return arr.toString();
-      } catch (Throwable t) { return "ex:" + t; }
-    }
-    // 反射兜底初始化 JCore（不依赖具体类路径，编译不会挂）。若 JCore 已初始化则为无操作。
-    private static void initJCoreSafely(Context ctx) {
-      try {
-        Class<?> c = Class.forName("cn.jiguang.jcore.JCoreInterface");
-        java.lang.reflect.Method m = c.getMethod("init", Context.class);
-        m.invoke(null, ctx.getApplicationContext());
-      } catch (Throwable ignore) {}
-    }
     private static String getManifestAppKey(Context ctx) {
       try {
         ApplicationInfo ai = ctx.getPackageManager().getApplicationInfo(
@@ -173,5 +146,32 @@ public class MainActivity extends BridgeActivity {
         return t == null ? "" : t;
       } catch (Throwable t) { return ""; }
     }
+  }
+  // 枚举合并进 APK 的 jiguang/jpush/jcore 相关 Provider（JCore 自动初始化依赖它）。
+  // 若返回空数组 → JCore 的自动初始化 Provider 没合并进来，SDK 就"类都在但不工作"，正是无日志+不注册的根因。
+  private static String listJpushProviders(Context ctx) {
+    try {
+      org.json.JSONArray arr = new org.json.JSONArray();
+      java.util.List<android.content.pm.ProviderInfo> list =
+          ctx.getPackageManager().queryContentProviders(null, 0, 0);
+      if (list != null) {
+        for (android.content.pm.ProviderInfo pi : list) {
+          String n = pi.packageName + "/" + pi.name;
+          String low = n.toLowerCase();
+          if (low.contains("jiguang") || low.contains("jpush") || low.contains("jcore")) {
+            arr.put(n);
+          }
+        }
+      }
+      return arr.toString();
+    } catch (Throwable t) { return "ex:" + t; }
+  }
+  // 反射兜底初始化 JCore（不依赖具体类路径，编译不会挂）。若 JCore 已初始化则为无操作。
+  private static void initJCoreSafely(Context ctx) {
+    try {
+      Class<?> c = Class.forName("cn.jiguang.jcore.JCoreInterface");
+      java.lang.reflect.Method m = c.getMethod("init", Context.class);
+      m.invoke(null, ctx.getApplicationContext());
+    } catch (Throwable ignore) {}
   }
 }
