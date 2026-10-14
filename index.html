@@ -814,7 +814,10 @@
     // 旧版扁平 photos 迁移进默认相册
     if (!Array.isArray(data.albums)) data.albums = [];
     if (Array.isArray(data.photos) && data.photos.length) { data.albums.unshift({ id: uid(), name: "我们的日常", photos: data.photos, ts: Date.now() }); data.photos = []; }
-    if (!data.albums.length) data.albums.push({ id: uid(), name: "我们的日常", photos: [], ts: Date.now() });
+    // 不再自动创建空相册（新装/重登不再出现幽灵相册）；同时清理旧版本自动创建的空「我们的日常」
+    data.albums = data.albums.filter(function (a) {
+      return !(a && a.name === "我们的日常" && (!a.photos || a.photos.length === 0));
+    });
     if (!data.tree.tasks) data.tree.tasks = [];
     if (!Array.isArray(data.tree.feed)) data.tree.feed = [0, 0];
     if (!Array.isArray(data.tree.play)) data.tree.play = [0, 0];
@@ -1022,7 +1025,7 @@
     try { if (window.LoverspaceNative) return window.LoverspaceNative; } catch (e) {}
     return null;
   }
-  function showPushNote(msg) {
+  function showPushNote(msg, autoHideMs) {
     try {
       var d = document.getElementById("pushNote");
       if (!d) {
@@ -1032,6 +1035,10 @@
         (document.body || document.documentElement).appendChild(d);
       }
       d.textContent = msg;
+      d.style.display = "";
+      // 传入毫秒数时（如连接成功），到时自动隐藏；否则一直显示
+      try { if (d._hideT) { clearTimeout(d._hideT); d._hideT = null; } } catch (e) {}
+      if (autoHideMs) d._hideT = setTimeout(function () { d.style.display = "none"; }, autoHideMs);
     } catch (e) {}
   }
   // 展示极光 SDK 日志：提示条点一下，弹出可滚动的完整日志浮层（便于截图发我定位）
@@ -1067,7 +1074,7 @@
       ov.style.display = "block";
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1015a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1016a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -1116,7 +1123,7 @@
       } catch (e) {}
       return;
     }
-    try { N.setAlias(alias); console.log("[JPush] setAlias", alias, "rid=", rid); showPushNote("✅[" + PUSH_BUILD + "] 推送已连接（" + alias + "）"); } catch (e) {}
+    try { N.setAlias(alias); console.log("[JPush] setAlias", alias, "rid=", rid); showPushNote("✅[" + PUSH_BUILD + "] 推送已连接（" + alias + "）", 5000); } catch (e) {}
   }
   function setJPushAlias() { ensureAlias(); }
   function clearJPushAlias() {
