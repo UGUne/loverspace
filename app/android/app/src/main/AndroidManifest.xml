@@ -73,6 +73,17 @@
                 <action android:name="cn.jiguang.user.service.action" />
             </intent-filter>
         </service>
+        <!-- 常驻保活（设置页「常驻保活」开关控制）：前台服务 + 低优先级常驻通知。
+             必须跑在 :pushcore 进程——极光长连接（ConnectingHelper/TcpRequestManager）就在这个进程，
+             进程被认定为前台服务后，vivo 划后台/一键清理不再杀它，长连接保持在线，
+             杀后台也能秒收。不依赖厂商通道（未上架应用的 vivo 通道被「测试设备」限制，已确认走不通）。
+             remoteMessaging 类型语义即"与服务器间收发远程消息"，需配套普通权限（安装时自动授予）。 -->
+        <service
+            android:name=".KeepAliveService"
+            android:enabled="true"
+            android:exported="false"
+            android:process=":pushcore"
+            android:foregroundServiceType="remoteMessaging" />
     </application>
 
     <!-- Permissions -->
@@ -81,4 +92,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- 前台服务（常驻保活）：FOREGROUND_SERVICE_REMOTE_MESSAGING 为 Android 14+
+         使用 remoteMessaging 类型 FGS 所需的普通权限，旧系统上自动忽略 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
 </manifest>

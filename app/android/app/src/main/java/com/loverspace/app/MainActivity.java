@@ -33,6 +33,12 @@ public class MainActivity extends BridgeActivity {
             .edit().putString("init_ex", String.valueOf(t)).apply();
       } catch (Throwable ignore) {}
     }
+    // 恢复常驻保活：用户在设置里开启过（prefs 持久化），重启/杀进程后自动恢复
+    try {
+      if (KeepAliveService.isEnabled(getApplicationContext())) {
+        KeepAliveService.start(getApplicationContext());
+      }
+    } catch (Throwable ignore) {}
     // 给前端网页暴露原生桥，用于设置别名 / 读取通知点击类型
     if (getBridge() != null && getBridge().getWebView() != null) {
       getBridge().getWebView().addJavascriptInterface(new LsNative(getApplicationContext()), "LoverspaceNative");
@@ -158,6 +164,16 @@ public class MainActivity extends BridgeActivity {
         if (t != null && !t.isEmpty()) sp.edit().remove("lastPushType").apply();
         return t == null ? "" : t;
       } catch (Throwable t) { return ""; }
+    }
+    // 常驻保活开关（设置页调用）：开启后 :pushcore 进程（极光长连接所在）以前台服务方式常驻，
+    // vivo 划后台/一键清理不再杀它，长连接保持在线，杀后台也能秒收
+    @JavascriptInterface
+    public boolean getKeepAlive() {
+      return KeepAliveService.isEnabled(ctx);
+    }
+    @JavascriptInterface
+    public void setKeepAlive(boolean on) {
+      KeepAliveService.setEnabled(ctx, on);
     }
   }
   // 枚举合并进 APK 的 jiguang/jpush/jcore 相关 Provider（JCore 自动初始化依赖它）。

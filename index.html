@@ -1090,7 +1090,7 @@
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1019a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1019b"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -2837,6 +2837,14 @@
       save(); renderAll(); closeSheet(); toast("已关闭加密，云端改存明文");
     });
   }
+  // 刷新设置页「常驻保活」按钮的文案/颜色（反映原生侧当前开关状态）
+  function refreshKeepAliveBtn() {
+    var b = $("stKeepAlive"); if (!b) return;
+    var N = jpushNative(), on = false;
+    try { if (N && typeof N.getKeepAlive === "function") on = !!N.getKeepAlive(); } catch (e) {}
+    b.textContent = on ? "🔔 常驻保活：已开启（点我关闭）" : "🔔 常驻保活：已关闭（点我开启）";
+    b.style.color = on ? "#3e9e4f" : "";
+  }
   function openSettings() {
     var roomLine = room
       ? '<div class="field"><label>共享空间码（发给另一半一起加入）</label><div style="display:flex;gap:8px"><input type="text" id="roomCode" value="' + room + '" readonly style="text-align:center;letter-spacing:3px;font-weight:700;color:var(--pink-deep)"/><button class="ghost-btn" id="copyRoom" style="margin-top:0;flex:none;width:auto;padding:0 16px">复制</button></div></div>'
@@ -2851,6 +2859,7 @@
       '<button class="ghost-btn" id="stSync" style="border-color:#ffb3c9;color:#e85d8a">🔄 立即同步（把本机数据同步到云端）</button>' +
       '<button class="ghost-btn" id="stDiag" style="margin-top:8px;border-color:#a8d0f5;color:#3a7bd5">🔧 推送诊断（收不到消息时点它）</button>' +
       '<button class="ghost-btn" id="stReinit" style="margin-top:8px;border-color:#a8d0f5;color:#3a7bd5">🔄 重置推送注册（显示未连接时用）</button>' +
+      '<button class="ghost-btn" id="stKeepAlive" style="margin-top:8px;border-color:#bfe3bf;color:#3e9e4f">🔔 常驻保活：检测中…</button>' +
       '<button class="ghost-btn" id="stSplash" style="margin-top:8px">🖼 更换启动图（自定义 DIY）</button>' +
       '<button class="ghost-btn" id="stResetSplash">↺ 恢复默认启动图</button>' +
       '<button class="ghost-btn" id="stLeave" style="border-color:#f0c4d2;color:#d66a92">退出空间 / 切换空间码</button>' +
@@ -2862,7 +2871,8 @@
       '① 设置 → 电池 → 后台耗电管理 → 恋人空间 → 设为「允许后台高耗电」<br/>' +
       '② 设置 → 应用与权限 → 应用管理 → 恋人空间 → 权限 → 自启动 → 允许<br/>' +
       '③ 多任务卡片 → 下拉把本 App 锁定（防误清）<br/>' +
-      '④ 设置 → 通知 → 恋人空间 → 允许通知 / 悬浮通知 / 锁屏通知 全部打开' +
+      '④ 设置 → 通知 → 恋人空间 → 允许通知 / 悬浮通知 / 锁屏通知 全部打开<br/>' +
+      '⑤ 终极方案：下面开「🔔 常驻保活」——App 会以静音前台服务方式常驻（通知栏多一条「消息守护中」），vivo 划后台/一键清理不再杀它，<b>杀后台也能秒收消息</b>。开了自启动还收不到时才需要它' +
       '</div></div>';
     openSheet("设置", html);
     var themeBind = function(cid, attr, getv, setv) {
@@ -2909,6 +2919,18 @@
         setTimeout(function () { ensureAlias(0); }, 3000);
       } catch (e) { toast("重置失败: " + e); }
     });
+    // 常驻保活开关：需要新版 APK（原生桥 setKeepAlive）；旧包点击时提示更新
+    if ($("stKeepAlive")) $("stKeepAlive").addEventListener("click", function () {
+      var N = jpushNative();
+      if (!N || typeof N.setKeepAlive !== "function") { toast("请先更新到最新「推送版」APK 才能用"); return; }
+      var on = false;
+      try { on = !!N.getKeepAlive(); } catch (e) {}
+      on = !on;
+      try { N.setKeepAlive(on); } catch (e) {}
+      refreshKeepAliveBtn();
+      toast(on ? "已开启：通知栏常驻「消息守护中」，划后台也不断线" : "已关闭常驻保活");
+    });
+    refreshKeepAliveBtn();
     if ($("stSplash")) $("stSplash").addEventListener("click", function () {
       closeSheet();
       setTimeout(function () {
