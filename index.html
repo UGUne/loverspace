@@ -1024,15 +1024,20 @@
   }
   function initJPush() {
     var N = jpushNative(); if (!N) return; // 无原生桥 → 仅靠本地通知兜底
-    setTimeout(setJPushAlias, 1500); // 等 SDK 注册完成再设别名
+    ensureAlias(); // 等待 SDK 注册完成后再设别名
   }
-  function setJPushAlias() {
+  // 等 JPush 注册完成（拿到 RegistrationID）再设别名，否则 setAlias 会静默失败；最多重试约 20s
+  function ensureAlias(att) {
     var N = jpushNative(); if (!N) return;
     var r = (localStorage.getItem(LS_ROOM) || "").trim(); if (!r) return;
     var m = parseInt(localStorage.getItem(LS_ID) || "0", 10) || 0;
     var alias = "ls_" + r + "_" + (m === 1 ? "b" : "a");
-    try { N.setAlias(alias); } catch (e) {}
+    att = att || 0;
+    var rid = ""; try { rid = (typeof N.getRegistrationID === "function") ? N.getRegistrationID() : ""; } catch (e) {}
+    if (!rid && att < 20) { setTimeout(function () { ensureAlias(att + 1); }, 1000); return; }
+    try { N.setAlias(alias); console.log("[JPush] setAlias", alias, "rid=", rid); } catch (e) {}
   }
+  function setJPushAlias() { ensureAlias(); }
   function clearJPushAlias() {
     var N = jpushNative(); if (!N) return;
     try { N.clearAlias(); } catch (e) {}
