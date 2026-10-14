@@ -23,8 +23,10 @@ android {
             JPUSH_PKGNAME : "com.loverspace.app",
             JPUSH_APPKEY  : (envJpush != null && !envJpush.isEmpty() ? envJpush : "f10d7d29156782a3bf00899d"),
             JPUSH_CHANNEL : "developer-default",
-            VIVO_APPKEY   : (System.getenv("VIVO_APPKEY") ?: ""),
-            VIVO_APPID    : (System.getenv("VIVO_APPID") ?: "")
+            // Vivo 厂商通道：AppID/AppKey 是客户端公开标识（AppSecret 只留在极光后台，不进 APK）。
+            // 优先 CI Secrets，为空时回退内置字面量，保证 Vivo 插件一定能初始化。
+            VIVO_APPKEY   : (System.getenv("VIVO_APPKEY") ?: "d117ba583b770687b33fccc4b0a98192"),
+            VIVO_APPID    : (System.getenv("VIVO_APPID") ?: "106161110")
         ]
     }
     // Release 签名：由 CI 从 Secrets 注入环境变量（KEYSTORE_FILE / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD）
