@@ -1045,7 +1045,11 @@
     var m = parseInt(localStorage.getItem(LS_ID) || "0", 10) || 0;
     var alias = "ls_" + r + "_" + (m === 1 ? "b" : "a");
     att = att || 0;
-    var rid = ""; try { rid = (typeof N.getRegistrationID === "function") ? N.getRegistrationID() : ""; } catch (e) {}
+    var rid = ""; try {
+      // 原生桥方法名为 getRegId（见 MainActivity.LsNative）；兼容旧写法 getRegistrationID
+      if (typeof N.getRegId === "function") rid = N.getRegId();
+      else if (typeof N.getRegistrationID === "function") rid = N.getRegistrationID();
+    } catch (e) {}
     if (!rid && att < 20) { setTimeout(function () { ensureAlias(att + 1); }, 1000); return; }
     if (!rid) { showPushNote("⚠️ 推送注册超时：请检查网络/通知权限，或重装推送版 APK"); return; }
     try { N.setAlias(alias); console.log("[JPush] setAlias", alias, "rid=", rid); showPushNote("✅ 推送通道已连接（" + alias + "）"); } catch (e) {}
