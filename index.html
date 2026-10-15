@@ -433,7 +433,9 @@
   .tp-stage-name { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 20; background: rgba(255,255,255,.5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius: 16px; padding: 5px 14px; font-size: 12px; font-weight: 700; color: var(--pink-deep); box-shadow: 0 2px 10px rgba(0,0,0,.1); white-space: nowrap; }
   body.dark .tp-close, body.dark .tp-stage-name { background: rgba(40,32,48,.45); color: #fff; }
   /* 悬浮操作：浇水 + 展开更多 */
-  .tp-fabs { position: absolute; right: 14px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 22; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+  .tp-fabs { position: absolute; right: 14px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 27; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+  .tp-mask { position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 25; background: rgba(20,16,40,.32); opacity: 0; pointer-events: none; transition: opacity .3s; }
+  .tp-mask.open { opacity: 1; pointer-events: auto; }
   .tp-fab { border: none; border-radius: 22px; padding: 11px 16px; font-size: 13px; font-weight: 700; color: #fff; cursor: pointer; background: linear-gradient(135deg,#8fd3a8,#3fae6e); box-shadow: 0 6px 16px rgba(63,174,110,.34); display: flex; align-items: center; gap: 6px; }
   .tp-fab.ghost { background: rgba(255,255,255,.62); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: var(--ink-1); box-shadow: 0 6px 16px rgba(0,0,0,.16); }
   body.dark .tp-fab.ghost { background: rgba(48,40,56,.6); color: #fff; }
@@ -1110,41 +1112,6 @@
     try { if (window.LoverspaceNative) return window.LoverspaceNative; } catch (e) {}
     return null;
   }
-  function showPushNote(msg, autoHideMs) {
-    try {
-      var d = document.getElementById("pushNote");
-      if (!d) {
-        d = document.createElement("div");
-        d.id = "pushNote";
-        d.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:9999;background:#ff5252;color:#fff;font-size:12px;line-height:1.4;padding:8px 10px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.3)";
-        (document.body || document.documentElement).appendChild(d);
-      }
-      d.textContent = msg;
-      d.style.display = "";
-      // 传入毫秒数时（如连接成功），到时自动隐藏；否则一直显示
-      try { if (d._hideT) { clearTimeout(d._hideT); d._hideT = null; } } catch (e) {}
-      if (autoHideMs) d._hideT = setTimeout(function () { d.style.display = "none"; }, autoHideMs);
-    } catch (e) {}
-  }
-  // 展示极光 SDK 日志：提示条点一下，弹出可滚动的完整日志浮层（便于截图发我定位）
-  function showPushLogUI(diagMsg, log) {
-    try {
-      var full = (log || "(无相关日志)");
-      // 提取与错误/连接相关的最关键几行，先用短提示显示
-      var lines = full.split("\n").filter(function (l) { return l && l.trim().length; });
-      var errLines = lines.filter(function (l) {
-        return /err|fail|exception|timeout|connect|invalid|1005|6001|1008|network|registr/i.test(l);
-      });
-      var short = errLines.length ? errLines.slice(-4).join(" ｜ ") : "（无 err 关键字）" + lines.slice(-3).join(" ｜ ");
-      var d = document.getElementById("pushNote");
-      if (d) {
-        d.style.cursor = "pointer";
-        d.setAttribute("data-log", full);
-        d.onclick = function () { openLogOverlay(diagMsg + "\n\n" + full); };
-        d.textContent = "⚠️[" + PUSH_BUILD + "] 日志：" + short + "（点此处看完整）";
-      }
-    } catch (e) {}
-  }
   function openLogOverlay(text) {
     try {
       var ov = document.getElementById("pushLogOverlay");
@@ -1171,7 +1138,7 @@
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1024a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1025a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -1195,7 +1162,7 @@
         PUSH_REINITED = true;
         try { if (typeof N.reinitPush === "function") N.reinitPush(); } catch (e) {}
       }
-      if (att % 15 === 0) showPushNote("⏳[" + PUSH_BUILD + "] 推送注册中…(" + att + "s) 桥✅" + (att >= 120 ? "·已重置" : ""));
+      if (att % 15 === 0) console.log("[JPush] 注册中…", att + "s"); // 后台过程不打扰用户，失败时会有toast提示
       setTimeout(function () { ensureAlias(att + 1); }, 1000); return;
     }
     if (!rid) {
@@ -1216,14 +1183,10 @@
               + "｜conn:" + (d.connState || "?")
               + "｜vivoReg:" + (d.vivoReg || "?");
       } catch (e) { dmsg += "｜diag:" + diag; }
-      showPushNote("⚠️[" + PUSH_BUILD + "] " + dmsg + "（查网络/通知权限/重装）");
-      // 拉取本机极光 SDK 日志并展示，点提示条可展开完整日志
-      try {
-        if (typeof N.getPushLog === "function") showPushLogUI(dmsg, N.getPushLog());
-      } catch (e) {}
+      toast("⚠️ 推送未连接（" + dmsg + "），可去设置里点「推送诊断」查看原因");
       return;
     }
-    try { N.setAlias(alias); console.log("[JPush] setAlias", alias, "rid=", rid); showPushNote("✅[" + PUSH_BUILD + "] 推送已连接（" + alias + "）", 5000); } catch (e) {}
+    try { N.setAlias(alias); console.log("[JPush] setAlias", alias, "rid=", rid); toast("✅ 推送已连接"); } catch (e) {}
   }
   function setJPushAlias() { ensureAlias(); }
   function clearJPushAlias() {
@@ -2773,6 +2736,8 @@
     tpPanelOpen = true;
     var p = $("tpPanel");
     if (p) p.classList.add("open");
+    var mk = $("tpMask");
+    if (mk) mk.classList.add("open");
     var m = $("tpMore");
     if (m) m.textContent = "✕ 收起";
     history.pushState({ app: 1 }, "");
@@ -2781,6 +2746,8 @@
     tpPanelOpen = false;
     var p = $("tpPanel");
     if (p) p.classList.remove("open");
+    var mk = $("tpMask");
+    if (mk) mk.classList.remove("open");
     var m = $("tpMore");
     if (m) m.textContent = "☰ 更多";
   }
@@ -2828,6 +2795,7 @@
       '<button class="tp-fab" id="actWater">💧 ' + actLabel("water") + "</button>" +
       '<button class="tp-fab ghost" id="tpMore">' + (tpPanelOpen ? "✕ 收起" : "☰ 更多") + "</button>" +
       "</div>" +
+      '<div class="tp-mask' + (tpPanelOpen ? " open" : "") + '" id="tpMask"></div>' +
       '<div class="tp-panel' + (tpPanelOpen ? " open" : "") + '" id="tpPanel">' + panel + "</div>";
     $("treePage").innerHTML = html;
     $("tpClose").addEventListener("click", function () { history.back(); });
@@ -2837,6 +2805,7 @@
       else openTreePanel();
     });
     $("tpGrab").addEventListener("click", function () { if (tpPanelOpen) history.back(); });
+    $("tpMask").addEventListener("click", function () { if (tpPanelOpen) history.back(); });
     var bw = $("actWish");
     if (bw && !bw.disabled) bw.addEventListener("click", openWishSheet);
     var bp = $("actPhoto");
@@ -3386,7 +3355,7 @@
       try {
         if (typeof N.reinitPush === "function") N.reinitPush();
         PUSH_REINITED = true;
-        showPushNote("⏳[" + PUSH_BUILD + "] 已重置推送，正在重新注册…");
+        toast("已重置推送，正在重新注册…");
         setTimeout(function () { ensureAlias(0); }, 3000);
       } catch (e) { toast("重置失败: " + e); }
     });
@@ -3730,21 +3699,37 @@
   // ===== 硬件返回键（Capacitor App 插件）：完全接管，不再依赖 WebView 默认行为 =====
   // 默认行为是「能退历史就退、不能退就退出 App」——守卫历史一旦没生效就会一键退 App。
   // 注册监听后由这里全权决定：有层先逐层关闭；根界面双击退出；并始终压一层守卫历史兜底。
-  (function () {
-    var C = window.Capacitor;
-    if (!C || !C.Plugins || !C.Plugins.App || !C.Plugins.App.addListener) return;
+  // 注意：真机上原生桥（window.Capacitor 及其 Plugins）就绪晚于本页面脚本执行，
+  // 必须等桥就绪后再注册，否则监听永远注册不上（一按返回就退 App）。
+  function onHardBack() {
+    suppressPopUntil = Date.now() + 600; // 抵消 WebView 默认行为可能补发的 popstate，防止同一次按键被处理两遍
+    if (backPress()) return;
+    var now = Date.now();
+    if (now - lastBack < 2000) {
+      lastBack = 0;
+      try { window.Capacitor.Plugins.App.exitApp(); } catch (e) {}
+      return;
+    }
+    lastBack = now;
+    toast("再按一次退出");
+    try { history.pushState({ app: 1 }, ""); } catch (e) {} // 兜底：保证 WebView 永远有历史可退
+  }
+  function initCapBackButton() {
     try {
-      C.Plugins.App.addListener("backButton", function () {
-        suppressPopUntil = Date.now() + 600; // 抵消 WebView 默认行为可能补发的 popstate，防止同一次按键被处理两遍
-        if (backPress()) return;
-        var now = Date.now();
-        if (now - lastBack < 2000) { lastBack = 0; try { C.Plugins.App.exitApp(); } catch (e) {} return; }
-        lastBack = now;
-        toast("再按一次退出");
-        try { history.pushState({ app: 1 }, ""); } catch (e) {} // 兜底：保证 WebView 永远有历史可退
-      });
-    } catch (e) {}
-  })();
+      var C = window.Capacitor;
+      if (!C || !C.Plugins || !C.Plugins.App || typeof C.Plugins.App.addListener !== "function") return false;
+      C.Plugins.App.addListener("backButton", onHardBack);
+      return true;
+    } catch (e) { return false; }
+  }
+  if (!initCapBackButton()) {
+    // 桥还没就绪：轮询等待（100ms 一次，最多 10s）；deviceready 后再兜底试一次
+    var backBtnTry = 0;
+    var backBtnTimer = setInterval(function () {
+      if (initCapBackButton() || ++backBtnTry >= 100) clearInterval(backBtnTimer);
+    }, 100);
+    document.addEventListener("deviceready", function () { initCapBackButton(); }, false);
+  }
   // 启动时为根界面加一道“守卫”历史，保证返回键可被拦截（不会被直接关站）
   history.pushState({ app: 1 }, "");
 
