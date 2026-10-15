@@ -1138,7 +1138,7 @@
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1025a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1026a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -3302,6 +3302,7 @@
       '<button class="primary-btn" id="stSave">保存</button>' +
       '<button class="ghost-btn" id="stSync" style="border-color:#ffb3c9;color:#e85d8a">🔄 立即同步（把本机数据同步到云端）</button>' +
       '<button class="ghost-btn" id="stDiag" style="margin-top:8px;border-color:#a8d0f5;color:#3a7bd5">🔧 推送诊断（收不到消息时点它）</button>' +
+      '<button class="ghost-btn" id="stBackDiag" style="margin-top:8px;border-color:#a8d0f5;color:#3a7bd5">⌨️ 返回键诊断（返回键失灵时点它）</button>' +
       '<button class="ghost-btn" id="stReinit" style="margin-top:8px;border-color:#a8d0f5;color:#3a7bd5">🔄 重置推送注册（显示未连接时用）</button>' +
       '<button class="ghost-btn" id="stLeave" style="border-color:#f0c4d2;color:#d66a92">退出空间 / 切换空间码</button>' +
       '<button class="ghost-btn" id="stClear" style="border-color:#f0c4d2;color:#d66a92">清空全部数据（慎点）</button>' +
@@ -3346,6 +3347,20 @@
       try { parts.push("--- diag ---\n" + N.getPushDiag()); } catch (e) { parts.push("getPushDiag 异常: " + e); }
       try { if (typeof N.getRegId === "function") parts.push("--- regId ---\n" + (N.getRegId() || "(空)")); } catch (e) {}
       try { if (typeof N.getPushLog === "function") parts.push("--- log ---\n" + N.getPushLog()); } catch (e) { parts.push("getPushLog 异常: " + e); }
+      openLogOverlay(parts.join("\n"));
+    });
+    // 返回键诊断：一眼看出「插件没装 / 桥没就绪 / 监听没注册」哪种情况
+    if ($("stBackDiag")) $("stBackDiag").addEventListener("click", function () {
+      var d = window.__backDiag || {};
+      var parts = [];
+      parts.push("=== 返回键诊断 [" + PUSH_BUILD + "] " + new Date().toLocaleString() + " ===");
+      parts.push("window.Capacitor: " + (d.cap ? "✅ 存在" : "❌ 不存在（非App环境或桥未注入）"));
+      parts.push("Capacitor.Plugins.App: " + (d.appPlugin ? "✅ 存在（@capacitor/app 已装）" : "❌ 不存在（APK缺@capacitor/app插件，需重装新版APK）"));
+      parts.push("backButton监听: " + (d.registered ? "✅ 已注册（路径:" + (d.path || "?") + "）" : "❌ 未注册（路径:" + (d.path || "?") + "）"));
+      parts.push("轮询次数: " + (d.tries || 0) + "｜注册耗时: " + (d.at ? (Date.now() - d.at) + "ms" : "?"));
+      if (d.ex) parts.push("注册异常: " + d.ex);
+      parts.push("history.length: " + (history.length || 0));
+      parts.push("UA: " + navigator.userAgent);
       openLogOverlay(parts.join("\n"));
     });
     // 重置推送注册：重新走隐私授权 + init，用于「未连接」时自救
@@ -3714,21 +3729,34 @@
     toast("再按一次退出");
     try { history.pushState({ app: 1 }, ""); } catch (e) {} // 兜底：保证 WebView 永远有历史可退
   }
+  // 诊断打点：真机上返回键失灵时，设置页「返回键诊断」按钮读取这里定位原因
+  var backDiag = { cap: false, appPlugin: false, registered: false, path: "none", tries: 0, at: Date.now() };
+  window.__backDiag = backDiag;
   function initCapBackButton() {
     try {
       var C = window.Capacitor;
+      backDiag.cap = !!C;
+      backDiag.appPlugin = !!(C && C.Plugins && C.Plugins.App);
       if (!C || !C.Plugins || !C.Plugins.App || typeof C.Plugins.App.addListener !== "function") return false;
       C.Plugins.App.addListener("backButton", onHardBack);
+      backDiag.registered = true;
       return true;
-    } catch (e) { return false; }
+    } catch (e) { backDiag.ex = String(e); return false; }
   }
-  if (!initCapBackButton()) {
+  if (initCapBackButton()) {
+    backDiag.path = "immediate-ok"; // 页面脚本执行时桥就已就绪（少见）
+  } else {
     // 桥还没就绪：轮询等待（100ms 一次，最多 10s）；deviceready 后再兜底试一次
+    backDiag.path = "polling";
     var backBtnTry = 0;
     var backBtnTimer = setInterval(function () {
-      if (initCapBackButton() || ++backBtnTry >= 100) clearInterval(backBtnTimer);
+      backDiag.tries = ++backBtnTry;
+      if (initCapBackButton()) { backDiag.path = "poll-ok"; clearInterval(backBtnTimer); }
+      else if (backBtnTry >= 100) { backDiag.path = "poll-timeout"; clearInterval(backBtnTimer); }
     }, 100);
-    document.addEventListener("deviceready", function () { initCapBackButton(); }, false);
+    document.addEventListener("deviceready", function () {
+      if (initCapBackButton() && backDiag.path !== "poll-ok") backDiag.path = "deviceready-ok";
+    }, false);
   }
   // 启动时为根界面加一道“守卫”历史，保证返回键可被拦截（不会被直接关站）
   history.pushState({ app: 1 }, "");
