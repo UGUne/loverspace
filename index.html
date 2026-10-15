@@ -1141,7 +1141,7 @@
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1027a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1028a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -1421,7 +1421,7 @@
     var delSelfie = mergeDel(local._deleted && local._deleted.selfies, remote._deleted && remote._deleted.selfies);
     var delAlb = mergeDel(local._deleted && local._deleted.albums, remote._deleted && remote._deleted.albums);
     res.anniversaries = mergeArr(local.anniversaries, remote.anniversaries, delAnni);
-    res.messages = mergeArr(local.messages, remote.messages, delMes);
+    res.messages = mergeArr(local.messages, remote.messages, delMes).sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); }); // 按时间正序（旧在上新在下，合并后兜底修正顺序）
     res.moods = mergeArr(local.moods, remote.moods, delMood);
     res.photos = mergeArr(local.photos, remote.photos, delPhoto);
     res.selfies = mergeArr(local.selfies, remote.selfies, delSelfie);
@@ -1506,6 +1506,7 @@
     return res;
   }
   // 相册合并：按 id 并集，被删相册排除；相册内照片按 id 并集再剔除删除墓碑
+  // 合并后统一按上传时间倒序（后上传的显示在前面）；手动排序过的相册保留手动顺序不重排
   function mergeAlbums(la, ra, delAlb, delPhoto) {
     var ids = {}, i;
     (la || []).forEach(function (a) { ids[a.id] = 1; });
@@ -1517,7 +1518,9 @@
       var r = (ra || []).find(function (a) { return a.id === k; });
       var base = l || r;
       var photos = mergeArr(l ? l.photos : [], r ? r.photos : [], delPhoto);
-      out.push({ id: k, name: (l && l.name) || (r && r.name) || "相册", photos: photos, ts: Math.max(l ? l.ts || 0 : 0, r ? r.ts || 0 : 0) });
+      var manual = (l && l.manual) || (r && r.manual);
+      if (!manual) photos.sort(function (x, y) { return (y.ts || 0) - (x.ts || 0); }); // 后上传的排前面
+      out.push({ id: k, name: (l && l.name) || (r && r.name) || "相册", photos: photos, ts: Math.max(l ? l.ts || 0 : 0, r ? r.ts || 0 : 0), manual: manual || undefined });
     }
     out.sort(function (a, b) { return b.ts - a.ts; });
     return out;
@@ -2126,8 +2129,14 @@
   }
   function albumCover(a) {
     if (!a.photos || !a.photos.length) return "";
-    var cover = a.cover ? a.photos.find(function (x) { return x.id === a.cover; }) : a.photos[0];
-    if (!cover) cover = a.photos[0];
+    var cover = a.cover ? a.photos.find(function (x) { return x.id === a.cover; }) : null;
+    if (!cover) {
+      if (a.manual) cover = a.photos[0]; // 手动排序：封面 = 手动排的第一张
+      else { // 默认：封面 = 最新上传的一张（与网格「后上传在前」一致）
+        cover = a.photos[0];
+        for (var ci = 1; ci < a.photos.length; ci++) { if ((a.photos[ci].ts || 0) > (cover.ts || 0)) cover = a.photos[ci]; }
+      }
+    }
     return cover ? (cover.thumb || cover.src) : "";
   }
   function renderAlbum() {
@@ -2161,8 +2170,11 @@
       $("albumManageBar").style.display = (albumMode === "select") ? "flex" : "none";
       title.innerHTML = '<svg class="ic t-ic"><use href="#i-photo"/></svg>' + esc(al.name);
       var selMode = albumMode === "select", sortMode = albumMode === "sort";
+      // 后上传的显示在前面：非手动排序的相册按上传时间倒序渲染（兜底修正历史乱序数据与同步合并顺序）
+      var photos = al.photos || [];
+      if (!sortMode && !al.manual) photos = photos.slice().sort(function (x, y) { return (y.ts || 0) - (x.ts || 0); });
       g.innerHTML = '<button class="photo-add" id="photoAddBtn">' + icon("plus") + "<span>添加照片</span></button>" +
-        (al.photos || []).map(function (p, i) {
+        photos.map(function (p, i) {
           var on = albumSel[p.id] ? " sel" : "";
           var badge = selMode ? '<div class="ph-sel' + (albumSel[p.id] ? " on" : "") + '">' + (albumSel[p.id] ? icon("check") : "") + "</div>" : "";
           var rank = sortMode ? '<div class="ph-rank">' + (i + 1) + "</div>" : "";
@@ -2191,9 +2203,9 @@
     return Object.keys(seen).length;
   }
   function selfieFor(date, who) {
-    var list = data.selfies || [];
-    for (var i = 0; i < list.length; i++) if (list[i].date === date && list[i].who === who) return list[i];
-    return null;
+    var list = data.selfies || [], best = null;
+    for (var i = 0; i < list.length; i++) { var s = list[i]; if (s.date === date && s.who === who && (!best || (s.ts || 0) >= (best.ts || 0))) best = s; } // 同一天多张时取最新上传的
+    return best;
   }
   function sfCard(s, cls, date, isMine) {
     var today = todayStr();
@@ -2894,7 +2906,7 @@
       var sa = curAlbum(); var arr = sa.photos || [];
       var i = arr.findIndex(function (p) { return p.id === sortSrc; });
       var j = arr.findIndex(function (p) { return p.id === id; });
-      if (i >= 0 && j >= 0) { var t = arr[i]; arr[i] = arr[j]; arr[j] = t; sortSrc = null; save(); renderAlbum(); }
+      if (i >= 0 && j >= 0) { var t = arr[i]; arr[i] = arr[j]; arr[j] = t; sortSrc = null; sa.manual = 1; save(); renderAlbum(); }
       return;
     }
     var f = findPhoto(id); if (f) { viewerAlbumId = f.album.id; openViewer(f.photo); }
@@ -2925,7 +2937,7 @@
     var sa = curAlbum(); var arr = sa.photos || [];
     var i = arr.findIndex(function (p) { return p.id === dragId; });
     var j = arr.findIndex(function (p) { return p.id === target; });
-    if (i >= 0 && j >= 0 && i !== j) { var t = arr.splice(i, 1)[0]; arr.splice(j, 0, t); save(); renderAlbum(); }
+    if (i >= 0 && j >= 0 && i !== j) { var t = arr.splice(i, 1)[0]; arr.splice(j, 0, t); sa.manual = 1; save(); renderAlbum(); }
     dragId = null;
   });
   $("photoGrid").addEventListener("dragend", function (e) {
