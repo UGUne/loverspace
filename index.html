@@ -417,28 +417,35 @@
     40% { transform: rotate(-5deg); } 54% { transform: rotate(4deg); } 68% { transform: rotate(-2.5deg); }
     82% { transform: rotate(1.5deg); } 100% { transform: rotate(0); }
   }
-  /* 恋爱树独立全屏页 */
-  .treepage { position: fixed; inset: 0; background: #fff6f9; z-index: 110; display: none; flex-direction: column; }
+  /* 恋爱树独立全屏页（沉浸式：树与天空铺满整屏） */
+  .treepage { position: fixed; inset: 0; z-index: 110; display: none; flex-direction: column; overflow: hidden; }
   .treepage.open { display: flex; }
-  body.dark .treepage { background: #241d29; }
-  .tp-head { flex: none; display: flex; align-items: center; justify-content: space-between; padding: calc(12px + env(safe-area-inset-top)) 16px 10px; }
-  .tp-head h3 { font-size: 17px; font-weight: 800; }
-  .tp-close { width: 36px; height: 36px; border: none; border-radius: 50%; background: rgba(0,0,0,.05); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink-1); }
-  body.dark .tp-close { background: rgba(255,255,255,.08); }
-  .tp-body { flex: 1; overflow-y: auto; padding: 4px 16px calc(28px + env(safe-area-inset-bottom)); }
-  .dog-bar { display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg,#fff,#fff4f8); border: 1.5px solid #ffd6e3; border-radius: 14px; padding: 10px 14px; margin: 12px 0 0; font-size: 13px; color: var(--ink-1); }
-  body.dark .dog-bar { background: linear-gradient(135deg,#332a3c,#3a2f42); border-color: #4a3d52; }
-  .dog-bar b { color: var(--pink-deep); font-size: 16px; }
-  .dog-bar .dog-hint { font-size: 11px; color: var(--ink-2); margin-left: auto; }
-  /* 小狗（树场景内 SVG） */
-  .t-dog { animation: dogIdle 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; cursor: pointer; }
-  @keyframes dogIdle { 0%,100% { transform: translateY(0) scale(1,1); } 50% { transform: translateY(-1px) scale(1.012,.988); } }
-  .t-dog-tail { animation: dogTail 1.1s ease-in-out infinite; transform-box: fill-box; transform-origin: left center; }
-  @keyframes dogTail { 0%,100% { transform: rotate(-15deg); } 50% { transform: rotate(17deg); } }
-  [data-dog].dog-hop { animation: dogHop .5s cubic-bezier(.36,.07,.19,.97); }
-  @keyframes dogHop { 0% { transform: translateY(0); } 30% { transform: translateY(-9px) scale(1.05,.95); } 60% { transform: translateY(0) scale(.97,1.03); } 100% { transform: translateY(0); } }
-  .dog-heart { position: fixed; pointer-events: none; z-index: 99999; color: #ff5b8f; font-size: 15px; transform: translate(-50%,-50%); animation: heartUp 1.1s ease-out forwards; filter: drop-shadow(0 1px 2px rgba(0,0,0,.15)); }
-  @keyframes heartUp { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.5); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%,-46px) scale(1.15); } }
+  .tp-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+  /* 夜晚/深色模式：整屏罩一层暮色（连天空一起压暗，更沉浸） */
+  .tp-stage::after { content: ""; position: absolute; inset: 0; background: #101828; opacity: 0; pointer-events: none; transition: opacity .45s ease; z-index: 12; }
+  .tp-stage.night::after { opacity: .22; }
+  body.dark .tp-stage::after { opacity: .3; }
+  body.dark .tp-stage.night::after { opacity: .34; }
+  /* 场景正方形贴屏幕底部、铺满屏宽：SVG 不画天空，由 .tp-stage 的渐变承担，视觉无缝铺满 */
+  #treePage .tree-scene { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; aspect-ratio: 1 / 1; border-radius: 0; background: transparent; box-shadow: none; overflow: visible; }
+  #treePage .tree-scene svg { width: 100%; height: 100%; }
+  .tp-close { position: absolute; top: calc(10px + env(safe-area-inset-top)); left: 14px; z-index: 20; width: 36px; height: 36px; border: none; border-radius: 50%; background: rgba(255,255,255,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink-1); box-shadow: 0 2px 10px rgba(0,0,0,.14); }
+  .tp-stage-name { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 20; background: rgba(255,255,255,.5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius: 16px; padding: 5px 14px; font-size: 12px; font-weight: 700; color: var(--pink-deep); box-shadow: 0 2px 10px rgba(0,0,0,.1); white-space: nowrap; }
+  body.dark .tp-close, body.dark .tp-stage-name { background: rgba(40,32,48,.45); color: #fff; }
+  /* 悬浮操作：浇水 + 展开更多 */
+  .tp-fabs { position: absolute; right: 14px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 22; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+  .tp-fab { border: none; border-radius: 22px; padding: 11px 16px; font-size: 13px; font-weight: 700; color: #fff; cursor: pointer; background: linear-gradient(135deg,#8fd3a8,#3fae6e); box-shadow: 0 6px 16px rgba(63,174,110,.34); display: flex; align-items: center; gap: 6px; }
+  .tp-fab.ghost { background: rgba(255,255,255,.62); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: var(--ink-1); box-shadow: 0 6px 16px rgba(0,0,0,.16); }
+  body.dark .tp-fab.ghost { background: rgba(48,40,56,.6); color: #fff; }
+  .tp-fab:disabled { opacity: .55; }
+  /* 底部滑出面板：阶段/成长/果实/挂件/每日任务 */
+  .tp-panel { position: absolute; left: 0; right: 0; bottom: 0; z-index: 26; max-height: 76vh; overflow-y: auto; -webkit-overflow-scrolling: touch; background: rgba(255,255,255,.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 20px 20px 0 0; padding: 8px 16px calc(24px + env(safe-area-inset-bottom)); box-shadow: 0 -10px 30px rgba(0,0,0,.2); transform: translateY(101%); transition: transform .3s cubic-bezier(.22,.68,.36,1); }
+  .tp-panel.open { transform: translateY(0); }
+  body.dark .tp-panel { background: rgba(36,29,41,.96); }
+  .tp-grab { width: 42px; height: 4px; border-radius: 3px; background: rgba(0,0,0,.16); margin: 2px auto 10px; }
+  body.dark .tp-grab { background: rgba(255,255,255,.22); }
+  /* 树页打开时状态栏透明，让天空透上来 */
+  body.tp-open .app-statusbar { background: transparent; box-shadow: none; text-shadow: 0 1px 3px rgba(0,0,0,.4); }
   /* 点击树：飘落小叶片（与背景落叶同款，冬季为雪花） */
   .leaf-pop { position: fixed; pointer-events: none; z-index: 99999; transform: translate(-50%,-50%); animation: leafPop 1.3s ease-in forwards; filter: drop-shadow(0 1px 2px rgba(0,0,0,.1)); }
   @keyframes leafPop {
@@ -837,7 +844,7 @@
     anniversaries: [],
     messages: [],
     moods: [],
-    tree: { growth: 0, lastWater: [0, 0], tasks: [], feed: [0, 0], play: [0, 0], daily: { date: "", acts: { water: [0, 0], feed: [0, 0], play: [0, 0] }, claimed: {} }, pet: { name: "小甜", hunger: 100, mood: 100, lastFed: 0, lastPlay: 0, lvl: 1, cared: 0 }, fruits: { count: 0, lastDate: "", milestones: [] }, cards: [], hungPhoto: [null, null], dog: { pats: 0 } },
+    tree: { growth: 0, lastWater: [0, 0], tasks: [], feed: [0, 0], play: [0, 0], daily: { date: "", acts: { water: [0, 0], feed: [0, 0], play: [0, 0] }, claimed: {} }, pet: { name: "小甜", hunger: 100, mood: 100, lastFed: 0, lastPlay: 0, lvl: 1, cared: 0 }, fruits: { count: 0, lastDate: "", milestones: [] }, cards: [], hungPhoto: [null, null] },
     albums: [],
     photos: [],
     selfies: [],
@@ -888,8 +895,6 @@
     data.tree.cards.forEach(function (c) { if (c && typeof c === "object") { if (typeof c.text !== "string") c.text = ""; if (typeof c.who !== "number") c.who = 0; } });
     data.tree.cards = data.tree.cards.filter(function (c) { return c && typeof c === "object" && c.id; });
     // 树下小狗（点击互动计数，双人同步）
-    if (!data.tree.dog || typeof data.tree.dog !== "object") data.tree.dog = { pats: 0 };
-    if (typeof data.tree.dog.pats !== "number") data.tree.dog.pats = 0;
     if (!data.theme || typeof data.theme !== "object") data.theme = { color: "#ff7ba9", dark: false, font: "default" };
     if (!data.theme.color) data.theme.color = "#ff7ba9";
     if (typeof data.theme.dark !== "boolean") data.theme.dark = false;
@@ -1151,7 +1156,7 @@
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1022a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1023a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -1490,10 +1495,6 @@
         (remote.tree.hungPhoto && remote.tree.hungPhoto[0]) || (local.tree.hungPhoto && local.tree.hungPhoto[0]) || null,
         (remote.tree.hungPhoto && remote.tree.hungPhoto[1]) || (local.tree.hungPhoto && local.tree.hungPhoto[1]) || null
       ],
-      dog: (function () {
-        var ld = local.tree.dog || { pats: 0 }, rd = remote.tree.dog || { pats: 0 };
-        return { pats: Math.max(ld.pats || 0, rd.pats || 0) };
-      })(),
       daily: (function () {
         function blank() { return { date: "", acts: { water: [0, 0], feed: [0, 0], play: [0, 0] }, claimed: {} }; }
         var ld = local.tree.daily || blank(), rd = remote.tree.daily || blank();
@@ -1748,6 +1749,14 @@
     if (h >= 17 && h < 19) return "dusk";
     return "night";
   }
+  // 天空配色（季节为底，昼夜相位覆盖）：沉浸页用同一套色铺满整屏，保证 SVG 内外无缝
+  function treeSky(season, phase) {
+    var S = { spring: ["#c9ecff", "#f2fbe8"], summer: ["#a5dcff", "#e6f7ff"], autumn: ["#ffe3b8", "#fff6e6"], winter: ["#dcecf5", "#f6fbff"] }[season];
+    if (phase === "dawn") return ["#ffd9c0", "#fff0dc"];
+    if (phase === "dusk") return ["#ffb27d", "#9a86b8"];
+    if (phase === "night") return ["#141e33", "#2e3f63"];
+    return S;
+  }
   // 七夕（农历七月初七）公历对照表：数据来源 chinesecalendaronline / MoonCal（两家一致）
   var QIXI_DATES = { 2026: "08-19", 2027: "08-08", 2028: "08-26", 2029: "08-16", 2030: "08-05", 2031: "08-24", 2032: "08-12", 2033: "08-01", 2034: "08-20", 2035: "08-10" };
   function treeFestival() {
@@ -1801,19 +1810,15 @@
       " C" + (cx - s * 1.2) + " " + (cy + s * 0.1) + " " + (cx - s * 0.9) + " " + (cy - s * 0.8) + " " + cx + " " + (cy - s * 0.25) +
       " C" + (cx + s * 0.9) + " " + (cy - s * 0.8) + " " + (cx + s * 1.2) + " " + (cy + s * 0.1) + " " + cx + " " + (cy + s * 0.9) + " Z";
   }
-  function treeSVG(size, noDog) {
+  // noSky：沉浸式全屏页用（天空由容器 CSS 渐变铺满整屏，SVG 不再画天空矩形与夜色罩层）
+  function treeSVG(size, opt) {
     var st = treeStage(), i = st.idx;
     var s = (size || 160);
     var season = treeSeason();
     var fest = treeFestival();
     var phase = dayPhase(); // dawn 清晨 / day 白天 / dusk 黄昏 / night 夜晚
     var gid = "tg" + (++_tgUid); // 渐变 id 唯一化：避免首页小树与树页面大树同时存在时冲突串色
-    // 季节配色：树冠（上→下）/ 树干
-    var SKY = { spring: ["#c9ecff", "#f2fbe8"], summer: ["#a5dcff", "#e6f7ff"], autumn: ["#ffe3b8", "#fff6e6"], winter: ["#dcecf5", "#f6fbff"] }[season];
-    // 昼夜覆盖天空：清晨粉橙 / 黄昏橙紫 / 夜晚深蓝
-    if (phase === "dawn") SKY = ["#ffd9c0", "#fff0dc"];
-    else if (phase === "dusk") SKY = ["#ffb27d", "#9a86b8"];
-    else if (phase === "night") SKY = ["#141e33", "#2e3f63"];
+    var SKY = treeSky(season, phase);
     var CAN = { spring: ["#b5e77c", "#5fb85c"], summer: ["#63c26b", "#2f8f4e"], autumn: ["#f2c94e", "#d68a2a"], winter: ["#a8ccb4", "#5d8a74"] }[season];
     var TRUNK = { spring: ["#c08a54", "#8a5a33"], summer: ["#b07f4c", "#7d5230"], autumn: ["#c99a5b", "#96632f"], winter: ["#b98a63", "#8a5f3c"] }[season];
     var ms = (data.tree.fruits && data.tree.fruits.milestones) || [];
@@ -1827,7 +1832,7 @@
       '<linearGradient id="' + gid + 'Can" x1="0" y1="0" x2="0" y2="1">' + stops(canopyStops) + "</linearGradient>" +
       '<linearGradient id="' + gid + 'Trunk" x1="0" y1="0" x2="1" y2="0">' + stops(trunkStops) + "</linearGradient>" +
       "</defs>";
-    var parts = ['<rect x="0" y="0" width="160" height="160" fill="url(#' + gid + 'Sky)"/>'];
+    var parts = (opt && opt.noSky) ? [] : ['<rect x="0" y="0" width="160" height="160" fill="url(#' + gid + 'Sky)"/>'];
     // 云朵随昼夜变色（夜晚不画），太阳/月亮/星星按相位
     if (phase !== "night") {
       var cloudFill = phase === "day" ? "#fff" : phase === "dawn" ? "#ffd9c0" : "#ffc4a8";
@@ -1914,30 +1919,8 @@
     parts.push('<circle class="t-fall" cx="52" cy="72" r="2.4" fill="#ffc9dd"/>');
     parts.push('<circle class="t-fall f2" cx="108" cy="62" r="2" fill="#ffe28a"/>');
     parts.push('<circle class="t-fall f3" cx="94" cy="96" r="1.8" fill="#c4eeb0"/>');
-    // 树下小狗（成树阶段才有，点它会跳起来；首页 72px 小树不画，缩太小糊成一团）
-    if (i >= 1 && !noDog) {
-      parts.push('<g class="t-dog" data-dog="1">' +
-        '<path class="t-dog-tail" d="M133 122 C141 118 144 110 141 104 C137 110 135 116 131 119 Z" fill="#e8a90c"/>' +
-        '<ellipse cx="122" cy="126" rx="11" ry="10" fill="#f5c95e"/>' +
-        '<ellipse cx="116" cy="134" rx="4" ry="5" fill="#eab53a"/>' +
-        '<ellipse cx="128" cy="134" rx="4" ry="5" fill="#eab53a"/>' +
-        '<circle cx="122" cy="108" r="11" fill="#f5c95e"/>' +
-        '<path d="M113 100 L110 87 L120 96 Z" fill="#e8a90c"/>' +
-        '<path d="M131 100 L134 87 L124 96 Z" fill="#e8a90c"/>' +
-        '<path d="M114.5 98 L112.5 91 L119 97 Z" fill="#ffb3c7"/>' +
-        '<path d="M129.5 98 L131.5 91 L125 97 Z" fill="#ffb3c7"/>' +
-        '<ellipse cx="122" cy="112" rx="6.5" ry="5" fill="#fff8ea"/>' +
-        '<circle cx="117.5" cy="106" r="1.5" fill="#26221c"/><circle cx="126.5" cy="106" r="1.5" fill="#26221c"/>' +
-        '<circle cx="118.1" cy="105.4" r="0.5" fill="#fff"/><circle cx="127.1" cy="105.4" r="0.5" fill="#fff"/>' +
-        '<ellipse cx="122" cy="110.5" rx="1.6" ry="1.2" fill="#26221c"/>' +
-        '<path d="M119 113 Q122 115.5 125 113" stroke="#26221c" stroke-width="1" fill="none" stroke-linecap="round"/>' +
-        '<path d="M120.5 114 Q122 117.2 123.5 114 Z" fill="#ff8fb3"/>' +
-        '<path d="M114 118 Q122 123 130 118" stroke="#ff5b6a" stroke-width="2.2" fill="none" stroke-linecap="round"/>' +
-        '<circle cx="122" cy="121.5" r="1.8" fill="#ffd84d" stroke="#d9a832" stroke-width="0.5"/>' +
-        "</g>");
-    }
-    // 夜晚整体罩一层暮色（树也压暗，更真实）
-    if (phase === "night") parts.push('<rect x="0" y="0" width="160" height="160" fill="#101828" opacity=".2"/>');
+    // 夜晚整体罩一层暮色（沉浸页由容器 CSS 罩整屏，小树仍罩自己这块）
+    if (phase === "night" && !(opt && opt.noSky)) parts.push('<rect x="0" y="0" width="160" height="160" fill="#101828" opacity=".2"/>');
     return '<svg viewBox="0 0 160 160" width="' + s + '" height="' + s + '" style="display:block">' + defs + parts.join("") + "</svg>";
   }
 
@@ -1984,7 +1967,7 @@
     $("homeN0").textContent = data.partners[0].name; $("homeN1").textContent = data.partners[1].name;
     $("homeDays").textContent = loveDays();
     var st = treeStage();
-    $("homeTreeMini").innerHTML = treeSVG(72, true);
+    $("homeTreeMini").innerHTML = treeSVG(72);
     $("homeTreeName").textContent = st.stage.name;
     $("homeTreeBar").style.width = (st.next ? Math.min(100, ((data.tree.growth - st.stage.min) / (st.next - st.stage.min)) * 100) : 100) + "%";
     $("homeTreeLbl").textContent = st.next ? ("成长值 " + data.tree.growth + " / " + st.next) : ("成长值 " + data.tree.growth + " · 已满级，爱情果实 " + ((data.tree.fruits && data.tree.fruits.count) || 0) + " 颗 🍎");
@@ -2274,9 +2257,11 @@
   // 点击恋爱树：整树摇晃 + 抖落表情（首页小树与大树共用）
   document.addEventListener("click", function (e) {
     if (e.target.closest(".tc-slot")) return; // 树上挂件（心愿卡/相框）的点击不触发摇树
-    var d = e.target.closest("[data-dog]"); if (d) { patDog(d); return; } // 点小狗：跳一下冒爱心
     var scene = e.target.closest(".tree-scene");
     if (scene) { shakeTree(scene, e); return; }
+    // 沉浸页：点天空/任何空白处也摇树（按钮与面板有自己的处理，不会被这里拦截）
+    var stage = e.target.closest(".tp-stage");
+    if (stage) { var sc2 = stage.querySelector(".tree-scene"); if (sc2) shakeTree(sc2, e); return; }
     var mini = e.target.closest("#homeTreeMini");
     if (mini) shakeTree(mini, e);
   });
@@ -2310,39 +2295,6 @@
       (function (node) { setTimeout(function () { if (node.parentNode) node.parentNode.removeChild(node); }, 1500); })(el);
     }
   }
-  // 点小狗：跳一下 + 冒爱心 + 计数（双人同步）
-  function patDog(g) {
-    if (!g) g = document.querySelector("#treePage [data-dog]") || document.querySelector("[data-dog]");
-    if (g) {
-      g.classList.remove("dog-hop");
-      void g.getBBox();
-      g.classList.add("dog-hop");
-      g.addEventListener("animationend", function () { g.classList.remove("dog-hop"); }, { once: true });
-    }
-    dogHearts(g);
-    if (!data.tree.dog || typeof data.tree.dog !== "object") data.tree.dog = { pats: 0 };
-    data.tree.dog.pats = (data.tree.dog.pats || 0) + 1;
-    save();
-    var bar = $("dogPats");
-    if (bar) bar.textContent = String(data.tree.dog.pats);
-    if (data.tree.dog.pats % 10 === 0) toast("汪汪很开心！已被逗了 " + data.tree.dog.pats + " 次 🐕");
-  }
-  function dogHearts(g) {
-    if (!g) g = document.querySelector("#treePage [data-dog]") || document.querySelector("[data-dog]");
-    if (!g) return;
-    var r = g.getBoundingClientRect();
-    for (var i = 0; i < 2; i++) {
-      var h = document.createElement("div");
-      h.className = "dog-heart";
-      h.textContent = "♥";
-      h.style.left = (r.left + r.width * (0.32 + i * 0.36)) + "px";
-      h.style.top = (r.top - 2) + "px";
-      h.style.animationDelay = (i * 0.14) + "s";
-      document.body.appendChild(h);
-      (function (x) { setTimeout(function () { if (x.parentNode) x.parentNode.removeChild(x); }, 1200); })(h);
-    }
-  }
-
   function sendMsg() {
     var inp = $("chatInput"), text = inp.value.trim();
     if (!text) { toast("写点什么再发送吧"); return; }
@@ -2769,57 +2721,82 @@
     renderTreePage();
     if ($("treePage").classList.contains("open")) return; // 已开着（如弹层提交后回来）：只重绘，不动 history，避免与 closeSheet 的返回竞争
     $("treePage").classList.add("open");
+    document.body.classList.add("tp-open"); // 状态栏透明，让天空透上来
     history.pushState({ app: 1 }, "");
   }
-  function closeTreePageUI() { $("treePage").classList.remove("open"); }
+  function closeTreePageUI() {
+    $("treePage").classList.remove("open");
+    document.body.classList.remove("tp-open");
+    tpPanelOpen = false; // 整页关闭后重置面板状态，下次进入是干净的沉浸画面
+  }
+  // 底部面板：阶段/成长/果实/挂件/每日任务，默认收起，保证沉浸
+  function openTreePanel() {
+    tpPanelOpen = true;
+    var p = $("tpPanel");
+    if (p) p.classList.add("open");
+    var m = $("tpMore");
+    if (m) m.textContent = "✕ 收起";
+    history.pushState({ app: 1 }, "");
+  }
+  function closeTreePanelUI() {
+    tpPanelOpen = false;
+    var p = $("tpPanel");
+    if (p) p.classList.remove("open");
+    var m = $("tpMore");
+    if (m) m.textContent = "☰ 更多";
+  }
+  var tpPanelOpen = false; // 底部面板展开状态：重绘时保持，避免挂卡后面板被收起
   function renderTreePage() {
     var st = treeStage();
     var sp = specialDayToday();
     var sceneExtra = treeSceneExtra(sp) + treeOrnaments(sp);
-    var stageHtml = '<div class="tree-stage" style="padding:12px 0 4px">' +
-      '<div class="tree-name" style="font-size:15px;font-weight:700;color:var(--pink-deep)">' + st.stage.name + '</div><div class="tree-desc" style="font-size:12px;color:var(--ink-2);margin:4px 0 10px">' + st.stage.desc + "</div>";
-    if (st.next) {
-      stageHtml += '<div class="grow-track"><div class="grow-fill" style="width:' + Math.min(100, ((data.tree.growth - st.stage.min) / (st.next - st.stage.min)) * 100) + '%"></div></div>' +
-        '<div class="grow-lbl">成长值 ' + data.tree.growth + "，再 +" + (st.next - data.tree.growth) + " 升级</div>";
-    } else {
-      stageHtml += '<div class="grow-track"><div class="grow-fill" style="width:100%"></div></div>' +
-        '<div class="grow-lbl">成长值 ' + data.tree.growth + " · 已是最高级啦，去看看果实吧</div>";
-    }
-    stageHtml += "</div>";
-    var html = '<div class="tp-head"><h3>🌳 我们的恋爱树</h3><button class="tp-close" id="tpClose" aria-label="关闭">' + icon("x") + "</button></div>" +
-      '<div class="tp-body">' +
-      '<div class="tree-scene">' + treeSVG(300) + sceneExtra + "</div>" +
-      '<div class="sign-board"><div class="sign-row"><span>我连续浇树</span><b>' + waterStreak(me) + '</b><span>天</span></div>' +
-      '<div class="sign-row"><span>TA连续浇树</span><b>' + waterStreak(1 - me) + '</b><span>天</span></div></div>' +
-      stageHtml +
-      (!st.next ? fruitBoard() : "") +
-      '<button class="primary-btn" id="actWater" style="background:linear-gradient(135deg,#8fd3a8,#3fae6e);box-shadow:0 6px 16px rgba(63,174,110,.3);margin-top:6px">' + actLabel("water") + " · 成长值 +1</button>";
+    var phase = dayPhase();
+    var sky = treeSky(treeSeason(), phase);
+    // 阶段名 + 成长条
+    var grow = '<div class="tree-stage" style="padding:10px 0 2px">' +
+      '<div class="tree-name" style="font-size:15px;font-weight:700;color:var(--pink-deep)">' + st.stage.name + '</div>' +
+      '<div class="tree-desc" style="font-size:12px;color:var(--ink-2);margin:4px 0 10px">' + st.stage.desc + "</div>" +
+      '<div class="grow-track"><div class="grow-fill" style="width:' + (st.next ? Math.min(100, ((data.tree.growth - st.stage.min) / (st.next - st.stage.min)) * 100) : 100) + '%"></div></div>' +
+      '<div class="grow-lbl">' + (st.next ? ("成长值 " + data.tree.growth + "，再 +" + (st.next - data.tree.growth) + " 升级") : ("成长值 " + data.tree.growth + " · 已是最高级啦，去看看果实吧")) + "</div></div>";
     // 挂件按钮组
     var wishCnt = (data.tree.cards || []).filter(function (c) { return c.who === me; }).length;
     var t = todayStr();
     var hasSelfie = (data.selfies || []).some(function (s) { return s.who === me && s.date === t; });
     var myPhoto = data.tree.hungPhoto && data.tree.hungPhoto[me];
-    html += '<div class="tree-actions">' +
-      '<button class="tbtn" id="actWish" style="background:linear-gradient(135deg,#ffd84d,#f0a020);box-shadow:0 6px 16px rgba(240,160,32,.28)"' + (wishCnt >= 2 ? " disabled" : "") + '>💌 挂心愿卡 ' + wishCnt + '/2</button>' +
+    var panel = '<div class="tp-grab" id="tpGrab"></div>' + grow +
+      '<div class="sign-board"><div class="sign-row"><span>我连续浇树</span><b>' + waterStreak(me) + '</b><span>天</span></div>' +
+      '<div class="sign-row"><span>TA连续浇树</span><b>' + waterStreak(1 - me) + '</b><span>天</span></div></div>' +
+      (!st.next ? fruitBoard() : "") +
+      '<div class="tree-actions">' +
+      '<button class="tbtn" id="actWish" style="background:linear-gradient(135deg,#ffd84d,#f0a020);box-shadow:0 6px 16px rgba(240,160,32,.28)"' + (wishCnt >= 2 ? " disabled" : "") + ">💌 挂心愿卡 " + wishCnt + "/2</button>" +
       '<button class="tbtn" id="actPhoto" style="background:linear-gradient(135deg,#b5a3ff,#7b5cf0);box-shadow:0 6px 16px rgba(123,92,240,.28)">' + (myPhoto ? "🖼 摘下相框" : hasSelfie ? "🖼 挂今日自拍" : "🖼 今天还没自拍") + "</button>" +
-      "</div>";
-    // 树下小狗（成树阶段才有狗）
-    if (st.idx >= 1) {
-      html += '<div class="dog-bar">🐕 汪汪已被逗了 <b id="dogPats">' + ((data.tree.dog && data.tree.dog.pats) || 0) + '</b> 次<span class="dog-hint">点一下小狗试试</span></div>';
-    }
-    // 每日任务：随真实行为自动完成
-    html += '<div class="tree-section-title">' + icon("check") + "每日任务（完成自动 +1 成长值）</div>";
-    html += DAILY_TASKS.map(function (task) {
-      var d0 = dailyTaskDone(task.key, 0), d1 = dailyTaskDone(task.key, 1);
-      var ic = task.key === "selfie" ? "cam" : task.key === "msg" ? "chat" : task.key === "miss" ? "heart" : "drop";
-      return '<div class="dt-item' + ((d0 || d1) ? " done" : "") + '"><div class="dt-ico">' + icon(ic) + '</div><div class="dt-name">' + task.name + '</div>' +
-        '<div class="dt-who"><span class="p0' + (d0 ? " on" : "") + '">' + esc((data.partners[0].name || "?").slice(0, 1)) + '</span><span class="p1' + (d1 ? " on" : "") + '">' + esc((data.partners[1].name || "?").slice(0, 1)) + "</span></div></div>";
-    }).join("");
-    html += '<div style="text-align:center;font-size:11px;color:var(--ink-2);margin-top:14px">背景会随早晨 / 白天 / 黄昏 / 夜晚变化，节日还有惊喜装扮</div>';
-    html += "</div>";
+      "</div>" +
+      '<div class="tree-section-title">' + icon("check") + "每日任务（完成自动 +1 成长值）</div>" +
+      DAILY_TASKS.map(function (task) {
+        var d0 = dailyTaskDone(task.key, 0), d1 = dailyTaskDone(task.key, 1);
+        var ic = task.key === "selfie" ? "cam" : task.key === "msg" ? "chat" : task.key === "miss" ? "heart" : "drop";
+        return '<div class="dt-item' + ((d0 || d1) ? " done" : "") + '"><div class="dt-ico">' + icon(ic) + '</div><div class="dt-name">' + task.name + '</div>' +
+          '<div class="dt-who"><span class="p0' + (d0 ? " on" : "") + '">' + esc((data.partners[0].name || "?").slice(0, 1)) + '</span><span class="p1' + (d1 ? " on" : "") + '">' + esc((data.partners[1].name || "?").slice(0, 1)) + "</span></div></div>";
+      }).join("") +
+      '<div style="text-align:center;font-size:11px;color:var(--ink-2);margin-top:14px">背景会随早晨 / 白天 / 黄昏 / 夜晚变化，节日还有惊喜装扮</div>';
+    var html = '<div class="tp-stage' + (phase === "night" ? " night" : "") + '" style="background:linear-gradient(180deg,' + sky[0] + " 0%," + sky[1] + ' 100%)">' +
+        '<button class="tp-close" id="tpClose" aria-label="关闭">' + icon("x") + "</button>" +
+        '<div class="tp-stage-name">' + st.stage.name + "</div>" +
+        '<div class="tree-scene">' + treeSVG(420, { noSky: true }) + sceneExtra + "</div>" +
+      "</div>" +
+      '<div class="tp-fabs">' +
+      '<button class="tp-fab" id="actWater">💧 ' + actLabel("water") + "</button>" +
+      '<button class="tp-fab ghost" id="tpMore">' + (tpPanelOpen ? "✕ 收起" : "☰ 更多") + "</button>" +
+      "</div>" +
+      '<div class="tp-panel' + (tpPanelOpen ? " open" : "") + '" id="tpPanel">' + panel + "</div>";
     $("treePage").innerHTML = html;
     $("tpClose").addEventListener("click", function () { history.back(); });
     $("actWater").addEventListener("click", function () { interact("water"); });
+    $("tpMore").addEventListener("click", function () {
+      if (tpPanelOpen) history.back();
+      else openTreePanel();
+    });
+    $("tpGrab").addEventListener("click", function () { if (tpPanelOpen) history.back(); });
     var bw = $("actWish");
     if (bw && !bw.disabled) bw.addEventListener("click", openWishSheet);
     var bp = $("actPhoto");
@@ -3673,6 +3650,7 @@
   function topLayer() {
     if ($("viewer") && $("viewer").classList.contains("open")) return "viewer";
     if ($("sheet") && $("sheet").classList.contains("open")) return "sheet";
+    if (tpPanelOpen && $("treePage") && $("treePage").classList.contains("open")) return "tppanel";
     if ($("treePage") && $("treePage").classList.contains("open")) return "treepage";
     if (albumState && albumState.mode === "open") return "album";
     return null;
@@ -3687,6 +3665,8 @@
     if (top === "viewer") { closeViewer(); return; }
     // 有弹窗 -> 仅关闭弹窗（打开时已压入一层历史，返回手势会自动退掉该层，无需再补压）
     if (top === "sheet") { closeSheetUI(); return; }
+    // 树页底部面板展开 -> 先收面板（树页留着）
+    if (top === "tppanel") { closeTreePanelUI(); return; }
     // 恋爱树全屏页 -> 关闭（打开时已压入一层历史，返回手势自动退掉）
     if (top === "treepage") { closeTreePageUI(); return; }
     // 相册打开了 -> 只退回相册列表（打开时已压入一层历史，返回键自动退掉该层）
