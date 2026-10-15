@@ -446,6 +446,21 @@
   body.dark .tp-grab { background: rgba(255,255,255,.22); }
   /* 树页打开时状态栏透明，让天空透上来 */
   body.tp-open .app-statusbar { background: transparent; box-shadow: none; text-shadow: 0 1px 3px rgba(0,0,0,.4); }
+  /* 沉浸页天空装饰：太阳/月亮/云/星星铺在上部天空（整屏定位，不再挤在底部正方形里） */
+  .tp-sky { position: absolute; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
+  .tp-sun { position: absolute; width: 46px; height: 46px; border-radius: 50%; box-shadow: 0 0 24px rgba(255,224,138,.8); }
+  .tp-moon { position: absolute; right: 10%; top: 5%; width: 44px; height: 44px; filter: drop-shadow(0 0 12px rgba(255,238,176,.65)); }
+  .tp-star { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff; opacity: .9; animation: tSparkle 2.4s ease-in-out infinite; }
+  .tp-star.s2 { width: 2px; height: 2px; animation-delay: .8s; }
+  .tp-star.s3 { width: 4px; height: 4px; animation-delay: 1.5s; }
+  @keyframes tSparkle { 0%,100% { opacity: .25; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.2); } }
+  .tp-cloud { position: absolute; width: 76px; height: 22px; border-radius: 14px; animation: tpDrift 32s ease-in-out infinite alternate; }
+  .tp-cloud::before, .tp-cloud::after { content: ""; position: absolute; background: inherit; border-radius: 50%; }
+  .tp-cloud::before { width: 30px; height: 30px; left: 10px; top: -13px; }
+  .tp-cloud::after { width: 22px; height: 22px; right: 10px; top: -8px; }
+  .tp-cloud.c2 { animation-delay: -8s; width: 58px; }
+  .tp-cloud.c3 { animation-delay: -16s; width: 92px; height: 26px; }
+  @keyframes tpDrift { from { transform: translateX(0); } to { transform: translateX(16px); } }
   /* 点击树：飘落小叶片（与背景落叶同款，冬季为雪花） */
   .leaf-pop { position: fixed; pointer-events: none; z-index: 99999; transform: translate(-50%,-50%); animation: leafPop 1.3s ease-in forwards; filter: drop-shadow(0 1px 2px rgba(0,0,0,.1)); }
   @keyframes leafPop {
@@ -1156,7 +1171,7 @@
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1023a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1024a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -1164,7 +1179,7 @@
   // 等 JPush 注册完成（拿到 RegistrationID）再设别名；最多重试约 120s，失败后重置推送再试 90s（Vivo 等机型注册偏慢）
   function ensureAlias(att) {
     var N = jpushNative();
-    if (!N) { showPushNote("⚠️[" + PUSH_BUILD + "] 未启用推送：请装GitHub上的「推送版」APK"); return; }
+    if (!N) return; // 非推送版 APK / 纯网页：静默不弹底部提示（需要诊断时去设置里点「推送诊断」）
     var r = (localStorage.getItem(LS_ROOM) || "").trim(); if (!r) return;
     var m = parseInt(localStorage.getItem(LS_ID) || "0", 10) || 0;
     var alias = "ls_" + r + "_" + (m === 1 ? "b" : "a");
@@ -1757,6 +1772,28 @@
     if (phase === "night") return ["#141e33", "#2e3f63"];
     return S;
   }
+  // 沉浸页天空装饰（HTML 层）：太阳/月亮/云/星星铺在整屏上部天空，填补树以上的空旷区
+  function treeSkyDecor() {
+    var phase = dayPhase();
+    var h = '<div class="tp-sky">';
+    if (phase === "night") {
+      h += '<svg class="tp-moon" viewBox="0 0 24 24"><path d="M15 3 A10 10 0 1 0 15 21 A8 8 0 1 1 15 3 Z" fill="#ffeeb0"/></svg>';
+      var stars = [[8, 10], [20, 6], [32, 14], [12, 22], [46, 8], [58, 17], [24, 3], [72, 11], [38, 25], [88, 19], [66, 27], [5, 30]];
+      for (var i = 0; i < stars.length; i++) {
+        h += '<i class="tp-star' + (i % 3 === 1 ? " s2" : i % 3 === 2 ? " s3" : "") + '" style="left:' + stars[i][0] + "%;top:" + stars[i][1] + '%"></i>';
+      }
+    } else {
+      var sunColor = phase === "day" ? "#ffe28a" : phase === "dawn" ? "#ffcf9e" : "#ff8f5e";
+      var sunStyle = phase === "day" ? "right:9%;top:6%" : phase === "dawn" ? "left:9%;top:15%" : "right:12%;top:26%";
+      h += '<i class="tp-sun" style="background:' + sunColor + ";" + sunStyle + '"></i>';
+      var cf = phase === "day" ? "#fff" : phase === "dawn" ? "#ffd9c0" : "#ffc4a8";
+      var cop = phase === "day" ? ".92" : ".72";
+      h += '<i class="tp-cloud c1" style="background:' + cf + ";opacity:" + cop + ";left:5%;top:17%\"></i>";
+      h += '<i class="tp-cloud c2" style="background:' + cf + ";opacity:" + cop + ";right:16%;top:" + (phase === "dusk" ? "34%" : "11%") + '%"></i>';
+      if (phase !== "dusk") h += '<i class="tp-cloud c3" style="background:' + cf + ";opacity:" + cop + ";left:42%;top:27%\"></i>";
+    }
+    return h + "</div>";
+  }
   // 七夕（农历七月初七）公历对照表：数据来源 chinesecalendaronline / MoonCal（两家一致）
   var QIXI_DATES = { 2026: "08-19", 2027: "08-08", 2028: "08-26", 2029: "08-16", 2030: "08-05", 2031: "08-24", 2032: "08-12", 2033: "08-01", 2034: "08-20", 2035: "08-10" };
   function treeFestival() {
@@ -1833,20 +1870,22 @@
       '<linearGradient id="' + gid + 'Trunk" x1="0" y1="0" x2="1" y2="0">' + stops(trunkStops) + "</linearGradient>" +
       "</defs>";
     var parts = (opt && opt.noSky) ? [] : ['<rect x="0" y="0" width="160" height="160" fill="url(#' + gid + 'Sky)"/>'];
-    // 云朵随昼夜变色（夜晚不画），太阳/月亮/星星按相位
-    if (phase !== "night") {
-      var cloudFill = phase === "day" ? "#fff" : phase === "dawn" ? "#ffd9c0" : "#ffc4a8";
-      var cloudOp = phase === "day" ? ".92" : ".72";
-      parts.push('<g fill="' + cloudFill + '" opacity="' + cloudOp + '"><ellipse cx="32" cy="26" rx="14" ry="6.5"/><ellipse cx="44" cy="22" rx="9" ry="5.5"/><ellipse cx="126" cy="38" rx="12" ry="5.5"/><ellipse cx="136" cy="34" rx="8" ry="4.5"/></g>');
-    }
-    if (phase === "day") parts.push('<circle cx="142" cy="20" r="9" fill="#ffe28a"/>');
-    else if (phase === "dawn") parts.push('<circle cx="36" cy="46" r="11" fill="#ffcf9e"/>');
-    else if (phase === "dusk") parts.push('<circle cx="122" cy="50" r="12" fill="#ff8f5e"/>');
-    else {
-      // 夜晚：弯月 + 闪烁星星
-      parts.push('<path d="M130 16 A12 12 0 1 0 130 40 A9.6 9.6 0 1 1 130 16 Z" fill="#ffeeb0"/>');
-      var starPts = [[20, 20], [46, 13], [104, 17], [150, 30], [70, 11], [90, 28], [142, 44], [58, 30]];
-      for (var si = 0; si < starPts.length; si++) parts.push('<circle class="t-spark' + (si % 3 === 1 ? " s2" : "") + '" cx="' + starPts[si][0] + '" cy="' + starPts[si][1] + '" r="1.5" fill="#fff"/>');
+    // 云朵随昼夜变色（夜晚不画），太阳/月亮/星星按相位；沉浸页(noSky)跳过——由 treeSkyDecor HTML 层铺在整屏天空上
+    if (!(opt && opt.noSky)) {
+      if (phase !== "night") {
+        var cloudFill = phase === "day" ? "#fff" : phase === "dawn" ? "#ffd9c0" : "#ffc4a8";
+        var cloudOp = phase === "day" ? ".92" : ".72";
+        parts.push('<g fill="' + cloudFill + '" opacity="' + cloudOp + '"><ellipse cx="32" cy="26" rx="14" ry="6.5"/><ellipse cx="44" cy="22" rx="9" ry="5.5"/><ellipse cx="126" cy="38" rx="12" ry="5.5"/><ellipse cx="136" cy="34" rx="8" ry="4.5"/></g>');
+      }
+      if (phase === "day") parts.push('<circle cx="142" cy="20" r="9" fill="#ffe28a"/>');
+      else if (phase === "dawn") parts.push('<circle cx="36" cy="46" r="11" fill="#ffcf9e"/>');
+      else if (phase === "dusk") parts.push('<circle cx="122" cy="50" r="12" fill="#ff8f5e"/>');
+      else {
+        // 夜晚：弯月 + 闪烁星星
+        parts.push('<path d="M130 16 A12 12 0 1 0 130 40 A9.6 9.6 0 1 1 130 16 Z" fill="#ffeeb0"/>');
+        var starPts = [[20, 20], [46, 13], [104, 17], [150, 30], [70, 11], [90, 28], [142, 44], [58, 30]];
+        for (var si = 0; si < starPts.length; si++) parts.push('<circle class="t-spark' + (si % 3 === 1 ? " s2" : "") + '" cx="' + starPts[si][0] + '" cy="' + starPts[si][1] + '" r="1.5" fill="#fff"/>');
+      }
     }
     // 地面随季节变色，夜晚/黄昏压暗
     var G1 = { spring: "#8fd977", summer: "#6fbf73", autumn: "#e0b25f", winter: "#e8f1f5" }[season];
@@ -2780,6 +2819,7 @@
       }).join("") +
       '<div style="text-align:center;font-size:11px;color:var(--ink-2);margin-top:14px">背景会随早晨 / 白天 / 黄昏 / 夜晚变化，节日还有惊喜装扮</div>';
     var html = '<div class="tp-stage' + (phase === "night" ? " night" : "") + '" style="background:linear-gradient(180deg,' + sky[0] + " 0%," + sky[1] + ' 100%)">' +
+        treeSkyDecor() +
         '<button class="tp-close" id="tpClose" aria-label="关闭">' + icon("x") + "</button>" +
         '<div class="tp-stage-name">' + st.stage.name + "</div>" +
         '<div class="tree-scene">' + treeSVG(420, { noSky: true }) + sceneExtra + "</div>" +
@@ -3645,8 +3685,7 @@
   if (room) { $("roomGate").classList.add("hide"); bootApp(); } else { bindGate(); }
 
   // ===== 移动端返回键：子界面优先关闭，根界面两次返回才退出 =====
-  // 手机实体返回键 / 滑动返回都会触发 popstate，用 History API 拦截
-  var lastBack = 0;
+  var lastBack = 0, suppressPopUntil = 0;
   function topLayer() {
     if ($("viewer") && $("viewer").classList.contains("open")) return "viewer";
     if ($("sheet") && $("sheet").classList.contains("open")) return "sheet";
@@ -3655,22 +3694,24 @@
     if (albumState && albumState.mode === "open") return "album";
     return null;
   }
-  function appBack() {
+  // 关掉一个 UI 层；返回 true = 有层被关掉。只动 UI 状态，不碰历史（硬件返回键路径）
+  function backPress() {
     // 相册处于管理/排序模式 -> 返回先退出模式（不退出相册）
     if (albumState.mode === "open" && albumMode !== "normal") {
-      albumMode = "normal"; albumSel = {}; sortSrc = null; renderAlbum(); return;
+      albumMode = "normal"; albumSel = {}; sortSrc = null; renderAlbum(); return true;
     }
     var top = topLayer();
-    // 照片查看器打开 -> 先关照片（最顶层，优先级最高）
-    if (top === "viewer") { closeViewer(); return; }
-    // 有弹窗 -> 仅关闭弹窗（打开时已压入一层历史，返回手势会自动退掉该层，无需再补压）
-    if (top === "sheet") { closeSheetUI(); return; }
-    // 树页底部面板展开 -> 先收面板（树页留着）
-    if (top === "tppanel") { closeTreePanelUI(); return; }
-    // 恋爱树全屏页 -> 关闭（打开时已压入一层历史，返回手势自动退掉）
-    if (top === "treepage") { closeTreePageUI(); return; }
-    // 相册打开了 -> 只退回相册列表（打开时已压入一层历史，返回键自动退掉该层）
-    if (top === "album") { albumState = { mode: "list", id: null }; albumMode = "normal"; albumSel = {}; sortSrc = null; renderAlbum(); return; }
+    if (top === "viewer") { closeViewer(); return true; }        // 照片查看器（最顶层）
+    if (top === "sheet") { closeSheetUI(); return true; }        // 各类弹层
+    if (top === "tppanel") { closeTreePanelUI(); return true; }  // 树页底部面板
+    if (top === "treepage") { closeTreePageUI(); return true; }  // 恋爱树全屏页
+    if (top === "album") { albumState = { mode: "list", id: null }; albumMode = "normal"; albumSel = {}; sortSrc = null; renderAlbum(); return true; }
+    return false;
+  }
+  function appBack() {
+    // 同一物理按键已被硬件返回键处理器接管时，忽略 WebView 默认行为补发的 popstate
+    if (Date.now() < suppressPopUntil) return;
+    if (backPress()) return;
     // 根界面：连续两次返回才退出
     var now = Date.now();
     if (now - lastBack < 2000) {
@@ -3686,6 +3727,24 @@
     setTimeout(function () { if (Date.now() - lastBack < 2000) lastBack = 0; }, 2000);
   }
   window.addEventListener("popstate", appBack);
+  // ===== 硬件返回键（Capacitor App 插件）：完全接管，不再依赖 WebView 默认行为 =====
+  // 默认行为是「能退历史就退、不能退就退出 App」——守卫历史一旦没生效就会一键退 App。
+  // 注册监听后由这里全权决定：有层先逐层关闭；根界面双击退出；并始终压一层守卫历史兜底。
+  (function () {
+    var C = window.Capacitor;
+    if (!C || !C.Plugins || !C.Plugins.App || !C.Plugins.App.addListener) return;
+    try {
+      C.Plugins.App.addListener("backButton", function () {
+        suppressPopUntil = Date.now() + 600; // 抵消 WebView 默认行为可能补发的 popstate，防止同一次按键被处理两遍
+        if (backPress()) return;
+        var now = Date.now();
+        if (now - lastBack < 2000) { lastBack = 0; try { C.Plugins.App.exitApp(); } catch (e) {} return; }
+        lastBack = now;
+        toast("再按一次退出");
+        try { history.pushState({ app: 1 }, ""); } catch (e) {} // 兜底：保证 WebView 永远有历史可退
+      });
+    } catch (e) {}
+  })();
   // 启动时为根界面加一道“守卫”历史，保证返回键可被拦截（不会被直接关站）
   history.pushState({ app: 1 }, "");
 
