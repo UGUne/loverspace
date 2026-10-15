@@ -379,7 +379,31 @@
   @keyframes tFall { 0% { transform: translateY(0); opacity: .9; } 100% { transform: translateY(120px); opacity: 0; } }
   .petal-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
   .petal { position: absolute; top: -18px; background: radial-gradient(circle at 30% 30%, #ffd6e6, #ff7fb0); border-radius: 60% 0 60% 0; opacity: .92; animation: petalFall linear infinite; }
-  @keyframes petalFall { 0% { transform: translateY(-18px) rotate(0deg); opacity: 0; } 12% { opacity: .95; } 100% { transform: translateY(270px) rotate(320deg); opacity: .25; } }
+  @keyframes petalFall { 0% { transform: translateY(-18px) rotate(0deg); opacity: 0; } 12% { opacity: .95; } 100% { transform: translateY(var(--fall-dist, 270px)) rotate(320deg); opacity: .25; } }
+  /* 季节/节日粒子：落叶 / 雪 / 萤火虫 / 爱心 / 星星 */
+  .tp { position: absolute; top: -18px; pointer-events: none; }
+  .tp-leaf { width: 9px; height: 9px; border-radius: 50% 0 50% 0; background: linear-gradient(135deg,#f5b942,#e07b2a); opacity: .9; animation-name: tpFall; animation-timing-function: linear; animation-iteration-count: infinite; }
+  .tp-snow { width: 5px; height: 5px; border-radius: 50%; background: #fff; box-shadow: 0 0 4px rgba(255,255,255,.95); opacity: .95; animation-name: tpFall; animation-timing-function: linear; animation-iteration-count: infinite; }
+  .tp-fly { width: 7px; height: 7px; border-radius: 50%; background: radial-gradient(circle,#fff9c4,#ffd84d); box-shadow: 0 0 9px 2px rgba(255,216,77,.5); animation-name: tpFly; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
+  .tp-heart, .tp-star { font-size: 12px; line-height: 1; animation-name: tpFall; animation-timing-function: linear; animation-iteration-count: infinite; }
+  .tp-heart { color: #ff5b8f; }
+  .tp-star { color: #ffe98f; text-shadow: 0 0 6px rgba(255,233,143,.85); }
+  @keyframes tpFall { 0% { transform: translateY(-18px) rotate(0deg); opacity: 0; } 12% { opacity: .95; } 100% { transform: translateY(var(--fall-dist, 280px)) rotate(320deg); opacity: .2; } }
+  @keyframes tpFly { 0%,100% { transform: translate(0,0); opacity: .25; } 25% { transform: translate(10px,-26px); opacity: 1; } 50% { transform: translate(-6px,-52px); opacity: .6; } 75% { transform: translate(8px,-78px); opacity: .9; } }
+  /* 树上挂件：心愿卡 / 照片相框 */
+  .tc-slot { position: absolute; z-index: 7; }
+  .tc-card { width: 62px; padding: 7px 6px 8px; background: linear-gradient(160deg,#fff8d6,#ffefb0); border-radius: 3px 3px 8px 8px; box-shadow: 0 3px 8px rgba(120,90,30,.28); font-size: 10px; line-height: 1.35; color: #6b4f1d; cursor: pointer; position: relative; text-align: center; word-break: break-all; }
+  .tc-card::before { content: ""; position: absolute; top: -7px; left: 50%; width: 5px; height: 5px; border-radius: 50%; background: #e2603f; box-shadow: 0 1px 2px rgba(0,0,0,.25); transform: translateX(-50%); }
+  .tc-card::after { content: ""; position: absolute; top: -4px; left: 50%; width: 1px; height: 5px; background: rgba(120,90,30,.5); transform: translateX(-50%); }
+  .tc-card .tc-who { display: block; margin-top: 3px; font-size: 8px; color: #b08b3e; }
+  .tc-card.memo { background: linear-gradient(160deg,#ffeaf2,#ffd6e6); color: #a34d76; }
+  .tc-card.memo::before { background: #f2558d; }
+  .tc-card.memo .tc-who { color: #d77ba4; }
+  .tc-photo { width: 54px; padding: 3px 3px 12px; background: #fff; border-radius: 4px; box-shadow: 0 3px 8px rgba(90,70,40,.3); cursor: pointer; position: relative; }
+  .tc-photo::before { content: ""; position: absolute; top: -7px; left: 50%; width: 5px; height: 5px; border-radius: 50%; background: #e2603f; box-shadow: 0 1px 2px rgba(0,0,0,.25); transform: translateX(-50%); }
+  .tc-photo::after { content: ""; position: absolute; top: -4px; left: 50%; width: 1px; height: 5px; background: rgba(120,90,30,.5); transform: translateX(-50%); }
+  .tc-photo img { width: 100%; height: 54px; object-fit: cover; border-radius: 2px; display: block; }
+  .tc-photo .tc-who { position: absolute; bottom: 1px; left: 0; right: 0; text-align: center; font-size: 8px; color: #b08b3e; }
   .tree-banner { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 6; background: linear-gradient(135deg, rgba(255,123,173,.95), rgba(242,85,141,.95)); color: #fff; font-size: 13px; font-weight: 600; padding: 8px 12px; border-radius: 12px; text-align: center; box-shadow: 0 4px 12px rgba(242,85,141,.35); animation: bannerPop .4s ease; }
   @keyframes bannerPop { 0% { transform: translateY(-8px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
   .home-special { margin: 0 14px 12px; background: linear-gradient(135deg,#ff9ec0,#f2558d); color: #fff; font-size: 13px; font-weight: 600; padding: 10px 14px; border-radius: 14px; text-align: center; box-shadow: 0 6px 16px rgba(242,85,141,.3); }
@@ -789,12 +813,12 @@
     anniversaries: [],
     messages: [],
     moods: [],
-    tree: { growth: 0, lastWater: [0, 0], tasks: [], feed: [0, 0], play: [0, 0], daily: { date: "", acts: { water: [0, 0], feed: [0, 0], play: [0, 0] }, claimed: {} }, pet: { name: "小甜", hunger: 100, mood: 100, lastFed: 0, lastPlay: 0, lvl: 1, cared: 0 } },
+    tree: { growth: 0, lastWater: [0, 0], tasks: [], feed: [0, 0], play: [0, 0], daily: { date: "", acts: { water: [0, 0], feed: [0, 0], play: [0, 0] }, claimed: {} }, pet: { name: "小甜", hunger: 100, mood: 100, lastFed: 0, lastPlay: 0, lvl: 1, cared: 0 }, fruits: { count: 0, lastDate: "", milestones: [] }, cards: [], hungPhoto: [null, null] },
     albums: [],
     photos: [],
     selfies: [],
     miss: [],
-    _deleted: { messages: [], anniversaries: [], moods: [], photos: [], selfies: [], albums: [] },
+    _deleted: { messages: [], anniversaries: [], moods: [], photos: [], selfies: [], albums: [], treeCards: [] },
     theme: { color: "#ff7ba9", dark: false, font: "default" },
     selfieUrge: null
   };
@@ -814,7 +838,7 @@
     if (!data.tree || typeof data.tree !== "object") data.tree = { growth: 0, lastWater: [0, 0] };
     if (!Array.isArray(data.tree.lastWater)) data.tree.lastWater = [0, 0];
     if (!Array.isArray(data.selfies)) data.selfies = [];
-    if (!data._deleted || typeof data._deleted !== "object") data._deleted = { messages: [], anniversaries: [], moods: [], photos: [], selfies: [], albums: [] };
+    if (!data._deleted || typeof data._deleted !== "object") data._deleted = { messages: [], anniversaries: [], moods: [], photos: [], selfies: [], albums: [], treeCards: [] };
     // 旧版扁平 photos 迁移进默认相册
     if (!Array.isArray(data.albums)) data.albums = [];
     if (Array.isArray(data.photos) && data.photos.length) { data.albums.unshift({ id: uid(), name: "我们的日常", photos: data.photos, ts: Date.now() }); data.photos = []; }
@@ -830,6 +854,15 @@
     if (!data.tree.daily.acts || typeof data.tree.daily.acts !== "object") data.tree.daily.acts = { water: [0, 0], feed: [0, 0], play: [0, 0] };
     if (!data.tree.daily.claimed || typeof data.tree.daily.claimed !== "object") data.tree.daily.claimed = {};
     if (typeof data.tree.daily.date !== "string") data.tree.daily.date = "";
+    // 爱情果实（满级后双人合浇结果）与树上挂件（心愿卡/照片）
+    if (!data.tree.fruits || typeof data.tree.fruits !== "object") data.tree.fruits = { count: 0, lastDate: "", milestones: [] };
+    if (typeof data.tree.fruits.count !== "number") data.tree.fruits.count = 0;
+    if (typeof data.tree.fruits.lastDate !== "string") data.tree.fruits.lastDate = "";
+    if (!Array.isArray(data.tree.fruits.milestones)) data.tree.fruits.milestones = [];
+    if (!Array.isArray(data.tree.cards)) data.tree.cards = [];
+    if (!Array.isArray(data.tree.hungPhoto) || data.tree.hungPhoto.length < 2) data.tree.hungPhoto = [data.tree.hungPhoto && data.tree.hungPhoto[0] || null, data.tree.hungPhoto && data.tree.hungPhoto[1] || null];
+    data.tree.cards.forEach(function (c) { if (c && typeof c === "object") { if (typeof c.text !== "string") c.text = ""; if (typeof c.who !== "number") c.who = 0; } });
+    data.tree.cards = data.tree.cards.filter(function (c) { return c && typeof c === "object" && c.id; });
     if (!data.theme || typeof data.theme !== "object") data.theme = { color: "#ff7ba9", dark: false, font: "default" };
     if (!data.theme.color) data.theme.color = "#ff7ba9";
     if (typeof data.theme.dark !== "boolean") data.theme.dark = false;
@@ -844,6 +877,7 @@
     });
     if (!Array.isArray(data.miss)) data.miss = [];
     if (!data._deleted.albums) data._deleted.albums = [];
+    if (!data._deleted.treeCards) data._deleted.treeCards = [];
   }
   function saveLocal() { try { localStorage.setItem(LS_DATA, JSON.stringify(data)); } catch (e) {} try { localStorage.setItem("loverspace.backup.v1", JSON.stringify({ ts: Date.now(), data: data })); } catch (e) {} }
   // 本地是否有真实内容（防止全新 App 把默认空数据推上云端覆盖真实数据）
@@ -1090,7 +1124,7 @@
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1020a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1021a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -1380,7 +1414,7 @@
     res.selfies = mergeArr(local.selfies, remote.selfies, delSelfie);
     res.albums = mergeAlbums(local.albums, remote.albums, delAlb, delPhoto);
     res.miss = mergeArr(local.miss, remote.miss, []);
-    res._deleted = { messages: delMes, anniversaries: delAnni, moods: delMood, photos: delPhoto, selfies: delSelfie, albums: delAlb };
+    res._deleted = { messages: delMes, anniversaries: delAnni, moods: delMood, photos: delPhoto, selfies: delSelfie, albums: delAlb, treeCards: mergeDel((local._deleted && local._deleted.treeCards) || [], (remote._deleted && remote._deleted.treeCards) || []) };
     // 成长值取双方较大值，绝不丢失任何一边的增长进度（不再用 resetAt 比较，避免一方空数据清零另一方）
     var growthSync = Math.max(local.tree.growth || 0, remote.tree.growth || 0);
     var lra = local.tree.resetAt || 0, rra = remote.tree.resetAt || 0;
@@ -1413,6 +1447,22 @@
         var later = (lp.lastFed || 0) + (lp.lastPlay || 0) >= (rp.lastFed || 0) + (rp.lastPlay || 0) ? lp : rp;
         return { name: later.name || "小甜", hunger: Math.max(lp.hunger || 0, rp.hunger || 0), mood: Math.max(lp.mood || 0, rp.mood || 0), lastFed: Math.max(lp.lastFed || 0, rp.lastFed || 0), lastPlay: Math.max(lp.lastPlay || 0, rp.lastPlay || 0), lvl: Math.max(lp.lvl || 1, rp.lvl || 1), cared: Math.max(lp.cared || 0, rp.cared || 0) };
       })(),
+      fruits: (function () {
+        function blank() { return { count: 0, lastDate: "", milestones: [] }; }
+        var lf = local.tree.fruits || blank(), rf = remote.tree.fruits || blank();
+        var mm = {};
+        (lf.milestones || []).concat(rf.milestones || []).forEach(function (n) { mm[n] = 1; });
+        return {
+          count: Math.max(lf.count || 0, rf.count || 0),
+          lastDate: (lf.lastDate || "") >= (rf.lastDate || "") ? (lf.lastDate || "") : (rf.lastDate || ""),
+          milestones: Object.keys(mm).map(Number).sort(function (a, b) { return a - b; })
+        };
+      })(),
+      cards: mergeArr(local.tree.cards, remote.tree.cards, mergeDel((local._deleted && local._deleted.treeCards) || [], (remote._deleted && remote._deleted.treeCards) || [])),
+      hungPhoto: [
+        (remote.tree.hungPhoto && remote.tree.hungPhoto[0]) || (local.tree.hungPhoto && local.tree.hungPhoto[0]) || null,
+        (remote.tree.hungPhoto && remote.tree.hungPhoto[1]) || (local.tree.hungPhoto && local.tree.hungPhoto[1]) || null
+      ],
       daily: (function () {
         function blank() { return { date: "", acts: { water: [0, 0], feed: [0, 0], play: [0, 0] }, claimed: {} }; }
         var ld = local.tree.daily || blank(), rd = remote.tree.daily || blank();
@@ -1651,6 +1701,40 @@
     var next = idx + 1 < TREE_STAGES.length ? TREE_STAGES[idx + 1].min : null;
     return { idx: idx, stage: TREE_STAGES[idx], next: next };
   }
+  // ===== 季节与节日：树随真实日期换装 =====
+  function treeSeason() {
+    var m = new Date().getMonth() + 1;
+    if (m >= 3 && m <= 5) return "spring";
+    if (m >= 6 && m <= 8) return "summer";
+    if (m >= 9 && m <= 11) return "autumn";
+    return "winter";
+  }
+  // 七夕（农历七月初七）公历对照表：数据来源 chinesecalendaronline / MoonCal（两家一致）
+  var QIXI_DATES = { 2026: "08-19", 2027: "08-08", 2028: "08-26", 2029: "08-16", 2030: "08-05", 2031: "08-24", 2032: "08-12", 2033: "08-01", 2034: "08-20", 2035: "08-10" };
+  function treeFestival() {
+    var n = new Date(), md = (n.getMonth() + 1) + "-" + n.getDate();
+    if (md === "2-14") return { key: "valentine", name: "情人节", deco: "heart" };
+    if (md === "12-25") return { key: "christmas", name: "圣诞节", deco: "xmas" };
+    var qx = QIXI_DATES[n.getFullYear()];
+    if (qx && qx === md) return { key: "qixi", name: "七夕", deco: "star" };
+    return null;
+  }
+  // 满级后爱情果实里程碑：解锁满级树的新装扮
+  var FRUIT_MILESTONES = [
+    { n: 10, name: "星星灯", desc: "满级树挂满闪烁的小星星" },
+    { n: 30, name: "彩虹树", desc: "树冠染上温柔的彩虹色" },
+    { n: 66, name: "金色年华", desc: "整棵树镀上暖暖的金色" },
+    { n: 99, name: "永恒之心", desc: "树顶升起一颗不落的心" }
+  ];
+  function fruitMilestone(n) {
+    for (var i = 0; i < FRUIT_MILESTONES.length; i++) if (FRUIT_MILESTONES[i].n === n) return FRUIT_MILESTONES[i];
+    return null;
+  }
+  function nextMilestone() {
+    var ms = (data.tree.fruits && data.tree.fruits.milestones) || [];
+    for (var i = 0; i < FRUIT_MILESTONES.length; i++) if (ms.indexOf(FRUIT_MILESTONES[i].n) < 0) return FRUIT_MILESTONES[i];
+    return null;
+  }
   // 检测今天是否为恋爱纪念日（在一起日期）或任意一个自定义纪念日
   function specialDayToday() {
     var now = new Date(), md = (now.getMonth() + 1) + "-" + now.getDate();
@@ -1661,35 +1745,72 @@
     }
     return null;
   }
+  var _tgUid = 0;
+  // 五角星路径（中心 cx,cy，半径 r）
+  function starPath(cx, cy, r) {
+    var pts = [];
+    for (var k = 0; k < 10; k++) {
+      var rr = k % 2 === 0 ? r : r * 0.42;
+      var a = -Math.PI / 2 + k * Math.PI / 5;
+      pts.push((k === 0 ? "M" : "L") + (cx + rr * Math.cos(a)).toFixed(1) + " " + (cy + rr * Math.sin(a)).toFixed(1));
+    }
+    return pts.join(" ") + " Z";
+  }
+  // 心形路径（中心 cx,cy，大小 s）
+  function heartPath(cx, cy, s) {
+    return "M" + cx + " " + (cy + s * 0.9) +
+      " C" + (cx - s * 1.2) + " " + (cy + s * 0.1) + " " + (cx - s * 0.9) + " " + (cy - s * 0.8) + " " + cx + " " + (cy - s * 0.25) +
+      " C" + (cx + s * 0.9) + " " + (cy - s * 0.8) + " " + (cx + s * 1.2) + " " + (cy + s * 0.1) + " " + cx + " " + (cy + s * 0.9) + " Z";
+  }
   function treeSVG(size) {
     var st = treeStage(), i = st.idx;
     var s = (size || 160);
+    var season = treeSeason();
+    var fest = treeFestival();
+    var gid = "tg" + (++_tgUid); // 渐变 id 唯一化：避免首页小树与树页面大树同时存在时冲突串色
+    // 季节配色：天空 / 树冠（上→下）/ 树干
+    var SKY = { spring: ["#c9ecff", "#f2fbe8"], summer: ["#a5dcff", "#e6f7ff"], autumn: ["#ffe3b8", "#fff6e6"], winter: ["#dcecf5", "#f6fbff"] }[season];
+    var CAN = { spring: ["#b5e77c", "#5fb85c"], summer: ["#63c26b", "#2f8f4e"], autumn: ["#f2c94e", "#d68a2a"], winter: ["#a8ccb4", "#5d8a74"] }[season];
+    var TRUNK = { spring: ["#c08a54", "#8a5a33"], summer: ["#b07f4c", "#7d5230"], autumn: ["#c99a5b", "#96632f"], winter: ["#b98a63", "#8a5f3c"] }[season];
+    var ms = (data.tree.fruits && data.tree.fruits.milestones) || [];
+    var full = i >= 1 && data.tree.growth >= 40; // 满级成树
+    var canopyStops = CAN, trunkStops = TRUNK;
+    if (full && ms.indexOf(30) >= 0) canopyStops = ["#ffb3c7", "#ffd28a", "#fff3a6", "#a8e6a1", "#a5c8ff"]; // 彩虹树
+    if (full && ms.indexOf(66) >= 0) { canopyStops = ["#ffe9a8", "#f0c33c"]; trunkStops = ["#f7dc8f", "#d9a832"]; } // 金色年华
+    function stops(arr) { return arr.map(function (c, k) { return '<stop offset="' + (arr.length > 1 ? (k / (arr.length - 1)).toFixed(2) : "0") + '" stop-color="' + c + '"/>'; }).join(""); }
     var defs = "<defs>" +
-      '<linearGradient id="tgSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b7e0ff"/><stop offset="1" stop-color="#e9f8ff"/></linearGradient>' +
-      '<linearGradient id="tgCan" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fd96e"/><stop offset="1" stop-color="#48a05a"/></linearGradient>' +
-      '<linearGradient id="tgTrunk" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c08a54"/><stop offset="1" stop-color="#8a5a33"/></linearGradient>' +
+      '<linearGradient id="' + gid + 'Sky" x1="0" y1="0" x2="0" y2="1">' + stops(SKY) + "</linearGradient>" +
+      '<linearGradient id="' + gid + 'Can" x1="0" y1="0" x2="0" y2="1">' + stops(canopyStops) + "</linearGradient>" +
+      '<linearGradient id="' + gid + 'Trunk" x1="0" y1="0" x2="1" y2="0">' + stops(trunkStops) + "</linearGradient>" +
       "</defs>";
-    var parts = ['<rect x="0" y="0" width="160" height="160" fill="url(#tgSky)"/>'];
+    var parts = ['<rect x="0" y="0" width="160" height="160" fill="url(#' + gid + 'Sky)"/>'];
     parts.push('<g fill="#fff" opacity=".92"><ellipse cx="32" cy="26" rx="14" ry="6.5"/><ellipse cx="44" cy="22" rx="9" ry="5.5"/><ellipse cx="126" cy="38" rx="12" ry="5.5"/><ellipse cx="136" cy="34" rx="8" ry="4.5"/></g>');
-    parts.push('<path d="M0 130 C40 120 80 124 160 128 L160 160 L0 160 Z" fill="#8fd977"/>');
-    parts.push('<path d="M0 142 C50 133 110 135 160 142 L160 160 L0 160 Z" fill="#9fe383"/>');
+    // 地面随季节变色
+    var G1 = { spring: "#8fd977", summer: "#6fbf73", autumn: "#e0b25f", winter: "#e8f1f5" }[season];
+    var G2 = { spring: "#9fe383", summer: "#8fd98e", autumn: "#eec97e", winter: "#f6fbff" }[season];
+    parts.push('<path d="M0 130 C40 120 80 124 160 128 L160 160 L0 160 Z" fill="' + G1 + '"/>');
+    parts.push('<path d="M0 142 C50 133 110 135 160 142 L160 160 L0 160 Z" fill="' + G2 + '"/>');
     parts.push('<g fill="#fff"><circle cx="20" cy="150" r="2.2"/><circle cx="141" cy="155" r="2.2"/><circle cx="31" cy="159" r="1.8"/><circle cx="127" cy="146" r="1.8"/></g>');
     parts.push('<g class="t-sway" style="transform-origin:80px 142px">');
     if (i === 0) {
-      parts.push('<path d="M80 136 C77 128 77 121 80 114" stroke="url(#tgTrunk)" stroke-width="4" fill="none" stroke-linecap="round"/>');
-      parts.push('<path d="M80 116 C74 110 73 103 77 98 C82 102 83 109 80 116 Z" fill="url(#tgCan)"/>');
-      parts.push('<path d="M80 119 C85 115 91 115 94 119 C91 124 83 124 80 119 Z" fill="url(#tgCan)" opacity=".92"/>');
-    parts.push("</g>");
+      parts.push('<path d="M80 136 C77 128 77 121 80 114" stroke="url(#' + gid + 'Trunk)" stroke-width="4" fill="none" stroke-linecap="round"/>');
+      parts.push('<path d="M80 116 C74 110 73 103 77 98 C82 102 83 109 80 116 Z" fill="url(#' + gid + 'Can)"/>');
+      parts.push('<path d="M80 119 C85 115 91 115 94 119 C91 124 83 124 80 119 Z" fill="url(#' + gid + 'Can)" opacity=".92"/>');
+      if (season === "winter") parts.push('<path d="M75 96 C78 93 84 92 88 94 C92 93 95 95 96 97 C90 99 80 99 75 96 Z" fill="#fff" opacity=".9"/>');
     } else {
       var sc = Math.min(1.12, 0.6 + i * 0.105);
       parts.push('<g transform="translate(80 84) scale(' + sc + ') translate(-80 -84)">');
-      parts.push('<path d="M80 142 C76 128 75 118 79 106 L82 106 C86 118 85 128 82 142 Z" fill="url(#tgTrunk)"/>');
+      parts.push('<path d="M80 142 C76 128 75 118 79 106 L82 106 C86 118 85 128 82 142 Z" fill="url(#' + gid + 'Trunk)"/>');
       parts.push('<path d="M80 118 C71 112 65 105 63 98" stroke="#8a5a33" stroke-width="3.4" fill="none" stroke-linecap="round"/>');
       parts.push('<path d="M81 118 C90 112 96 105 98 98" stroke="#8a5a33" stroke-width="3.4" fill="none" stroke-linecap="round"/>');
       parts.push('<g class="t-canopy" style="transform-origin:80px 142px">');
-      parts.push('<path d="M80 102 C54 86 43 70 47 56 C50 44 63 40 71 48 C76 52 79 56 80 60 C81 56 84 52 89 48 C97 40 110 44 113 56 C117 70 106 86 80 102 Z" fill="url(#tgCan)"/>');
-      parts.push('<path d="M64 52 C60 54 57 58 56 63" stroke="#b8eb9a" stroke-width="3.4" fill="none" stroke-linecap="round" opacity=".85"/>');
-      parts.push('<path d="M97 51 C101 54 103 58 104 62" stroke="#b8eb9a" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>');
+      parts.push('<path d="M80 102 C54 86 43 70 47 56 C50 44 63 40 71 48 C76 52 79 56 80 60 C81 56 84 52 89 48 C97 40 110 44 113 56 C117 70 106 86 80 102 Z" fill="url(#' + gid + 'Can)"/>');
+      parts.push('<path d="M64 52 C60 54 57 58 56 63" stroke="#ffffff" stroke-width="3.4" fill="none" stroke-linecap="round" opacity=".5"/>');
+      parts.push('<path d="M97 51 C101 54 103 58 104 62" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".35"/>');
+      // 冬季积雪盖在树冠顶部
+      if (season === "winter") {
+        parts.push('<path d="M50 62 C56 55 62 57 67 52 C73 56 81 52 87 55 C94 51 100 56 106 63 C99 68 91 65 85 69 C75 64 64 68 55 66 C51 65 49 64 50 62 Z" fill="#fff" opacity=".88"/>');
+      }
       if (i >= 4) {
         var fp2 = [[62, 60], [95, 56], [80, 74], [69, 85], [92, 82], [80, 48]];
         for (var fi = 0; fi < fp2.length; fi++) {
@@ -1700,8 +1821,36 @@
         var fp3 = [[46, 44], [112, 40], [70, 64], [124, 70], [58, 92]];
         for (var fj = 0; fj < fp3.length; fj++) parts.push('<circle class="t-fall f' + ((fj % 3) + 1) + '" cx="' + fp3[fj][0] + '" cy="' + fp3[fj][1] + '" r="2.6" fill="#ff9ec8"/>');
       }
-      parts.push("</g></g></g>");
+      // 满级里程碑装扮（需满级 + 对应果实数）
+      if (full && ms.indexOf(10) >= 0) {
+        var lampPos = [[55, 58], [70, 48], [88, 55], [62, 78], [95, 72], [78, 88]];
+        for (var li = 0; li < lampPos.length; li++) {
+          parts.push('<path class="t-spark' + (li % 3 === 1 ? " s2" : "") + '" d="' + starPath(lampPos[li][0], lampPos[li][1], 4.2) + '" fill="#ffd84d"/>');
+        }
+      }
+      if (full && ms.indexOf(99) >= 0) {
+        parts.push('<path d="' + heartPath(80, 30, 5) + '" fill="#ff4d7d"/>');
+      }
+      // 节日装扮
+      if (fest && fest.key === "christmas") {
+        var xPos = [[52, 60], [64, 52], [76, 48], [90, 54], [102, 64], [58, 84], [98, 84]];
+        var xCol = ["#ff5b6a", "#ffd84d", "#6ec6ff", "#7fe3a0", "#c79bff", "#ffa24d", "#ff8fb3"];
+        for (var xi = 0; xi < xPos.length; xi++) {
+          parts.push('<circle class="t-spark' + (xi % 3 === 1 ? " s2" : "") + '" cx="' + xPos[xi][0] + '" cy="' + xPos[xi][1] + '" r="2.6" fill="' + xCol[xi % xCol.length] + '"/>');
+        }
+        parts.push('<path class="t-spark" d="' + starPath(80, 34, 5.5) + '" fill="#ffe28a"/>');
+      }
+      if (fest && fest.key === "valentine") {
+        [[58, 56], [96, 60], [74, 82]].forEach(function (p) { parts.push('<path d="' + heartPath(p[0], p[1], 3.2) + '" fill="#ff5b8f"/>'); });
+      }
+      if (fest && fest.key === "qixi") {
+        [[48, 44], [110, 48], [64, 70], [100, 78]].forEach(function (p, k) {
+          parts.push('<circle class="t-spark' + (k % 2 ? " s2" : "") + '" cx="' + p[0] + '" cy="' + p[1] + '" r="1.6" fill="#fff6b0"/>');
+        });
+      }
+      parts.push("</g></g>");
     }
+    parts.push("</g>");
     parts.push('<circle class="t-fall" cx="52" cy="72" r="2.4" fill="#ffc9dd"/>');
     parts.push('<circle class="t-fall f2" cx="108" cy="62" r="2" fill="#ffe28a"/>');
     parts.push('<circle class="t-fall f3" cx="94" cy="96" r="1.8" fill="#c4eeb0"/>');
@@ -1715,6 +1864,7 @@
   function renderAll() {
     applyTheme();
     if (claimDaily()) saveLocal();
+    harvestFruit(true); // 兜底：一方浇水后另一方打开时也能结算果实
     document.title = data.spaceName || "恋人空间";
     $("barTitle").textContent = data.spaceName || "恋人空间";
     renderHome(); renderChat(); renderAlbum(); renderSelfie(); renderUs();
@@ -1753,7 +1903,7 @@
     $("homeTreeMini").innerHTML = treeSVG(72);
     $("homeTreeName").textContent = st.stage.name;
     $("homeTreeBar").style.width = (st.next ? Math.min(100, ((data.tree.growth - st.stage.min) / (st.next - st.stage.min)) * 100) : 100) + "%";
-    $("homeTreeLbl").textContent = st.next ? ("成长值 " + data.tree.growth + " / " + st.next) : ("成长值 " + data.tree.growth + " · 已满级");
+    $("homeTreeLbl").textContent = st.next ? ("成长值 " + data.tree.growth + " / " + st.next) : ("成长值 " + data.tree.growth + " · 已满级，爱情果实 " + ((data.tree.fruits && data.tree.fruits.count) || 0) + " 颗 🍎");
     var list = data.anniversaries.map(function (a) { var i = anniInfo(a); return i ? { a: a, i: i } : null; }).filter(Boolean);
     renderMiss();
     list.sort(function (x, y) { return x.i.next - y.i.next; });
@@ -2039,6 +2189,7 @@
   });
   // 点击恋爱树：整树摇晃 + 抖落表情（首页小树与大树共用）
   document.addEventListener("click", function (e) {
+    if (e.target.closest(".tc-slot")) return; // 树上挂件（心愿卡/相框）的点击不触发摇树
     var scene = e.target.closest(".tree-scene");
     if (scene) { shakeTree(scene, e); return; }
     var mini = e.target.closest("#homeTreeMini");
@@ -2249,15 +2400,12 @@
     });
   }
 
-  function treeCooldown(ts, hours) { return Date.now() - (ts || 0) > hours * 3600 * 1000; }
-  function recomputePet() {
-    var p = data.tree.pet;
-    var eh = Math.floor((Date.now() - (p.lastFed || 0)) / 3600000);
-    var em = Math.floor((Date.now() - (p.lastPlay || 0)) / 3600000);
-    p.hunger = Math.max(0, Math.min(100, 100 - eh * 8));
-    p.mood = Math.max(0, Math.min(100, 100 - em * 6));
-  }
   // ===== 奶龙宠物（SVG 可动形象）=====
+  // 【宠物框架预留 · 形象未接入】数据字段 data.tree.pet（hunger/mood/lvl/cared/lastFed/lastPlay）
+  // 已在 DEFAULT / loadLocal / merge 三处就绪，可正常双人同步。
+  // 接入步骤（待形象素材定稿后执行）：① 树页面放一个 .pet-stage 容器并渲染 petSVG()；
+  // ② renderAll() 中调用 recomputePet() 做饥饿/心情实时衰减并显示进度条；
+  // ③ 用 interact("feed") / interact("play") 暴露喂食/陪玩按钮（逻辑已写好，ACT_CONF 已配置）。
   function petSVG() {
     var lvl = data.tree.pet.lvl || 1;
     var acc = "";
@@ -2341,42 +2489,223 @@
     else if (key === "play") { data.tree.play[me] = Date.now(); data.tree.pet.mood = 100; data.tree.pet.lastPlay = Date.now(); data.tree.pet.cared = (data.tree.pet.cared || 0) + 1; }
     data.tree.pet.lvl = 1 + Math.floor((data.tree.pet.cared || 0) / 10);
     save(); renderAll();
+    if (key === "water") harvestFruit();
     toast(treeStage().idx > before ? "升级啦！恋爱树长成了「" + treeStage().stage.name + "」" : ACT_CONF[key].name + "成功，成长值 +1");
     openTreeSheet();
     if (key !== "water") petHearts();
   }
-  function openTreeSheet() {
+  // ===== 树场景氛围层：纪念日花瓣 + 季节/节日粒子 + 横幅 =====
+  function treeSceneExtra(sp) {
     var st = treeStage();
-    var canWater = canAct("water");
-    var sp = specialDayToday();
-    var sceneExtra = "";
+    var season = treeSeason();
+    var fest = treeFestival();
+    var out = "";
     if (sp || st.idx >= 4) {
       var pCount = sp ? 16 : 9, petals = "";
       for (var pI = 0; pI < pCount; pI++) {
         var pl = Math.round(Math.random() * 92 + 2), pd = (sp ? 3.4 : 5) + Math.random() * 2.6, pdl = Math.random() * 4, psz = 10 + Math.round(Math.random() * 6);
         petals += '<i class="petal" style="left:' + pl + "%;width:" + psz + "px;height:" + psz + "px;animation-duration:" + pd.toFixed(1) + "s;animation-delay:" + pdl.toFixed(1) + 's"></i>';
       }
-      sceneExtra = '<div class="petal-layer">' + petals + "</div>";
-      if (sp) sceneExtra += '<div class="tree-banner">🌸 ' + sp.name + " · " + sp.label + "</div>";
+      out += '<div class="petal-layer">' + petals + "</div>";
     }
+    var extra = "";
+    var i;
+    if (season === "autumn") {
+      for (i = 0; i < 7; i++) extra += '<i class="tp tp-leaf" style="left:' + (Math.random() * 92 + 2).toFixed(1) + "%;animation-duration:" + (4 + Math.random() * 3).toFixed(1) + "s;animation-delay:" + (Math.random() * 5).toFixed(1) + 's"></i>';
+    } else if (season === "winter" || (fest && fest.key === "christmas")) {
+      for (i = 0; i < 12; i++) extra += '<i class="tp tp-snow" style="left:' + (Math.random() * 96 + 1).toFixed(1) + "%;animation-duration:" + (5 + Math.random() * 4).toFixed(1) + "s;animation-delay:" + (Math.random() * 6).toFixed(1) + 's"></i>';
+    } else if (season === "summer") {
+      for (i = 0; i < 5; i++) extra += '<i class="tp tp-fly" style="left:' + (Math.random() * 80 + 8).toFixed(1) + "%;top:" + (52 + Math.random() * 30).toFixed(0) + "%;animation-duration:" + (4 + Math.random() * 3).toFixed(1) + "s;animation-delay:" + (Math.random() * 4).toFixed(1) + 's"></i>';
+    }
+    if (fest && fest.key === "valentine") {
+      for (i = 0; i < 6; i++) extra += '<i class="tp tp-heart" style="left:' + (Math.random() * 90 + 3).toFixed(1) + "%;animation-duration:" + (4.5 + Math.random() * 3).toFixed(1) + "s;animation-delay:" + (Math.random() * 5).toFixed(1) + 's">♥</i>';
+    }
+    if (fest && fest.key === "qixi") {
+      for (i = 0; i < 6; i++) extra += '<i class="tp tp-star" style="left:' + (Math.random() * 90 + 3).toFixed(1) + "%;animation-duration:" + (4.5 + Math.random() * 3).toFixed(1) + "s;animation-delay:" + (Math.random() * 5).toFixed(1) + 's">✦</i>';
+    }
+    if (extra) out += '<div class="petal-layer">' + extra + "</div>";
+    if (sp) out += '<div class="tree-banner">🌸 ' + sp.name + " · " + sp.label + "</div>";
+    else if (fest) {
+      var fe = fest.key === "christmas" ? "🎄" : fest.key === "valentine" ? "💝" : "✦";
+      out += '<div class="tree-banner">' + fe + " " + fest.name + "快乐 · 愿爱情树常青</div>";
+    }
+    return out;
+  }
+  // ===== 树上挂件：心愿卡（每人限 2 张）+ 照片相框（各 1 张）=====
+  var TC_SLOTS = [
+    { left: "7%", top: "13%", rot: -8 },
+    { left: "60%", top: "9%", rot: 6 },
+    { left: "3%", top: "37%", rot: 4 },
+    { left: "68%", top: "35%", rot: -5 },
+    { left: "16%", top: "60%", rot: -3 },
+    { left: "56%", top: "58%", rot: 7 }
+  ];
+  function treeOrnaments(sp) {
+    var html = "";
+    var cards = (data.tree.cards || []).slice().sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); }).slice(0, 4);
+    cards.forEach(function (c, idx) {
+      var sl = TC_SLOTS[idx];
+      html += '<div class="tc-slot" style="left:' + sl.left + ";top:" + sl.top + ";transform:rotate(" + sl.rot + 'deg)" data-tc="' + c.id + '">' +
+        '<div class="tc-card' + (c.kind === "memo" ? " memo" : "") + '">' + esc(c.text.slice(0, 22)) + (c.text.length > 22 ? "…" : "") +
+        '<span class="tc-who">' + esc((data.partners[c.who] || data.partners[0]).name) + "</span></div></div>";
+    });
+    if (sp && cards.length < 4) {
+      var sl2 = TC_SLOTS[cards.length];
+      html += '<div class="tc-slot" style="left:' + sl2.left + ";top:" + sl2.top + ";transform:rotate(" + sl2.rot + 'deg)"><div class="tc-card memo">🌸 ' + esc(sp.name) + '<span class="tc-who">' + esc(sp.label) + "</span></div></div>";
+    }
+    [0, 1].forEach(function (who) {
+      var pid = data.tree.hungPhoto && data.tree.hungPhoto[who];
+      if (!pid) return;
+      var sf = (data.selfies || []).find(function (x) { return x.id === pid; });
+      if (!sf) return;
+      var sl3 = TC_SLOTS[5 - who];
+      html += '<div class="tc-slot" style="left:' + sl3.left + ";top:" + sl3.top + ";transform:rotate(" + (sl3.rot + 4) + 'deg)" data-tp="' + sf.id + '">' +
+        '<div class="tc-photo"><img src="' + sf.src + '" alt=""/><span class="tc-who">' + esc((data.partners[who] || data.partners[0]).name) + "</span></div></div>";
+    });
+    return html;
+  }
+  // ===== 爱情果实：满级后双人当天都浇水即结果（按日期去重）=====
+  function harvestFruit(silent) {
+    if (data.tree.growth < 40) return false;
+    var f = data.tree.fruits;
+    if (!f || typeof f !== "object") f = data.tree.fruits = { count: 0, lastDate: "", milestones: [] };
+    var t = todayStr();
+    var bothWater = [0, 1].every(function (w) { var ts = data.tree.lastWater[w] || 0; return ts > 0 && todayStr(new Date(ts)) === t; });
+    if (!bothWater || f.lastDate === t) return false;
+    f.lastDate = t;
+    f.count += 1;
+    var unlocked = null;
+    FRUIT_MILESTONES.forEach(function (m) {
+      if (f.count >= m.n && f.milestones.indexOf(m.n) < 0) { f.milestones.push(m.n); unlocked = m; }
+    });
+    save();
+    if (!silent) {
+      toast(unlocked ? "🎉 果实里程碑达成！满级树解锁新装扮「" + unlocked.name + "」" : "🍎 双人合浇，爱情树结出第 " + f.count + " 颗果实！");
+    }
+    return true;
+  }
+  function fruitBoard() {
+    var f = data.tree.fruits || { count: 0, milestones: [] };
+    var nm = nextMilestone();
+    var got = (f.milestones || []).map(function (n) { var m = fruitMilestone(n); return m ? m.name : null; }).filter(Boolean);
+    var html = '<div style="background:linear-gradient(135deg,#fff6e0,#ffe9c4);border:2px solid #f0c33c;border-radius:14px;padding:12px 14px;margin:12px 0 0">' +
+      '<div style="font-size:13px;font-weight:700;color:#a5741a">🍎 爱情果实 · 已收获 ' + f.count + ' 颗</div>' +
+      '<div style="font-size:11px;color:#b08b3e;margin-top:3px">满级后，两人当天都浇过水，树就会结出 1 颗果实</div>';
+    if (nm) {
+      var pct = Math.min(100, Math.round((f.count / nm.n) * 100));
+      html += '<div class="grow-track" style="margin-top:8px;height:8px"><div class="grow-fill" style="width:' + pct + '%;background:linear-gradient(90deg,#ffd84d,#f0a020)"></div></div>' +
+        '<div class="grow-lbl" style="margin-top:4px">再 ' + Math.max(0, nm.n - f.count) + ' 颗解锁「' + nm.name + '」 · ' + nm.desc + "</div>";
+    } else {
+      html += '<div class="grow-lbl" style="margin-top:4px">全部装扮已解锁，这就是属于你们的参天大树 🌳</div>';
+    }
+    if (got.length) html += '<div style="font-size:11px;color:#a5741a;margin-top:6px">已解锁装扮：' + got.map(function (n) { return "「" + n + "」"; }).join(" ") + "</div>";
+    return html + "</div>";
+  }
+  // ===== 心愿卡：挂卡 / 查看 / 删除 =====
+  function openWishSheet() {
+    openSheet("挂一张心愿卡", '<div style="font-size:12px;color:var(--ink-2);margin-bottom:8px">写下想对 TA 说的话，它会挂在恋爱树上（限 60 字，每人最多 2 张）</div>' +
+      '<textarea id="wishInput" maxlength="60" rows="3" style="width:100%;box-sizing:border-box;border:1.5px solid #ffb7cf;border-radius:12px;padding:10px 12px;font-size:14px;resize:none;font-family:inherit"></textarea>' +
+      '<div style="text-align:right;font-size:11px;color:var(--ink-2);margin-top:4px"><span id="wishCnt">0</span>/60</div>' +
+      '<button class="primary-btn" id="wishOk" style="margin-top:10px">挂到树上</button>');
+    var ta = $("wishInput");
+    ta.addEventListener("input", function () { $("wishCnt").textContent = String(ta.value.length); });
+    $("wishOk").addEventListener("click", function () {
+      var v = ta.value.trim();
+      if (!v) { toast("写点什么再挂吧"); return; }
+      var mine = (data.tree.cards || []).filter(function (c) { return c.who === me; });
+      if (mine.length >= 2) { toast("每人最多挂 2 张心愿卡哦"); return; }
+      data.tree.cards.push({ id: uid(), who: me, text: v, ts: Date.now(), kind: "wish" });
+      save(); closeSheet(); openTreeSheet(); toast("心愿卡已挂上树 💌");
+    });
+  }
+  function openCardSheet(c) {
+    var mine = c.who === me;
+    openSheet("心愿卡", '<div style="background:linear-gradient(160deg,#fff8d6,#ffefb0);border-radius:12px;padding:16px;font-size:14px;line-height:1.6;color:#6b4f1d;word-break:break-all">' + esc(c.text) + "</div>" +
+      '<div style="font-size:12px;color:var(--ink-2);margin-top:8px">—— ' + esc((data.partners[c.who] || data.partners[0]).name) + " · " + new Date(c.ts || Date.now()).toLocaleDateString("zh-CN") + "</div>" +
+      (mine ? '<button class="ghost-btn" id="tcDel" style="margin-top:12px;color:#e2603f">摘下这张卡片</button>' : ""));
+    if (mine) {
+      $("tcDel").addEventListener("click", function () {
+        data.tree.cards = (data.tree.cards || []).filter(function (x) { return x.id !== c.id; });
+        tomb("treeCards", c.id);
+        save(); closeSheet(); openTreeSheet(); toast("卡片已摘下");
+      });
+    }
+  }
+  // ===== 照片相框：挂/摘今日自拍 =====
+  function togglePhoto() {
+    if (data.tree.hungPhoto && data.tree.hungPhoto[me]) {
+      data.tree.hungPhoto[me] = null;
+      save(); openTreeSheet(); toast("相框已摘下");
+      return;
+    }
+    var t = todayStr();
+    var list = (data.selfies || []).filter(function (s) { return s.who === me && s.date === t; }).sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+    if (!list.length) { toast("今天还没有自拍，去拍一张吧 📷"); return; }
+    data.tree.hungPhoto[me] = list[0].id;
+    save(); openTreeSheet(); toast("今日自拍已挂上树 🖼");
+  }
+  function openTreeSheet() {
+    var st = treeStage();
+    var sp = specialDayToday();
+    var sceneExtra = treeSceneExtra(sp) + treeOrnaments(sp);
+    var stageHtml = '<div class="tree-stage" style="padding:12px 0 4px">' +
+      '<div class="tree-name" style="font-size:14px;font-weight:700;color:var(--pink-deep)">' + st.stage.name + '</div><div class="tree-desc" style="font-size:12px;color:var(--ink-2);margin:4px 0 10px">' + st.stage.desc + "</div>";
+    if (st.next) {
+      stageHtml += '<div class="grow-track"><div class="grow-fill" style="width:' + Math.min(100, ((data.tree.growth - st.stage.min) / (st.next - st.stage.min)) * 100) + '%"></div></div>' +
+        '<div class="grow-lbl">成长值 ' + data.tree.growth + "，再 +" + (st.next - data.tree.growth) + " 升级</div>";
+    } else {
+      stageHtml += '<div class="grow-track"><div class="grow-fill" style="width:100%"></div></div>' +
+        '<div class="grow-lbl">成长值 ' + data.tree.growth + " · 已是最高级啦，去看看果实吧</div>";
+    }
+    stageHtml += "</div>";
     var html = '<div class="tree-scene">' + treeSVG(220) + sceneExtra + "</div>" +
       '<div class="sign-board"><div class="sign-row"><span>我连续浇树</span><b>' + waterStreak(me) + '</b><span>天</span></div>' +
       '<div class="sign-row"><span>TA连续浇树</span><b>' + waterStreak(1 - me) + '</b><span>天</span></div></div>' +
-      '<div class="tree-stage" style="padding:12px 0 4px">' +
-      '<div class="tree-name" style="font-size:14px;font-weight:700;color:var(--pink-deep)">' + st.stage.name + '</div><div class="tree-desc" style="font-size:12px;color:var(--ink-2);margin:4px 0 10px">' + st.stage.desc + "</div>" +
-      '<div class="grow-track"><div class="grow-fill" style="width:' + (st.next ? Math.min(100, ((data.tree.growth - st.stage.min) / (st.next - st.stage.min)) * 100) : 100) + '%"></div></div>' +
-      '<div class="grow-lbl">' + (st.next ? "成长值 " + data.tree.growth + "，再 +" + (st.next - data.tree.growth) + " 升级" : "成长值 " + data.tree.growth + " · 已是最高级啦") + "</div></div>" +
+      stageHtml +
+      (!st.next ? fruitBoard() : "") +
       '<button class="primary-btn" id="actWater" style="background:linear-gradient(135deg,#8fd3a8,#3fae6e);box-shadow:0 6px 16px rgba(63,174,110,.3);margin-top:6px">' + actLabel("water") + " · 成长值 +1</button>";
+    // 挂件按钮组
+    var wishCnt = (data.tree.cards || []).filter(function (c) { return c.who === me; }).length;
+    var t = todayStr();
+    var hasSelfie = (data.selfies || []).some(function (s) { return s.who === me && s.date === t; });
+    var myPhoto = data.tree.hungPhoto && data.tree.hungPhoto[me];
+    html += '<div class="tree-actions">' +
+      '<button class="tbtn" id="actWish" style="background:linear-gradient(135deg,#ffd84d,#f0a020);box-shadow:0 6px 16px rgba(240,160,32,.28)"' + (wishCnt >= 2 ? " disabled" : "") + '>💌 挂心愿卡 ' + wishCnt + '/2</button>' +
+      '<button class="tbtn" id="actPhoto" style="background:linear-gradient(135deg,#b5a3ff,#7b5cf0);box-shadow:0 6px 16px rgba(123,92,240,.28)">' + (myPhoto ? "🖼 摘下相框" : hasSelfie ? "🖼 挂今日自拍" : "🖼 今天还没自拍") + "</button>" +
+      "</div>";
     // 每日任务：随真实行为自动完成
     html += '<div class="tree-section-title">' + icon("check") + "每日任务（完成自动 +1 成长值）</div>";
-    html += DAILY_TASKS.map(function (t) {
-      var d0 = dailyTaskDone(t.key, 0), d1 = dailyTaskDone(t.key, 1);
-      var ic = t.key === "selfie" ? "cam" : t.key === "msg" ? "chat" : t.key === "miss" ? "heart" : "drop";
-      return '<div class="dt-item' + ((d0 || d1) ? " done" : "") + '"><div class="dt-ico">' + icon(ic) + '</div><div class="dt-name">' + t.name + '</div>' +
+    html += DAILY_TASKS.map(function (task) {
+      var d0 = dailyTaskDone(task.key, 0), d1 = dailyTaskDone(task.key, 1);
+      var ic = task.key === "selfie" ? "cam" : task.key === "msg" ? "chat" : task.key === "miss" ? "heart" : "drop";
+      return '<div class="dt-item' + ((d0 || d1) ? " done" : "") + '"><div class="dt-ico">' + icon(ic) + '</div><div class="dt-name">' + task.name + '</div>' +
         '<div class="dt-who"><span class="p0' + (d0 ? " on" : "") + '">' + esc((data.partners[0].name || "?").slice(0, 1)) + '</span><span class="p1' + (d1 ? " on" : "") + '">' + esc((data.partners[1].name || "?").slice(0, 1)) + "</span></div></div>";
     }).join("");
     openSheet("我们的恋爱树", html);
     $("actWater").addEventListener("click", function () { interact("water"); });
+    var bw = $("actWish");
+    if (bw && !bw.disabled) bw.addEventListener("click", openWishSheet);
+    var bp = $("actPhoto");
+    if (bp) bp.addEventListener("click", togglePhoto);
+    $("sheetBody").querySelectorAll("[data-tc]").forEach(function (el) {
+      el.addEventListener("click", function () {
+        var c = (data.tree.cards || []).find(function (x) { return x.id === el.dataset.tc; });
+        if (c) openCardSheet(c);
+      });
+    });
+    $("sheetBody").querySelectorAll("[data-tp]").forEach(function (el) {
+      el.addEventListener("click", function () {
+        var sf = (data.selfies || []).find(function (x) { return x.id === el.dataset.tp; });
+        if (sf) openViewer({ id: sf.id, src: sf.src, by: sf.who, isSelfie: true });
+      });
+    });
+    // 粒子下落距离按场景实际高度适配（大屏下粒子也能落到底）
+    requestAnimationFrame(function () {
+      var scene = document.querySelector(".tree-scene");
+      if (!scene) return;
+      var h = Math.round(scene.getBoundingClientRect().height + 20) + "px";
+      scene.querySelectorAll(".petal-layer").forEach(function (l) { l.style.setProperty("--fall-dist", h); });
+    });
   }
   var pickCb = null;
   $("filePick").addEventListener("change", function () { var f = this.files[0]; this.value = ""; if (f && pickCb) pickCb(f); });
