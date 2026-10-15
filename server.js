@@ -106,6 +106,13 @@ app.get("/api/room/:id", function (req, res) {
   const id = String(req.params.id).toUpperCase();
   const r = rooms[id];
   if (!r) return res.json({ id: id, exists: false, data: null, ts: 0 });
+  // 条件请求：客户端轮询时带 If-None-Match: <本地已知的ts>，云端数据没变就回 304（只传响应头，省流量）
+  const inm = String(req.headers["if-none-match"] || "").replace(/^"|"$/g, "");
+  if (inm && inm === String(r.ts || 0)) {
+    res.status(304).end();
+    return;
+  }
+  res.setHeader("ETag", '"' + (r.ts || 0) + '"');
   res.json({ id: id, exists: true, data: r.data, ts: r.ts });
 });
 
@@ -185,9 +192,31 @@ app.post("/api/push/notify", async function (req, res) {
   }
 });
 
-// 首页：托管单文件应用
+// 首页：托管单文件应用（gzip 压缩 + ETag/304，冷启动流量从 468KB 降到约 110KB，重复启动几乎不耗流量）
+const zlib = require("zlib");
+let htmlCache = { raw: null, gz: null, etag: "", mtimeMs: 0 };
+function loadIndex() {
+  const p = path.join(__dirname, "index.html");
+  const st = fs.statSync(p);
+  if (htmlCache.raw && htmlCache.mtimeMs === st.mtimeMs) return htmlCache;
+  const raw = fs.readFileSync(p);
+  htmlCache = { raw: raw, gz: zlib.gzipSync(raw), etag: '"' + st.size + "-" + st.mtimeMs + '"', mtimeMs: st.mtimeMs };
+  return htmlCache;
+}
 app.get("/", function (req, res) {
-  res.sendFile(path.join(__dirname, "index.html"));
+  let c;
+  try { c = loadIndex(); } catch (e) { return res.status(500).end(); }
+  if (req.headers["if-none-match"] === c.etag) { res.status(304).end(); return; }
+  res.setHeader("ETag", c.etag);
+  res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  const ae = String(req.headers["accept-encoding"] || "");
+  if (ae.indexOf("gzip") >= 0) {
+    res.setHeader("Content-Encoding", "gzip");
+    res.end(c.gz);
+  } else {
+    res.end(c.raw);
+  }
 });
 
 const PORT = process.env.PORT || 3000;

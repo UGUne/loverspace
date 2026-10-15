@@ -944,9 +944,9 @@
       var ctrl = new AbortController();
       var timer = setTimeout(function () { ctrl.abort(); }, 6000);
       o.signal = ctrl.signal;
-      return fetch(path, o).then(function (r) { clearTimeout(timer); return r.json(); }).catch(function () { clearTimeout(timer); return null; });
+      return fetch(path, o).then(function (r) { clearTimeout(timer); if (r.status === 304) return { __nm: true }; return r.json(); }).catch(function () { clearTimeout(timer); return null; });
     }
-    return fetch(path, o).then(function (r) { return r.json(); }).catch(function () { return null; });
+    return fetch(path, o).then(function (r) { if (r.status === 304) return { __nm: true }; return r.json(); }).catch(function () { return null; });
   }
 
   // 空间码生成（Supabase 模式下由前端生成，作为 rooms 表主键）
@@ -1009,6 +1009,8 @@
     if (method === "POST") return api("/api/room", { method: "POST" });
     var o = { method: method === "PUT" ? "PUT" : "GET" };
     if (method === "PUT") { o.headers = { "Content-Type": "application/json" }; o.body = JSON.stringify(body); }
+    // 轮询 GET 带本地已知的云端版本号：数据没变服务端回 304，只传响应头（省流量）
+    else if (method === "GET" && backend.ts) { o.headers = { "If-None-Match": '"' + backend.ts + '"' }; }
     return api("/api/room/" + id, o);
   }
   function roomApi(method, id, body) { return usingSb() ? sbRequest(method, id, body) : localRequest(method, id, body); }
@@ -1072,6 +1074,7 @@
   }
   // 云端返回数据的统一入口：密文则先解密再合并
   function applyRemote(r) {
+    if (r && r.__nm) { backend.enabled = true; return Promise.resolve(true); } // 304：云端可达且数据无变化，无需合并
     if (!r || (r.data == null && r.exists === undefined && !r.id)) return Promise.resolve(false);
     backend.enabled = true;
     if (!r.data) return Promise.resolve(true);
@@ -1138,7 +1141,7 @@
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1026a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1027a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -1349,7 +1352,7 @@
       });
     });
   }
-  var POLL_FG = 6000, POLL_BG = 30000; // 前台6秒、后台30秒：降低待机耗电；情侣消息晚到些无妨
+  var POLL_FG = 6000, POLL_BG = 120000; // 前台6秒、后台2分钟：降低待机耗电与流量（消息有推送兜底，轮询只是双保险；且数据没变时服务端回304，每次仅约0.4KB）
   function isAppBg() { try { return document.hidden || !document.hasFocus(); } catch (e) { return !!document.hidden; } }
   function pollDelay() { return isAppBg() ? POLL_BG : POLL_FG; }
   function schedulePoll() {

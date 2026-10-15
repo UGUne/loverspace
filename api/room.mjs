@@ -31,11 +31,15 @@ export default async function handler(req, res) {
     return res.status(200).json({ id: code });
   }
 
-  // 读取空间
+  // 读取空间（条件请求：If-None-Match 命中本地已知 ts 时回 304，省轮询流量）
   if (req.method === "GET") {
     const r = await kv.get("room:" + id);
     if (!r) return res.status(200).json({ id, exists: false, data: null, ts: 0 });
-    return res.status(200).json({ id, exists: true, data: r.data, ts: r.ts || 0 });
+    const ts = r.ts || 0;
+    const inm = String(req.headers["if-none-match"] || "").replace(/^"|"$/g, "");
+    if (inm && inm === String(ts)) return res.status(304).end();
+    res.setHeader("ETag", '"' + ts + '"');
+    return res.status(200).json({ id, exists: true, data: r.data, ts });
   }
 
   // 更新空间：按 _updated 时间戳守卫，避免旧请求后到覆盖新数据
