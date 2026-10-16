@@ -49,7 +49,7 @@ public class MainActivity extends BridgeActivity {
     } catch (Throwable ignore) {}
     // 给前端网页暴露原生桥，用于设置别名 / 读取通知点击类型 / 保存备份文件
     if (getBridge() != null && getBridge().getWebView() != null) {
-      getBridge().getWebView().addJavascriptInterface(new LsNative(getApplicationContext(), this), "LoverspaceNative");
+      getBridge().getWebView().addJavascriptInterface(new LsNative(getApplicationContext(), this, getBridge().getWebView()), "LoverspaceNative");
     }
   }
 
@@ -58,7 +58,8 @@ public class MainActivity extends BridgeActivity {
     super.onResume();
     // 回到前台：只把桌面角标清零，不再清通知栏（用户还没读的通知应保留，
     // 之前在此处 clearAllNotifications 会误删刚到达、尚未查看的通知）。
-    // 已读的通知由 JPushReceiver.onNotifyMessageOpened（用户真正点开时）负责清除。    try { JPushInterface.setBadgeNumber(getApplicationContext(), 0); } catch (Throwable t) {}
+    // 已读的通知由 JPushReceiver.onNotifyMessageOpened（用户真正点开时）负责清除。
+    try { JPushInterface.setBadgeNumber(getApplicationContext(), 0); } catch (Throwable t) {}
   }
 
   // 旧版设备（API 24-28）导出备份时的存储权限申请结果：引导用户再次点击导出
@@ -86,11 +87,44 @@ public class MainActivity extends BridgeActivity {
   public static class LsNative {
     private final Context ctx;
     private final android.app.Activity act;
-    LsNative(Context c, android.app.Activity a) { ctx = c; act = a; }
+    private final android.webkit.WebView wv;
+    // JS 桥 origin 白名单：远程页面一旦被篡改/引流到恶意站点，桥方法（写文件、操控推送别名）全部失效。
+    // 白名单 = capacitor.config.json 里配置的后端地址 + Capacitor 本地协议 + 本地调试地址。
+    private static String[] ALLOWED_ORIGINS = null;
+    LsNative(Context c, android.app.Activity a, android.webkit.WebView w) { ctx = c; act = a; wv = w; }
+    private boolean originOk() {
+      try {
+        String u = wv == null ? null : wv.getUrl();
+        if (u == null) return true; // 初始 about:blank 阶段放行（页面尚未加载）
+        if (ALLOWED_ORIGINS == null) {
+          java.util.List<String> list = new java.util.ArrayList<>();
+          list.add("capacitor://localhost");
+          list.add("http://localhost");
+          list.add("https://localhost");
+          list.add("file://");
+          try {
+            java.io.InputStream is = ctx.getAssets().open("capacitor.config.json");
+            String json = new java.util.Scanner(is, "UTF-8").useDelimiter("\\A").next();
+            is.close();
+            org.json.JSONObject o = new org.json.JSONObject(json);
+            if (o.has("server")) {
+              String surl = o.getJSONObject("server").optString("url", "");
+              if (surl.startsWith("http")) list.add(surl);
+            }
+          } catch (Throwable ignore) {}
+          ALLOWED_ORIGINS = list.toArray(new String[0]);
+        }
+        for (String ok : ALLOWED_ORIGINS) if (u.startsWith(ok)) return true;
+        return false;
+      } catch (Throwable t) { return false; }
+    }
     // ===== 备份导出：WebView 不处理 <a download>，导出必须走原生写文件 =====
     // 返回 "ok:<路径>" / "need_perm" / "err:<原因>"
     @JavascriptInterface
     public String saveBackup(String name, String base64) {
+      // 大小上限：超过约 22MB（解码后 16MB）直接拒绝，避免巨大 base64 解码双倍占内存导致 OOM
+      if (base64 == null || base64.length() > 22 * 1024 * 1024) return "err:too-large";
+      if (!originOk()) return "err:origin";
       try {
         byte[] bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT);
         return writeToDownloads(name, bytes);
@@ -103,13 +137,14 @@ public class MainActivity extends BridgeActivity {
       String safe = (name == null ? "backup.json" : name).replaceAll("[^a-zA-Z0-9._\\-\\u4e00-\\u9fa5]", "_");
       if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
         // API 29+：MediaStore.Downloads 免存储权限，文件落在「下载/loverspace」
+        android.net.Uri uri = null;
         try {
           android.content.ContentValues cv = new android.content.ContentValues();
           cv.put(android.provider.MediaStore.Downloads.DISPLAY_NAME, safe);
           cv.put(android.provider.MediaStore.Downloads.MIME_TYPE, "application/json");
           cv.put(android.provider.MediaStore.Downloads.RELATIVE_PATH, "Download/loverspace");
           cv.put(android.provider.MediaStore.Downloads.IS_PENDING, 1);
-          android.net.Uri uri = act.getContentResolver().insert(
+          uri = act.getContentResolver().insert(
               android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
           if (uri == null) return "err:insert-failed";
           java.io.OutputStream os = act.getContentResolver().openOutputStream(uri);
@@ -121,6 +156,8 @@ public class MainActivity extends BridgeActivity {
           act.getContentResolver().update(uri, cv, null, null);
           return "ok:Download/loverspace/" + safe;
         } catch (Throwable t) {
+          // 失败时清掉 IS_PENDING 的孤儿文件（否则它在下载列表里永远不可见地占位）
+          if (uri != null) { try { act.getContentResolver().delete(uri, null, null); } catch (Throwable ignore) {} }
           return "err:" + t;
         }
       }
@@ -147,14 +184,17 @@ public class MainActivity extends BridgeActivity {
     }
     @JavascriptInterface
     public void setAlias(String alias) {
+      if (!originOk()) return;
       try { JPushInterface.setAlias(ctx, (int)(System.currentTimeMillis() & 0xffff), alias); } catch (Throwable t) {}
     }
     @JavascriptInterface
     public void clearAlias() {
+      if (!originOk()) return;
       try { JPushInterface.deleteAlias(ctx, (int)(System.currentTimeMillis() & 0xffff)); } catch (Throwable t) {}
     }
     @JavascriptInterface
     public String getRegId() {
+      if (!originOk()) return "";
       try {
         String rid = JPushInterface.getRegistrationID(ctx);
         // 同步兜底保存一份，便于诊断读取
@@ -168,6 +208,7 @@ public class MainActivity extends BridgeActivity {
     // 推送底层诊断：返回 AppKey、RegistrationID、注册回调是否触发过等，用于定位“拿不到 ID”的根因。
     @JavascriptInterface
     public String getPushDiag() {
+      if (!originOk()) return "{}";
       JSONObject o = new JSONObject();
       try {
         SharedPreferences sp = ctx.getSharedPreferences("ls_push", Context.MODE_PRIVATE);
@@ -192,6 +233,7 @@ public class MainActivity extends BridgeActivity {
     // 重置推送：重新 init，用于注册失败后的手动恢复
     @JavascriptInterface
     public String reinitPush() {
+      if (!originOk()) return "{}";
       try {
         initJCoreSafely(ctx);
         JPushInterface.init(ctx);
@@ -203,6 +245,7 @@ public class MainActivity extends BridgeActivity {
     // 读取前先强制重新 init 并等待 3s，确保抓到“新鲜”的初始化日志（否则被 WebView 日志冲掉）。
     @JavascriptInterface
     public String getPushLog() {
+      if (!originOk()) return "(origin-blocked)";
       StringBuilder sb = new StringBuilder();
       java.io.BufferedReader r = null;
       try {
@@ -245,6 +288,7 @@ public class MainActivity extends BridgeActivity {
     // 读取并清除“上次通知点击的类型”（msg / urge），供前端跳转到聊天或自拍页
     @JavascriptInterface
     public String getLastPush() {
+      if (!originOk()) return "";
       try {
         SharedPreferences sp = ctx.getSharedPreferences("ls_push", Context.MODE_PRIVATE);
         String t = sp.getString("lastPushType", "");
@@ -256,10 +300,12 @@ public class MainActivity extends BridgeActivity {
     // vivo 划后台/一键清理不再杀它，长连接保持在线，杀后台也能秒收
     @JavascriptInterface
     public boolean getKeepAlive() {
+      if (!originOk()) return false;
       return KeepAliveService.isEnabled(ctx);
     }
     @JavascriptInterface
     public void setKeepAlive(boolean on) {
+      if (!originOk()) return;
       KeepAliveService.setEnabled(ctx, on);
     }
   }

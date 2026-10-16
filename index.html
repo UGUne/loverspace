@@ -892,7 +892,8 @@
     if (!data.tree || typeof data.tree !== "object") data.tree = { growth: 0, lastWater: [0, 0] };
     if (!Array.isArray(data.tree.lastWater)) data.tree.lastWater = [0, 0];
     if (!Array.isArray(data.selfies)) data.selfies = [];
-    if (!data._deleted || typeof data._deleted !== "object") data._deleted = { messages: [], anniversaries: [], moods: [], photos: [], selfies: [], albums: [], treeCards: [] };
+    if (!data._deleted || typeof data._deleted !== "object") data._deleted = { messages: [], anniversaries: [], moods: [], photos: [], selfies: [], albums: [], treeCards: [], albumPhotos: {} };
+    if (!data._deleted.albumPhotos || typeof data._deleted.albumPhotos !== "object") data._deleted.albumPhotos = {};
     // 旧版扁平 photos 迁移进默认相册
     if (!Array.isArray(data.albums)) data.albums = [];
     if (Array.isArray(data.photos) && data.photos.length) { data.albums.unshift({ id: uid(), name: "我们的日常", photos: data.photos, ts: Date.now() }); data.photos = []; }
@@ -934,7 +935,15 @@
     if (!data._deleted.albums) data._deleted.albums = [];
     if (!data._deleted.treeCards) data._deleted.treeCards = [];
   }
-  function saveLocal() { try { localStorage.setItem(LS_DATA, JSON.stringify(data)); } catch (e) {} try { localStorage.setItem("loverspace.backup.v1", JSON.stringify({ ts: Date.now(), data: data })); } catch (e) {} }
+  function saveLocal() {
+    try { localStorage.setItem(LS_DATA, JSON.stringify(data)); }
+    catch (e) {
+      // 配额写满：不能再静默——否则用户以为存住了，杀进程/刷新后回退旧状态
+      quotaWarnAt = Date.now();
+    }
+    try { localStorage.setItem("loverspace.backup.v1", JSON.stringify({ ts: Date.now(), data: data })); } catch (e) {}
+  }
+  var quotaWarnAt = 0;
   // 本地是否有真实内容（防止全新 App 把默认空数据推上云端覆盖真实数据）
   function hasRealContent() {
     var p0 = data.partners && data.partners[0], p1 = data.partners && data.partners[1];
@@ -1053,6 +1062,8 @@
   }
   function setEncPwd(v) {
     encPwd = v || ""; keyCache = {}; pwdPrompted = false;
+    // 非安全上下文（http 访问等）没有 WebCrypto，此时"加密"会静默变明文——必须明确告知
+    if (encPwd && !subtle) toast("当前网络环境不支持加密，数据将以明文同步（建议用 https 访问）");
     if (encPwd) localStorage.setItem(LS_PWD, encPwd); else localStorage.removeItem(LS_PWD);
   }
   function askPassword(msg) {
@@ -1147,7 +1158,7 @@
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1030a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1031a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -1300,7 +1311,8 @@
   function save() {
     data._updated = Math.max(Date.now(), (data._updated || 0) + 1);
     saveLocal();
-    if (backend.enabled && room) {
+    // 与 pushLocal 同样的守卫：本机存储被清/损坏又连不上云端时，避免近乎空的数据覆盖云端真实数据
+    if (backend.enabled && room && hasRealContent()) {
       var payloadP = (encPwd && subtle) ? encryptData(data).catch(function () { return null; }) : Promise.resolve(data);
       payloadP.then(function (payload) {
         if (!payload) return;
@@ -1381,7 +1393,11 @@
   function unionById(a, b) {
     var map = {}, i;
     for (i = 0; i < a.length; i++) map[a[i].id] = a[i];
-    for (i = 0; i < b.length; i++) map[b[i].id] = b[i];
+    for (i = 0; i < b.length; i++) {
+      // 同 id 按 ts 取新者（无 ts 的条目保持"远端覆盖"的旧行为），避免双方各改一次时后同步的整份覆盖先同步的
+      var x = b[i], cur = map[x.id];
+      if (!cur || (x.ts || 0) >= (cur.ts || 0)) map[x.id] = x;
+    }
     var out = []; for (var k in map) out.push(map[k]); return out;
   }
   // 删除墓碑：合并时把双方标记删除的 id 一并排除，保证删除也能跨设备同步
@@ -1396,6 +1412,13 @@
     return u.filter(function (x) { return delIds.indexOf(x.id) === -1; });
   }
   function tomb(type, id) { var d = data._deleted[type] || (data._deleted[type] = []); if (d.indexOf(id) === -1) d.push(id); }
+  // 本地是否含远端没有的条目（离线期间产生的内容）——离线重连后据此放行推送
+  function hasLocalOnly(la, ra) {
+    if (!la || !la.length) return false;
+    var ids = {}; (ra || []).forEach(function (x) { ids[x.id] = 1; });
+    for (var i = 0; i < la.length; i++) if (!ids[la[i].id]) return true;
+    return false;
+  }
   function merge(local, remote) {
     if (!remote) return local;
     var res = clone(local);
@@ -1431,9 +1454,15 @@
     res.moods = mergeArr(local.moods, remote.moods, delMood);
     res.photos = mergeArr(local.photos, remote.photos, delPhoto);
     res.selfies = mergeArr(local.selfies, remote.selfies, delSelfie);
-    res.albums = mergeAlbums(local.albums, remote.albums, delAlb, delPhoto);
+    res.albums = mergeAlbums(local.albums, remote.albums, delAlb, delPhoto, local._deleted || {}, remote._deleted || {});
     res.miss = mergeArr(local.miss, remote.miss, []);
-    res._deleted = { messages: delMes, anniversaries: delAnni, moods: delMood, photos: delPhoto, selfies: delSelfie, albums: delAlb, treeCards: mergeDel((local._deleted && local._deleted.treeCards) || [], (remote._deleted && remote._deleted.treeCards) || []) };
+    res._deleted = { messages: delMes, anniversaries: delAnni, moods: delMood, photos: delPhoto, selfies: delSelfie, albums: delAlb, treeCards: mergeDel((local._deleted && local._deleted.treeCards) || [], (remote._deleted && remote._deleted.treeCards) || []), albumPhotos: (function () {
+      var m = {};
+      [(local._deleted && local._deleted.albumPhotos) || {}, (remote._deleted && remote._deleted.albumPhotos) || {}].forEach(function (s) {
+        Object.keys(s).forEach(function (kk) { m[kk] = mergeDel(m[kk] || [], s[kk] || []); });
+      });
+      return m;
+    })() };
     // 成长值取双方较大值，绝不丢失任何一边的增长进度（不再用 resetAt 比较，避免一方空数据清零另一方）
     var growthSync = Math.max(local.tree.growth || 0, remote.tree.growth || 0);
     var lra = local.tree.resetAt || 0, rra = remote.tree.resetAt || 0;
@@ -1509,11 +1538,36 @@
     var lu = local.selfieUrge, ru = remote.selfieUrge;
     res.selfieUrge = (ru && ru.ts && (!lu || ru.ts > lu.ts)) ? ru : (lu || null);
     res._updated = Math.max(lUpd, rUpd);
+    // 离线场景修复：离线期间本地写的内容（或本地删除墓碑）若被云端更高版本压住，推送门槛
+    // （data._updated > backend.ts）将永不成立，这些内容会永远留在本机、到不了对方设备。
+    // 合并时一旦发现"本地有、云端无"，抬升版本号放行推送（推送的是合并后的并集，不会覆盖任何一方）。
+    var lo = hasLocalOnly(local.messages, remote.messages) || hasLocalOnly(local.moods, remote.moods) ||
+      hasLocalOnly(local.selfies, remote.selfies) || hasLocalOnly(local.anniversaries, remote.anniversaries) ||
+      hasLocalOnly(local.miss, remote.miss) || hasLocalOnly((local.tree && local.tree.cards) || [], (remote.tree && remote.tree.cards) || []);
+    if (!lo && Array.isArray(local.albums) && Array.isArray(remote.albums)) {
+      for (var ai = 0; ai < local.albums.length && !lo; ai++) {
+        var ra2 = remote.albums.find(function (a) { return a.id === local.albums[ai].id; });
+        if (hasLocalOnly(local.albums[ai].photos || [], ra2 ? ra2.photos || [] : [])) lo = true;
+      }
+    }
+    var ldel = local._deleted || {}, rdel = remote._deleted || {};
+    ["messages", "anniversaries", "moods", "photos", "selfies", "albums", "treeCards"].forEach(function (k) {
+      if (lo) return;
+      var rids = {}; (rdel[k] || []).forEach(function (x) { rids[x] = 1; });
+      (ldel[k] || []).forEach(function (x) { if (!rids[x]) lo = true; });
+    });
+    var lAP = ldel.albumPhotos || {}, rAP = rdel.albumPhotos || {};
+    if (!lo) for (var ak in lAP) {
+      var rl = rAP[ak] || [];
+      (lAP[ak] || []).forEach(function (x) { if (rl.indexOf(x) === -1) lo = true; });
+    }
+    // rUpd+1：即使远端 _updated 因对方时钟快而是"近未来值"，也保证抬升后严格大于它，推送门槛必然放行
+    if (lo) res._updated = Math.max(res._updated, rUpd + 1, Date.now());
     return res;
   }
   // 相册合并：按 id 并集，被删相册排除；相册内照片按 id 并集再剔除删除墓碑
   // 合并后统一按上传时间倒序（后上传的显示在前面）；手动排序过的相册保留手动顺序不重排
-  function mergeAlbums(la, ra, delAlb, delPhoto) {
+  function mergeAlbums(la, ra, delAlb, delPhoto, ldel, rdel) {
     var ids = {}, i;
     (la || []).forEach(function (a) { ids[a.id] = 1; });
     (ra || []).forEach(function (a) { ids[a.id] = 1; });
@@ -1523,10 +1577,12 @@
       var l = (la || []).find(function (a) { return a.id === k; });
       var r = (ra || []).find(function (a) { return a.id === k; });
       var base = l || r;
-      var photos = mergeArr(l ? l.photos : [], r ? r.photos : [], delPhoto);
+      // 相册级"移出墓碑"：一方把照片移动到别的相册时记录，合并时仅从该相册移除（照片本身仍在目标相册存活）
+      var rmIds = mergeDel((ldel && ldel.albumPhotos && ldel.albumPhotos[k]) || [], (rdel && rdel.albumPhotos && rdel.albumPhotos[k]) || []);
+      var photos = mergeArr(l ? l.photos : [], r ? r.photos : [], delPhoto).filter(function (p) { return rmIds.indexOf(p.id) === -1; });
       var manual = (l && l.manual) || (r && r.manual);
       if (!manual) photos.sort(function (x, y) { return (y.ts || 0) - (x.ts || 0); }); // 后上传的排前面
-      out.push({ id: k, name: (l && l.name) || (r && r.name) || "相册", photos: photos, ts: Math.max(l ? l.ts || 0 : 0, r ? r.ts || 0 : 0), manual: manual || undefined });
+      out.push({ id: k, name: (l && l.name) || (r && r.name) || "相册", photos: photos, cover: (l && l.cover) || (r && r.cover) || null, ts: Math.max(l ? l.ts || 0 : 0, r ? r.ts || 0 : 0), manual: manual || undefined });
     }
     out.sort(function (a, b) { return b.ts - a.ts; });
     return out;
@@ -1657,6 +1713,24 @@
 
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  // 图片 URL 白名单：仅放行 http(s) 与 data:image。防存储型 XSS——恶意 src 会经云端同步/分享链接/备份文件在对方设备上执行
+  function sanitizeUrl(u) {
+    u = String(u == null ? "" : u).trim();
+    return /^(https?:\/\/|data:image\/)/i.test(u) ? u : "";
+  }
+  // 渲染用：先清洗再转义，双保险
+  function imgSrc(u) { return esc(sanitizeUrl(u)); }
+  // 清洗整份数据里的图片 URL 字段（导入备份/分享链接时用，防止历史或恶意数据带毒）
+  function sanitizeDataUrls(d) {
+    if (!d || typeof d !== "object") return d;
+    if (Array.isArray(d.partners)) d.partners.forEach(function (p) { if (p && typeof p === "object") p.avatar = sanitizeUrl(p.avatar) || null; });
+    ["selfies", "miss"].forEach(function (k) { if (Array.isArray(d[k])) d[k].forEach(function (x) { if (x && typeof x === "object" && x.src != null) x.src = sanitizeUrl(x.src); }); });
+    if (Array.isArray(d.albums)) d.albums.forEach(function (a) {
+      if (a && Array.isArray(a.photos)) a.photos.forEach(function (p) { if (p && typeof p === "object") { p.src = sanitizeUrl(p.src); p.thumb = sanitizeUrl(p.thumb) || p.src; } });
+    });
+    if (d.tree && Array.isArray(d.tree.hungPhoto)) d.tree.hungPhoto = d.tree.hungPhoto.map(function (x) { return sanitizeUrl(x) || null; });
+    return d;
+  }
   function b64encode(str) { var b = new TextEncoder().encode(str), s = ""; for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return btoa(s); }
   function b64decode(x) { var s = atob(x), b = []; for (var i = 0; i < s.length; i++) b.push(s.charCodeAt(i)); return new TextDecoder().decode(new Uint8Array(b)); }
 
@@ -2006,7 +2080,7 @@
   }
 
   function avatarHTML(p, idx, attrs) {
-    var inner = p.avatar ? '<img src="' + p.avatar + '" alt=""/>' : esc((p.name || "?").slice(0, 1));
+    var inner = p.avatar ? '<img src="' + imgSrc(p.avatar) + '" alt=""/>' : esc((p.name || "?").slice(0, 1));
     return '<div class="avatar p' + idx + (p.avatar ? " img" : "") + '" ' + (attrs || "") + ">" + inner + "</div>";
   }
   function renderAll() {
@@ -2035,7 +2109,7 @@
     var html = '<div class="tl-scroll">';
     keys.forEach(function(k){
       html += '<div class="tl-date">' + k + " · " + groups[k].length + ' 张</div><div class="tl-grid">';
-      groups[k].forEach(function(o){ html += '<div class="tl-cell" data-tl="' + o.p.id + '"><img src="' + (o.p.thumb || o.p.src) + '" alt=""/><span class="tl-al">' + esc(o.a.name) + "</span></div>"; });
+      groups[k].forEach(function(o){ html += '<div class="tl-cell" data-tl="' + o.p.id + '"><img src="' + imgSrc(o.p.thumb || o.p.src) + '" alt=""/><span class="tl-al">' + esc(o.a.name) + "</span></div>"; });
       html += "</div>";
     });
     html += "</div>";
@@ -2080,7 +2154,7 @@
             body = esc(m.text);
           }
           return '<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">' +
-            '<div class="avatar p' + m.who + '" style="width:30px;height:30px;font-size:12px;cursor:default">' + (p.avatar ? '<img src="' + p.avatar + '" style="width:100%;height:100%;object-fit:cover"/>' : esc(p.name.slice(0, 1))) + "</div>" +
+            '<div class="avatar p' + m.who + '" style="width:30px;height:30px;font-size:12px;cursor:default">' + (p.avatar ? '<img src="' + imgSrc(p.avatar) + '" style="width:100%;height:100%;object-fit:cover"/>' : esc(p.name.slice(0, 1))) + "</div>" +
             '<div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--ink-2)">' + esc(p.name) + " · " + fmtTime(m.ts) + '</div><div style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">' + body + "</div></div></div>";
         }).join("")
       : '<div class="empty-tip">还没有悄悄话，快去说第一句吧</div>';
@@ -2090,7 +2164,7 @@
     if (mem.length) {
       mc.style.display = "block";
       $("homeMemory").innerHTML = mem.slice(0, 9).map(function(o){
-        return '<div class="mem-cell" data-mem="' + o.p.id + '"><img src="' + (o.p.thumb || o.p.src) + '" alt=""/><span class="mem-yr">' + (new Date().getFullYear() - o.year) + "年前</span></div>";
+        return '<div class="mem-cell" data-mem="' + o.p.id + '"><img src="' + imgSrc(o.p.thumb || o.p.src) + '" alt=""/><span class="mem-yr">' + (new Date().getFullYear() - o.year) + "年前</span></div>";
       }).join("");
       Array.prototype.forEach.call($("homeMemory").querySelectorAll("[data-mem]"), function(c){ c.onclick = function(){ var fp = findPhoto(c.dataset.mem); if (fp) openViewer(fp.photo); }; });
     } else { mc.style.display = "none"; }
@@ -2172,7 +2246,7 @@
         return '<div class="msg-recall">' + esc(rn) + " 撤回了一条消息</div>";
       }
       var mine = m.who === me, p = data.partners[m.who] || data.partners[0];
-      var av = p.avatar ? '<img src="' + p.avatar + '" alt=""/>' : esc(p.name.slice(0, 1));
+      var av = p.avatar ? '<img src="' + imgSrc(p.avatar) + '" alt=""/>' : esc(p.name.slice(0, 1));
       var inner, cls = "";
       if (m.type === "sticker") {
         var s = STICKERS.find(function (x) { return x.key === m.key; });
@@ -2213,7 +2287,7 @@
         for (var ci = 1; ci < a.photos.length; ci++) { if ((a.photos[ci].ts || 0) > (cover.ts || 0)) cover = a.photos[ci]; }
       }
     }
-    return cover ? (cover.thumb || cover.src) : "";
+    return cover ? imgSrc(cover.thumb || cover.src) : "";
   }
   function renderAlbum() {
     var g = $("photoGrid"), bar = $("albumBar"), title = $("albumTitle"), empty = $("photoEmpty");
@@ -2254,7 +2328,7 @@
           var on = albumSel[p.id] ? " sel" : "";
           var badge = selMode ? '<div class="ph-sel' + (albumSel[p.id] ? " on" : "") + '">' + (albumSel[p.id] ? icon("check") : "") + "</div>" : "";
           var rank = sortMode ? '<div class="ph-rank">' + (i + 1) + "</div>" : "";
-          return '<div class="photo-cell' + (selMode ? " selmode" : "") + (sortMode ? " sortmode" : "") + on + '" data-view="' + p.id + '"' + (sortMode ? ' draggable="true"' : "") + ">" + badge + rank + '<img src="' + (p.thumb || p.src) + '" alt="" loading="lazy"/></div>';
+          return '<div class="photo-cell' + (selMode ? " selmode" : "") + (sortMode ? " sortmode" : "") + on + '" data-view="' + p.id + '"' + (sortMode ? ' draggable="true"' : "") + ">" + badge + rank + '<img src="' + imgSrc(p.thumb || p.src) + '" alt="" loading="lazy"/></div>';
         }).join("");
       if (albumMode === "sort" && sortSrc) { var sc = g.querySelector('[data-view="' + sortSrc + '"]'); if (sc) sc.classList.add("dragging"); }
       $("selCount").textContent = "已选 " + Object.keys(albumSel).length + " 张";
@@ -2286,7 +2360,7 @@
   function sfCard(s, cls, date, isMine) {
     var today = todayStr();
     if (s) {
-      return '<div class="sf-card ' + cls + '" data-sfview="' + s.id + '"><img src="' + s.src + '" alt=""/><span class="sf-tag">' + esc((data.partners[s.who] || data.partners[0]).name) + "</span></div>";
+      return '<div class="sf-card ' + cls + '" data-sfview="' + s.id + '"><img src="' + imgSrc(s.src) + '" alt=""/><span class="sf-tag">' + esc((data.partners[s.who] || data.partners[0]).name) + "</span></div>";
     }
     if (date !== today) return '<div class="sf-card ' + cls + '"><div class="sf-ph">这天没拍</div></div>';
     if (isMine) return '<div class="sf-card ' + cls + '"><div class="sf-ph">你的位置还空着<br/>每天一张，记录今天的自己</div><div style="padding:0 6px 10px"><button class="mini-btn b" id="sfShoot2">自拍一下</button></div></div>';
@@ -2518,8 +2592,13 @@
       var on = $("sheetBody").querySelector("[data-mood].on");
       if (!on) { toast("先选一个心情吧"); return; }
       var note = ($("moodNote").value || "").trim();
-      data.moods = data.moods.filter(function (m) { return !(m.date === todayStr() && m.who === me); });
-      data.moods.push({ id: uid(), who: me, date: todayStr(), mood: on.dataset.mood, note: note, ts: Date.now() });
+      // 改稿保留原 id 原地更新：旧代码先删后 push 新 id，无墓碑，对方设备合并后会留下旧条目变成双份
+      var exist = (data.moods || []).find(function (m) { return m.date === todayStr() && m.who === me; });
+      if (exist) { exist.mood = on.dataset.mood; exist.note = note; exist.ts = Date.now(); }
+      else {
+        data.moods = data.moods.filter(function (m) { return !(m.date === todayStr() && m.who === me); });
+        data.moods.push({ id: uid(), who: me, date: todayStr(), mood: on.dataset.mood, note: note, ts: Date.now() });
+      }
       save(); closeSheet(); renderAll(); toast("打卡成功，今天也要甜甜的");
     });
   }
@@ -2563,7 +2642,7 @@
     $("sheetBody").querySelectorAll("[data-annidel]").forEach(function (b) {
       b.addEventListener("click", function () {
         data.anniversaries = data.anniversaries.filter(function (a) { return a.id !== b.dataset.annidel; });
-        tomb("anniversaries", b.id);
+        tomb("anniversaries", b.dataset.annidel);
         save(); renderAll(); openAnniSheet(); toast("已删除");
       });
     });
@@ -2718,7 +2797,7 @@
       for (i = 0; i < 6; i++) extra += '<i class="tp tp-star" style="left:' + (Math.random() * 90 + 3).toFixed(1) + "%;animation-duration:" + (4.5 + Math.random() * 3).toFixed(1) + "s;animation-delay:" + (Math.random() * 5).toFixed(1) + 's">✦</i>';
     }
     if (extra) out += '<div class="petal-layer">' + extra + "</div>";
-    if (sp) out += '<div class="tree-banner">🌸 ' + sp.name + " · " + sp.label + "</div>";
+    if (sp) out += '<div class="tree-banner">🌸 ' + esc(sp.name) + " · " + esc(sp.label) + "</div>";
     else if (fest) {
       var fe = fest.key === "christmas" ? "🎄" : fest.key === "valentine" ? "💝" : "✦";
       out += '<div class="tree-banner">' + fe + " " + fest.name + "快乐 · 愿爱情树常青</div>";
@@ -2754,7 +2833,7 @@
       if (!sf) return;
       var sl3 = TC_SLOTS[5 - who];
       html += '<div class="tc-slot" style="left:' + sl3.left + ";top:" + sl3.top + ";transform:rotate(" + (sl3.rot + 4) + 'deg)" data-tp="' + sf.id + '">' +
-        '<div class="tc-photo"><img src="' + sf.src + '" alt=""/><span class="tc-who">' + esc((data.partners[who] || data.partners[0]).name) + "</span></div></div>";
+        '<div class="tc-photo"><img src="' + imgSrc(sf.src) + '" alt=""/><span class="tc-who">' + esc((data.partners[who] || data.partners[0]).name) + "</span></div></div>";
     });
     return html;
   }
@@ -3078,8 +3157,13 @@
   function shootSelfie() {
     pickImageMenu(function (f) {
       compressImage(f, 900, 0.7, function (durl) {
-        data.selfies = (data.selfies || []).filter(function (s) { return !(s.date === todayStr() && s.who === me); });
-        data.selfies.unshift({ id: uid(), date: todayStr(), who: me, src: durl, ts: Date.now() });
+        // 重拍保留原 id 原地更新（同 moodSave 的理由：避免对方设备出现双份）
+        var exist = (data.selfies || []).find(function (s) { return s.date === todayStr() && s.who === me; });
+        if (exist) { exist.src = durl; exist.ts = Date.now(); }
+        else {
+          data.selfies = (data.selfies || []).filter(function (s) { return !(s.date === todayStr() && s.who === me); });
+          data.selfies.unshift({ id: uid(), date: todayStr(), who: me, src: durl, ts: Date.now() });
+        }
         save(); renderAll(); toast("今天的自拍已打卡，TA马上能看到");
       });
     });
@@ -3126,8 +3210,8 @@
     $("phCam").addEventListener("click", function () { addFromInput(true); });
     $("phUpload").addEventListener("click", function () { addFromInput(false); });
     $("phUrlAdd").addEventListener("click", function () {
-      var u = $("phUrl").value.trim();
-      if (!u) { toast("粘贴一个图片链接吧"); return; }
+      var u = sanitizeUrl($("phUrl").value.trim());
+      if (!u) { toast("这个链接格式不对，只支持 http(s) 图片链接"); return; }
       var a = curAlbum(); if (!a) { toast("相册不见了，请重新进入"); return; }
       (a.photos || (a.photos = [])).unshift({ id: uid(), src: u, thumb: u, ts: Date.now(), by: me });
       save(); renderAll(); closeSheet(); toast("照片已添加");
@@ -3210,7 +3294,11 @@
         var target = data.albums.find(function (a) { return a.id === btn.dataset.mv; });
         var al = curAlbum(); if (!target || !al) { closeSheet(); return; }
         var moving = (al.photos || []).filter(function (p) { return albumSel[p.id]; });
-        moving.forEach(function (p) { tomb("photos", p.id); });
+        // 移动 = 源相册记「移出墓碑」+ 目标相册并入。绝不能打全局删除墓碑（tomb("photos")）——
+        // 那会让合并时把照片从所有相册（含目标相册）过滤掉，同步后照片永久丢失。
+        var rm = data._deleted.albumPhotos || (data._deleted.albumPhotos = {});
+        var rmList = rm[al.id] || (rm[al.id] = []);
+        moving.forEach(function (p) { if (rmList.indexOf(p.id) === -1) rmList.push(p.id); });
         al.photos = (al.photos || []).filter(function (p) { return !albumSel[p.id]; });
         if (al.cover && albumSel[al.cover]) al.cover = (al.photos[0] || {}).id || null;
         target.photos = (target.photos || []).concat(moving);
@@ -3230,8 +3318,8 @@
   function openProfile() {
     var myIdx = me, taIdx = 1 - me;
     var html = '<div class="avatar-edit">' +
-      '<button class="av-btn" id="avTaBtn"><div class="avatar p' + taIdx + '">' + (data.partners[taIdx].avatar ? '<img src="' + data.partners[taIdx].avatar + '"/>' : esc(data.partners[taIdx].name.slice(0, 1))) + '<div class="cam">' + icon("cam") + "</div></div>TA 的头像</button>" +
-      '<button class="av-btn" id="avMyBtn"><div class="avatar p' + myIdx + '">' + (data.partners[myIdx].avatar ? '<img src="' + data.partners[myIdx].avatar + '"/>' : esc(data.partners[myIdx].name.slice(0, 1))) + '<div class="cam">' + icon("cam") + "</div></div>我的头像</button></div>" +
+      '<button class="av-btn" id="avTaBtn"><div class="avatar p' + taIdx + '">' + (data.partners[taIdx].avatar ? '<img src="' + imgSrc(data.partners[taIdx].avatar) + '"/>' : esc(data.partners[taIdx].name.slice(0, 1))) + '<div class="cam">' + icon("cam") + "</div></div>TA 的头像</button>" +
+      '<button class="av-btn" id="avMyBtn"><div class="avatar p' + myIdx + '">' + (data.partners[myIdx].avatar ? '<img src="' + imgSrc(data.partners[myIdx].avatar) + '"/>' : esc(data.partners[myIdx].name.slice(0, 1))) + '<div class="cam">' + icon("cam") + "</div></div>我的头像</button></div>" +
       '<div class="field"><label>空间名称</label><input type="text" id="pfSpace" maxlength="16" value="' + esc(data.spaceName) + '" /></div>' +
       '<div class="field"><label>我的昵称</label><input type="text" id="pfMyName" maxlength="10" value="' + esc(data.partners[myIdx].name) + '" /></div>' +
       '<div class="field"><label>TA 的昵称</label><input type="text" id="pfTaName" maxlength="10" value="' + esc(data.partners[taIdx].name) + '" /></div>' +
@@ -3257,7 +3345,7 @@
       [0, 1].map(function (i) {
         var p = data.partners[i];
         return '<button data-id="' + i + '"' + (me === i ? ' class="on"' : "") + ">" +
-          '<div class="avatar p' + i + '">' + (p.avatar ? '<img src="' + p.avatar + '"/>' : esc(p.name.slice(0, 1))) + "</div>" + esc(p.name) + "</button>";
+          '<div class="avatar p' + i + '">' + (p.avatar ? '<img src="' + imgSrc(p.avatar) + '"/>' : esc(p.name.slice(0, 1))) + "</div>" + esc(p.name) + "</button>";
       }).join("") + "</div>";
     openSheet("切换身份", html);
     $("sheetBody").querySelectorAll("[data-id]").forEach(function (b) {
@@ -3373,6 +3461,7 @@
             var d = bundle.data || bundle; // 兼容旧版（无 version/images 的纯 data 备份）
             if (!d || !d.partners) throw 0;
             for (var k in DEFAULT) if (!(k in d)) d[k] = clone(DEFAULT[k]);
+            sanitizeDataUrls(d); // 导入清洗：历史/恶意备份可能带毒的图片 URL
             data = d; data._updated = Date.now();
             var imgs = bundle.images || {};
             var keys = Object.keys(imgs);
@@ -3532,12 +3621,22 @@
 
   function tryImportFromHash() {
     var m = location.hash.match(/#d=([^&]+)/);
-    if (!m) return;
+    if (!m) return false;
+    var ok = false;
     try {
       var d = JSON.parse(b64decode(m[1]));
-      if (d && d.partners) { loadLocal(); data = merge(data, d); data._updated = Date.now(); }
+      if (d && d.partners) {
+        for (var k in DEFAULT) if (!(k in d)) d[k] = clone(DEFAULT[k]); // 与 bkImport 一致：缺字段补默认值，防止 merge 访问 undefined 崩溃
+        loadLocal();
+        sanitizeDataUrls(d); // 分享链接也是外部数据入口，同样清洗
+        data = merge(data, d);
+        data._updated = Date.now();
+        saveLocal(); // 落盘，防止随后 bootApp 的流程把导入数据丢回内存
+        ok = true;
+      }
     } catch (e) {}
     history.replaceState(null, "", location.pathname + location.search);
+    return ok;
   }
 
   function bindGate() {
@@ -3562,7 +3661,7 @@
             if (r && r.id) {
               room = r.id; localStorage.setItem(LS_ROOM, room); backend.enabled = true;
               setEncPwd(($("gatePwd").value || "").trim());
-              hide(); bootApp(); toast("空间已创建（" + cloudName() + "），把空间码「" + room + "」发给TA一起加入");
+              hide(); bootApp(hashImported); toast("空间已创建（" + cloudName() + "），把空间码「" + room + "」发给TA一起加入");
             } else if (tries < 4) {
               btn.textContent = "连不上，正在重试 " + (tries + 1) + "/4…";
               setTimeout(attempt, 2000);
@@ -3587,10 +3686,13 @@
         localRequest("GET", code).then(function (a) {
           function done(mode, r) {
             chooseBackend(mode);
-            me = 1; localStorage.setItem(LS_ID, "1");
+            // 身份保留：本机曾创建过该空间（LS_ID=0）时重新加入不回退成"加入者"，否则自己的历史消息会全显示成 TA 发的
+            var prevId = localStorage.getItem(LS_ID);
+            me = (prevId === "0" || prevId === "1") ? parseInt(prevId, 10) : 1;
+            localStorage.setItem(LS_ID, String(me));
             room = code; localStorage.setItem(LS_ROOM, room); backend.enabled = true;
             setEncPwd(($("gatePwd").value || "").trim());
-            hide(); bootApp(); toast("已加入空间 " + code + "（" + cloudName() + "）");
+            hide(); bootApp(hashImported); toast("已加入空间 " + code + "（" + cloudName() + "）");
           }
           if (a && a.exists === true) return done("local", a);
           var sbP = sbReady() ? sbRequest("GET", code) : Promise.resolve(null);
@@ -3611,21 +3713,23 @@
       }
       attempt();
     });
-    $("gateLocal").addEventListener("click", function () { localMode = true; hide(); bootApp(); });
+    $("gateLocal").addEventListener("click", function () { localMode = true; hide(); bootApp(hashImported); });
     // 已有房间码：直接“进入我的空间”，避免每次重新创建
     if (room) {
       var ge = $("gateEnter");
       ge.style.display = "";
       ge.textContent = "进入我的空间（" + room + "）";
-      ge.addEventListener("click", function () { hide(); bootApp(); });
+      ge.addEventListener("click", function () { hide(); bootApp(hashImported); });
     }
   }
-  async function bootApp() {
-    loadLocal();
+  async function bootApp(imported) {
+    // imported=true 表示启动时已从分享链接导入过数据（hash 已清），不再 loadLocal 覆盖
+    if (!imported) loadLocal();
     await fetchServer();
     saveLocal();
     renderAll();
     appReady = true;
+    if (quotaWarnAt) { toast("本地存储已满，新内容可能保存失败，建议导出备份后清理照片"); quotaWarnAt = 0; }
     renderDots();
     initJPush();
     flushPendingJpush();
@@ -3809,9 +3913,8 @@
     if (e.target.closest("#homeAv0") || e.target.closest("#homeAv1")) openProfile();
   });
 
-  tryImportFromHash();
-  if (room) { $("roomGate").classList.add("hide"); bootApp(); } else { bindGate(); }
-
+  var hashImported = tryImportFromHash(); // 分享链接导入（成功则返回 true，hash 已清）
+  if (room) { $("roomGate").classList.add("hide"); bootApp(hashImported); } else { bindGate(); }
   // ===== 移动端返回键：子界面优先关闭，根界面两次返回才退出 =====
   var lastBack = 0, suppressPopUntil = 0;
   function topLayer() {

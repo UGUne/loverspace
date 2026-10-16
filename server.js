@@ -66,14 +66,22 @@ app.post("/api/restore-images", function (req, res) {
 function loadRooms() {
   try {
     rooms = JSON.parse(fs.readFileSync(FILE, "utf8"));
-  } catch (e) {
-    rooms = {};
-  }
+    return;
+  } catch (e) { /* 主文件损坏：尝试备份 */ }
+  try {
+    rooms = JSON.parse(fs.readFileSync(FILE + ".bak", "utf8"));
+    return;
+  } catch (e2) { /* 备份也没有：从空开始 */ }
+  rooms = {};
 }
 function persist() {
   try {
     fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(FILE, JSON.stringify(rooms));
+    // 原子写：先写临时文件再 rename，防止写盘中途崩溃把 rooms.json 写成截断的坏 JSON（重启后全员清零）
+    const tmp = FILE + ".tmp";
+    fs.writeFileSync(tmp, JSON.stringify(rooms));
+    try { if (fs.existsSync(FILE)) fs.copyFileSync(FILE, FILE + ".bak"); } catch (eBak) { /* 备份失败不阻塞主写入 */ }
+    fs.renameSync(tmp, FILE);
   } catch (e) {
     /* ignore */
   }
@@ -119,14 +127,19 @@ app.get("/api/room/:id", function (req, res) {
 // 更新共享空间数据：按 _updated 时间戳守卫接受写入，避免连续快速保存时旧请求后到覆盖新数据
 app.put("/api/room/:id", function (req, res) {
   const id = String(req.params.id).toUpperCase();
-  const r = rooms[id] || { data: null, ts: 0 };
+  const r = rooms[id];
+  // 房间必须已存在（POST /api/room 创建）：拒绝匿名 PUT 任意 id 建房间，防止磁盘被无限占用
+  if (!r) return res.status(404).json({ error: "no-room" });
   if (req.body && req.body.data != null) {
     const incomingRev = (req.body.data._updated) || 0;
     const curRev = (r.data && r.data._updated) || 0;
     // 只接受“新于或等于”当前版本的写入；过期的旧请求直接丢弃，不被接受
     if (incomingRev >= curRev) {
+      // 服务端盖戳：忽略客户端 _updated（否则恶意/异常的大时间戳会把房间锁死，之后真实写入全部被拒）
+      const now = Date.now();
+      req.body.data._updated = now;
       r.data = req.body.data;
-      r.ts = incomingRev;
+      r.ts = now;
       rooms[id] = r;
       persist();
     }
