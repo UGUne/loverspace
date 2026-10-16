@@ -520,6 +520,12 @@
   .seg { display: flex; gap: 8px; }
   .seg button { flex: 1; border: 1.5px solid var(--line); background: #fff; border-radius: 12px; padding: 9px 4px; cursor: pointer; font-size: 14px; color: var(--ink); }
   .seg button.on { border-color: var(--pink); background: var(--pink-bg); color: var(--pink-deep); font-weight: 700; }
+  /* 纪念日农历选择器 */
+  .lunar-pick { display: flex; gap: 8px; }
+  .lunar-pick select { flex: 1; border: 1.5px solid var(--line); background: #fff; border-radius: 12px; padding: 10px 8px; font-size: 14px; color: var(--ink); }
+  .lunar-leap { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; color: var(--ink-2); }
+  .lunar-leap input { width: 15px; height: 15px; accent-color: var(--pink); }
+  body.dark .lunar-pick select { background: #2c2434; border-color: #3d3348; color: #e8dfe6; }
   /* 暗黑模式 */
   body.dark { background: #1a1620; color: #e8dfe6; }
   body.dark #app { background: linear-gradient(180deg,#2a2330 0%,#1a1620 220px,#15111a 100%); }
@@ -1141,7 +1147,7 @@
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1029a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1030a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -1694,14 +1700,80 @@
   // ===== 情话每日推送 =====
   var LOVE_WORDS = ["今天也是超喜欢你的一天 💕","你是我的小确幸 ✨","想和你一起虚度时光","你的笑是我的充电宝 🔋","世界很大，但我的手只想牵你 🤝","早安，我的全世界 ☀️","晚安，梦里见 🌙","你是我权衡所有选择后的最优解","和你在一起的每一天都值得纪念","谢谢你出现在我的生命里","喜欢你，是慢动作回放的心动","你是我的限定温柔","想把你写进我的未来里 ✍️","有你在，平凡也发光 🌟","你的存在本身就很浪漫"];
   function todayLove() { var d = new Date(); var n = Math.floor((d - new Date(d.getFullYear(),0,0))/86400000); return LOVE_WORDS[n % LOVE_WORDS.length]; }
+  // ===== 农历引擎（1900-2100 查表法，表数据与 Python zhdate 库逐项交叉验证）=====
+  // 年度编码位定义（与经典 lunarInfo 一致）：bit(16-m)=农历m月是否大月(30天)；bit0-3=闰月月份(0=无闰月)；bit16=闰月是否大月
+  var LUNAR_INFO = [
+    19416, 19168, 42352, 21717, 53856, 55632, 91476, 22176, 39632, 21970,
+    19168, 42422, 42192, 53840, 119381, 46400, 54944, 44450, 38320, 84343,
+    18800, 42160, 46261, 27216, 27968, 109396, 11104, 38256, 21234, 18800,
+    25958, 54432, 59984, 92821, 23248, 11104, 100067, 37600, 116951, 51536,
+    54432, 120998, 46416, 22176, 107956, 9680, 37584, 53938, 43344, 46423,
+    27808, 46416, 86869, 19872, 42416, 83315, 21168, 43432, 59728, 27296,
+    44710, 43856, 19296, 43748, 42352, 21088, 62051, 55632, 23383, 22176,
+    38608, 19925, 19152, 42192, 54484, 53840, 54616, 46400, 46752, 103846,
+    38320, 18864, 43380, 42160, 45690, 27216, 27968, 44870, 43872, 38256,
+    19189, 18800, 25776, 29859, 59984, 27480, 23232, 43872, 38613, 37600,
+    51552, 55636, 54432, 55888, 30034, 22176, 43959, 9680, 37584, 51893,
+    43344, 46240, 47780, 44368, 21977, 19360, 42416, 86390, 21168, 43312,
+    31060, 27296, 44368, 23378, 19296, 42726, 42208, 53856, 60005, 54576,
+    23200, 30371, 38608, 19195, 19152, 42192, 118966, 53840, 54560, 56645,
+    46496, 22224, 21938, 18864, 42359, 42160, 43600, 111189, 27936, 44448,
+    84835, 37744, 18936, 18800, 25776, 92326, 59984, 27296, 108228, 43744,
+    37600, 53987, 51552, 54615, 54432, 55888, 23893, 22176, 42704, 21972,
+    21200, 43448, 43344, 46240, 46758, 44368, 21920, 43940, 42416, 21168,
+    45683, 26928, 29495, 27296, 44368, 84821, 19296, 42352, 21732, 53600,
+    59752, 54560, 55968, 92838, 22224, 19168, 43476, 41680, 53584, 62034,
+    54560
+  ];
+  var LUNAR_MONTH_NAMES = ["正月","二月","三月","四月","五月","六月","七月","八月","九月","十月","冬月","腊月"];
+  var LUNAR_DAY_NAMES = ["初一","初二","初三","初四","初五","初六","初七","初八","初九","初十","十一","十二","十三","十四","十五","十六","十七","十八","十九","二十","廿一","廿二","廿三","廿四","廿五","廿六","廿七","廿八","廿九","三十"];
+  function lunarLeapMonth(y) { var c = LUNAR_INFO[y - 1900]; return c == null ? 0 : (c & 0xf); } // 0=无闰月
+  function lunarMonthDays(y, m) { return (LUNAR_INFO[y - 1900] & (0x10000 >> m)) ? 30 : 29; }
+  function lunarLeapDays(y) { var c = LUNAR_INFO[y - 1900]; return (c & 0xf) ? ((c & 0x10000) ? 30 : 29) : 0; }
+  function lunarYearDays(y) {
+    var sum = 0;
+    for (var m = 1; m <= 12; m++) sum += lunarMonthDays(y, m);
+    return sum + lunarLeapDays(y);
+  }
+  // 农历 -> 阳历 Date；y 1900-2100；isLeap=1 表示取该年闰月（该年无此闰月返回 null）
+  function lunar2solar(y, m, d, isLeap) {
+    if (!y || y < 1900 || y > 2100 || m < 1 || m > 12) return null;
+    var leapM = lunarLeapMonth(y);
+    if (isLeap && leapM !== m) return null;
+    d = Math.min(Math.max(1, d || 1), isLeap ? lunarLeapDays(y) : lunarMonthDays(y, m)); // 小月无三十：钳到月末
+    var offset = 0;
+    for (var i = 1900; i < y; i++) offset += lunarYearDays(i);
+    for (var j = 1; j < m; j++) { offset += lunarMonthDays(y, j); if (leapM === j) offset += lunarLeapDays(y); }
+    if (isLeap) offset += lunarMonthDays(y, m); // 闰月在正常月之后
+    offset += d - 1;
+    return new Date(1900, 0, 31 + offset); // 农历 1900-01-01 = 阳历 1900-01-31
+  }
+  function fmtDate(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function lunarMonthName(m) { return LUNAR_MONTH_NAMES[m - 1] || (m + "月"); }
+  function lunarDayName(d) { return LUNAR_DAY_NAMES[d - 1] || (d + "日"); }
+  // 调试/诊断挂钩：真机排查与自动化测试可直接调用农历换算
+  window.__lunar = { solar: lunar2solar, monthName: lunarMonthName, dayName: lunarDayName, monthDays: lunarMonthDays, leapMonth: lunarLeapMonth };
+
   function anniInfo(a) {
-    var d = new Date(a.date + "T00:00:00"); if (isNaN(d)) return null;
     var now = new Date();
     var today0 = new Date(todayStr() + "T00:00:00");
-    var thisYear = new Date(now.getFullYear(), d.getMonth(), d.getDate());
+    if (a.lunar) {
+      // 阴历纪念日：把农历月日换算成「今年」的阳历日期；已过或今年没有（闰月）则向后顺延
+      // 闰月约 19 年 7 个，25 年窗口必然命中，顺延上限 2100（表范围）
+      var y = now.getFullYear(), d = null;
+      for (var t = 0; t < 25 && !d; t++) {
+        var cand = lunar2solar(y + t, a.lm, a.ld, a.leap ? 1 : 0);
+        if (cand && daysBetween(today0, cand) >= 0) d = cand;
+      }
+      if (!d) return null;
+      var nd = daysBetween(today0, d);
+      return { month: a.lm, day: a.ld, next: nd, isToday: nd === 0, lunar: 1, solar: fmtDate(d) };
+    }
+    var dd = new Date(a.date + "T00:00:00"); if (isNaN(dd)) return null;
+    var thisYear = new Date(now.getFullYear(), dd.getMonth(), dd.getDate());
     var diff = daysBetween(today0, thisYear);
-    if (diff < 0) diff = daysBetween(today0, new Date(now.getFullYear() + 1, d.getMonth(), d.getDate()));
-    return { month: d.getMonth() + 1, day: d.getDate(), next: diff, isToday: diff === 0 };
+    if (diff < 0) diff = daysBetween(today0, new Date(now.getFullYear() + 1, dd.getMonth(), dd.getDate()));
+    return { month: dd.getMonth() + 1, day: dd.getDate(), next: diff, isToday: diff === 0 };
   }
   var TREE_STAGES = [
     { min: 0, name: "小种子", desc: "每天浇浇水，让爱情发芽吧" },
@@ -1795,7 +1867,8 @@
     if (data.startedDate && data.startedDate.slice(5) === md) return { name: "恋爱纪念日", label: "今天是第 " + loveDays() + " 天 💞" };
     for (var k = 0; k < (data.anniversaries || []).length; k++) {
       var a = data.anniversaries[k];
-      if (a && a.date && a.date.slice(5) === md) return { name: a.title || "纪念日", label: "今天是 " + (a.title || "纪念日") + " 🌸" };
+      if (a && a.lunar) { var li = anniInfo(a); if (li && li.isToday) return { name: a.title || "纪念日", label: "就是今天呀 🌸" }; continue; }
+      if (a && a.date && a.date.slice(5) === md) return { name: a.title || "纪念日", label: "就是今天呀 🌸" };
     }
     return null;
   }
@@ -1984,8 +2057,11 @@
     list.sort(function (x, y) { return x.i.next - y.i.next; });
     $("homeAnni").innerHTML = list.length
       ? list.slice(0, 2).map(function (o) {
-          return '<div class="anni-item"><div class="anni-date"><b>' + o.i.day + "</b><i>" + o.i.month + "月</i></div>" +
-            '<div class="anni-info"><div class="t">' + esc(o.a.title) + '</div><div class="d">' + esc(o.a.date) + "</div></div>" +
+          var sub = o.i.lunar
+            ? "农历 " + lunarMonthName(o.a.lm) + lunarDayName(o.a.ld) + (o.a.leap ? "（闰月）" : "") + " · " + (o.i.solar.slice(0, 4) === String(new Date().getFullYear()) ? "今年 " : "") + o.i.solar
+            : esc(o.a.date);
+          return '<div class="anni-item"><div class="anni-date"><b>' + o.i.day + "</b><i>" + (o.i.lunar ? "农历" : o.i.month + "月") + "</i></div>" +
+            '<div class="anni-info"><div class="t">' + esc(o.a.title) + '</div><div class="d">' + sub + "</div></div>" +
             '<div class="anni-count' + (o.i.isToday ? " today" : "") + '"><b>' + (o.i.isToday ? "今天" : o.i.next) + "</b><i>" + (o.i.isToday ? "" : "天后") + "</i></div></div>";
         }).join("")
       : '<div class="empty-tip">还没有纪念日，去添加一个吧</div>';
@@ -2460,31 +2536,60 @@
     $("moodCheckBtn").addEventListener("click", openMoodSheet);
   }
 
+  var anCalMode = "solar"; // 纪念日面板记住上次选择的历法，连续添加不用反复切
   function openAnniSheet() {
     var list = data.anniversaries.map(function (a) { var i = anniInfo(a); return i ? { a: a, i: i } : null; }).filter(Boolean);
     list.sort(function (x, y) { return x.i.next - y.i.next; });
     var html = list.map(function (o) {
-      return '<div class="anni-item"><div class="anni-date"><b>' + o.i.day + "</b><i>" + o.i.month + "月</i></div>" +
-        '<div class="anni-info"><div class="t">' + esc(o.a.title) + '</div><div class="d">' + esc(o.a.date) + "</div></div>" +
+      var sub = o.i.lunar
+        ? "农历 " + lunarMonthName(o.a.lm) + lunarDayName(o.a.ld) + (o.a.leap ? "（闰月）" : "") + " · " + (o.i.solar.slice(0, 4) === String(new Date().getFullYear()) ? "今年 " : "") + o.i.solar
+        : esc(o.a.date);
+      return '<div class="anni-item"><div class="anni-date"><b>' + o.i.day + "</b><i>" + (o.i.lunar ? "农历" : o.i.month + "月") + "</i></div>" +
+        '<div class="anni-info"><div class="t">' + esc(o.a.title) + '</div><div class="d">' + sub + "</div></div>" +
         '<div class="anni-count' + (o.i.isToday ? " today" : "") + '"><b>' + (o.i.isToday ? "今天" : o.i.next) + "</b><i>" + (o.i.isToday ? "" : "天后") + "</i></div>" +
         '<button class="del-btn" data-annidel="' + o.a.id + '">' + icon("trash") + "</button></div>";
     }).join("") || '<div class="empty-tip">添加属于你们的纪念日吧</div>';
+    var lmOpts = LUNAR_MONTH_NAMES.map(function (nm, i) { return '<option value="' + (i + 1) + '">' + nm + "</option>"; }).join("");
+    var ldOpts = LUNAR_DAY_NAMES.map(function (nm, i) { return '<option value="' + (i + 1) + '">' + nm + "</option>"; }).join("");
     html += '<div class="field" style="margin-top:16px"><label>名称</label><input type="text" id="anTitle" maxlength="20" placeholder="如：领证纪念日 / TA的生日" /></div>' +
-      '<div class="field"><label>日期</label><input type="date" id="anDate" /></div>' +
+      '<div class="field"><label>历法</label><div class="seg" id="anCal">' +
+      '<button type="button" data-cal="solar"' + (anCalMode === "solar" ? ' class="on"' : "") + '>阳历</button><button type="button" data-cal="lunar"' + (anCalMode === "lunar" ? ' class="on"' : "") + '>阴历（农历）</button></div></div>' +
+      '<div id="anSolarWrap" class="field"' + (anCalMode === "lunar" ? ' style="display:none"' : "") + '><label>日期</label><input type="date" id="anDate" /></div>' +
+      '<div id="anLunarWrap" class="field"' + (anCalMode === "lunar" ? '' : ' style="display:none"') + '><label>农历日期</label>' +
+      '<div class="lunar-pick"><select id="anLm">' + lmOpts + '</select><select id="anLd">' + ldOpts + '</select></div>' +
+      '<label class="lunar-leap"><input type="checkbox" id="anLeap" /> 闰月（选「是闰月」的生日才勾）</label></div>' +
       '<button class="primary-btn" id="anAdd">添加纪念日</button>';
     openSheet("纪念日", html);
     $("sheetBody").querySelectorAll("[data-annidel]").forEach(function (b) {
       b.addEventListener("click", function () {
         data.anniversaries = data.anniversaries.filter(function (a) { return a.id !== b.dataset.annidel; });
-        tomb("anniversaries", b.dataset.annidel);
+        tomb("anniversaries", b.id);
         save(); renderAll(); openAnniSheet(); toast("已删除");
       });
     });
+    $("anCal").querySelectorAll("button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        anCalMode = b.dataset.cal;
+        $("anCal").querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
+        var lunar = anCalMode === "lunar";
+        $("anSolarWrap").style.display = lunar ? "none" : "";
+        $("anLunarWrap").style.display = lunar ? "" : "none";
+      });
+    });
     $("anAdd").addEventListener("click", function () {
-      var t = $("anTitle").value.trim(), d = $("anDate").value;
+      var t = $("anTitle").value.trim();
       if (!t) { toast("给纪念日起个名字吧"); return; }
-      if (!d) { toast("选择一个日期"); return; }
-      data.anniversaries.push({ id: uid(), title: t, date: d });
+      var lunar = anCalMode === "lunar";
+      if (!lunar) {
+        var d = $("anDate").value;
+        if (!d) { toast("选择一个日期"); return; }
+        data.anniversaries.push({ id: uid(), title: t, date: d });
+      } else {
+        var lm = parseInt($("anLm").value, 10), ld = parseInt($("anLd").value, 10), lp = $("anLeap").checked ? 1 : 0;
+        var y = new Date().getFullYear();
+        var sd = lunar2solar(y, lm, ld, lp) || lunar2solar(y + 1, lm, ld, lp); // date 字段缓存一个阳历日期，兼容旧版降级显示
+        data.anniversaries.push({ id: uid(), title: t, date: sd ? fmtDate(sd) : "", lunar: 1, lm: lm, ld: ld, leap: lp });
+      }
       save(); renderAll(); openAnniSheet(); toast("已添加纪念日");
     });
   }
@@ -2990,7 +3095,7 @@
     var cell = e.target.closest("[data-sfview]");
     if (cell) { var s = (data.selfies || []).find(function (x) { return x.id === cell.dataset.sfview; }); if (s) { openViewer({ id: s.id, src: s.src, by: s.who, isSelfie: true }); } return; }
     if (e.target.closest("#sfShoot2")) { shootSelfie(); return; }
-    if (e.target.closest("#sfUrge")) { data.selfieUrge = { who: me, ts: Date.now() }; save(); if (backend && backend.enabled && room) pushNotify(room, (me === 0 ? "a" : "b"), "urge"); copyText("该拍今天的自拍啦，快打开「" + (data.spaceName || "恋人空间") + "」交作业！", "已提醒TA 📷（话术已复制，也可直接发给TA）"); }
+    if (e.target.closest("#sfUrge")) { data.selfieUrge = { who: me, ts: Date.now() }; save(); if (backend && backend.enabled && room) pushNotify(room, (me === 0 ? "a" : "b"), "urge"); toast("已提醒TA 📷"); }
   });
   function openPhotoAdd() {
     var al = curAlbum();
