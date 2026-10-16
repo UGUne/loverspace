@@ -215,8 +215,9 @@
   .mcal-wd { text-align: center; font-size: 10px; color: var(--ink-2); padding: 2px 0; }
   .mcal-cell { position: relative; border: none; background: #f6f4f8; border-radius: 10px; min-height: 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; padding: 0; font-family: inherit; }
   .mcal-cell .d { font-size: 11px; color: var(--ink); }
-  .mcal-cell .dots { display: flex; gap: 3px; height: 8px; }
-  .mcal-cell .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .mcal-cell .faces { display: flex; gap: 4px; height: 17px; align-items: center; }
+  .mcal-cell .faces svg.ic { width: 16px; height: 16px; }
+  .mcal-grid.week .mcal-cell { min-height: 56px; }
   .mcal-cell.blank { background: none; cursor: default; }
   .mcal-cell.fut { opacity: .35; cursor: default; }
   .mcal-cell.today .d { color: var(--pink-deep); font-weight: 700; }
@@ -747,7 +748,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="homeTreeCard">
       <div class="card-title"><svg class="ic t-ic"><use href="#i-tree"/></svg>我们的恋爱树<button class="more" data-go="tree">去养成 <svg class="ic" style="width:12px;height:12px"><use href="#i-chev"/></svg></button></div>
       <div style="display:flex;align-items:center;gap:14px">
         <div id="homeTreeMini" style="width:72px;height:72px;flex:none"></div>
@@ -1200,7 +1201,7 @@
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1032a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1033a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -2214,6 +2215,12 @@
     renderMoodCard();
     if ($("memView")) $("memView").onclick = openMemorySheet;
     var mcb = $("moodCalBtn"); if (mcb) mcb.onclick = openMoodTimeline;
+    // 恋爱树卡片：点卡片任何位置都能进入树的全屏页（不用再找「去养成」小字）
+    var tc = $("homeTreeCard");
+    if (tc && !tc.dataset.treebound) {
+      tc.dataset.treebound = "1";
+      tc.addEventListener("click", function (e) { if (e.target.closest("[data-go]")) return; openTreePage(); });
+    }
   }
   // ===== 每日想你打卡 =====
   function missDays(who) { return (data.miss || []).filter(function (m) { return m.who === who; }); }
@@ -2241,7 +2248,6 @@
   }
   $("missHeart").addEventListener("click", doMiss);
   // ===== 心情打卡：首页卡片 + 月历 =====
-  var MOOD_COLORS = { love: "#ff5c8a", happy: "#ffb020", calm: "#4fc3f7", sad: "#7986cb", angry: "#ef5350", tired: "#90a4ae" };
   function moodOf(date, who) { return (data.moods || []).find(function (m) { return m.date === date && m.who === who; }) || null; }
   function renderMoodCard() {
     var box = $("homeMood"); if (!box) return;
@@ -2515,8 +2521,7 @@
     // 沉浸页：点天空/任何空白处也摇树（按钮与面板有自己的处理，不会被这里拦截）
     var stage = e.target.closest(".tp-stage");
     if (stage) { var sc2 = stage.querySelector(".tree-scene"); if (sc2) shakeTree(sc2, e); return; }
-    var mini = e.target.closest("#homeTreeMini");
-    if (mini) shakeTree(mini, e);
+    // 首页小树不在这里单独摇树了：整张卡片点击即进入树的全屏页（摇树在大树页面照样可以）
   });
   function shakeTree(container, ev) {
     if (!container) return;
@@ -2697,11 +2702,12 @@
       save(); closeSheet(); renderAll(); toast(ex ? "已更新这天的心情" : "打卡成功，今天也要甜甜的");
     });
   }
-  // 心情时间线：默认月历热力图（一眼看整月），可切换回列表
-  var mcalYM = null; // 月历当前查看的月份 {y, m}
+  // 心情时间线：月历视图（放不下整月时自动只显示一周），可切换回列表
+  var mcalCursor = null; // 月历/周历光标：当前查看窗口内的某一天
+  function mcalWeekStart(d) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return new Date(x.getFullYear(), x.getMonth(), x.getDate() - ((x.getDay() + 6) % 7)); }
   function openMoodTimeline() {
     var now = new Date();
-    if (!mcalYM) mcalYM = { y: now.getFullYear(), m: now.getMonth() };
+    mcalCursor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     var html = '<div class="mcal-seg"><button data-mcalmode="cal" class="on">月历</button><button data-mcalmode="list">列表</button></div><div id="mcalWrap"></div>';
     openSheet("心情日记", html);
     $("sheetBody").querySelectorAll("[data-mcalmode]").forEach(function (b) {
@@ -2711,6 +2717,17 @@
       });
     });
     renderMoodCal();
+    // 只显示一周的模式下，如果当前周一条记录都没有，自动跳到最近有记录的一周，避免打开是一片空白
+    var grid = $("mcalWrap") && $("mcalWrap").querySelector(".mcal-grid.week");
+    if (grid) {
+      var ws = mcalWeekStart(mcalCursor), has = false;
+      for (var i = 0; i < 7; i++) { var ds = todayStr(new Date(ws.getFullYear(), ws.getMonth(), ws.getDate() + i)); if (moodOf(ds, me) || moodOf(ds, 1 - me)) { has = true; break; } }
+      if (!has) {
+        var latest = null;
+        (data.moods || []).forEach(function (mm) { if (!latest || mm.date > latest) latest = mm.date; });
+        if (latest) { mcalCursor = new Date(latest + "T00:00:00"); renderMoodCal(); }
+      }
+    }
   }
   function renderMoodList() {
     var wrap = $("mcalWrap"); if (!wrap) return;
@@ -2727,35 +2744,64 @@
   }
   function renderMoodCal() {
     var wrap = $("mcalWrap"); if (!wrap) return;
-    var y = mcalYM.y, m = mcalYM.m;
-    var first = new Date(y, m, 1);
-    var lead = (first.getDay() + 6) % 7; // 周一为一周起点
-    var days = new Date(y, m + 1, 0).getDate();
+    var cur = mcalCursor || new Date();
+    buildMoodCal(cur, false);
+    // 先按整月渲染，再实测放不放得下：弹层要出现滚动就自动改成只显示一周（格子更大、表情看得清楚）
+    var sh = $("sheet");
+    if (sh && sh.scrollHeight > sh.clientHeight + 4) buildMoodCal(cur, true);
+  }
+  function buildMoodCal(cur, week) {
+    var wrap = $("mcalWrap"); if (!wrap) return;
     var t = todayStr();
-    var html = '<div class="mcal-nav"><button id="mcalPrev" aria-label="上个月">‹</button><b>' + y + "年" + (m + 1) + '月</b><button id="mcalNext" aria-label="下个月">›</button></div><div class="mcal-grid">';
+    var cells = [], title = "";
+    if (week) {
+      var ws = mcalWeekStart(cur), we = new Date(ws.getFullYear(), ws.getMonth(), ws.getDate() + 6);
+      title = (ws.getMonth() + 1) + "月" + ws.getDate() + "日 – " + (we.getMonth() + 1) + "月" + we.getDate() + "日";
+      for (var i = 0; i < 7; i++) cells.push(new Date(ws.getFullYear(), ws.getMonth(), ws.getDate() + i));
+    } else {
+      var y = cur.getFullYear(), m = cur.getMonth();
+      title = y + "年" + (m + 1) + "月";
+      var days = new Date(y, m + 1, 0).getDate();
+      var lead = (new Date(y, m, 1).getDay() + 6) % 7; // 周一为一周起点
+      for (var l = 0; l < lead; l++) cells.push(null);
+      for (var d = 1; d <= days; d++) cells.push(new Date(y, m, d));
+    }
+    var html = '<div class="mcal-nav"><button id="mcalPrev" aria-label="之前">‹</button><b>' + title + '</b><button id="mcalNext" aria-label="之后">›</button></div><div class="mcal-grid' + (week ? " week" : "") + '">';
     ["一", "二", "三", "四", "五", "六", "日"].forEach(function (w) { html += '<div class="mcal-wd">' + w + "</div>"; });
-    for (var i = 0; i < lead; i++) html += '<div class="mcal-cell blank"></div>';
-    for (var d = 1; d <= days; d++) {
-      var ds = y + "-" + String(m + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+    cells.forEach(function (cd) {
+      if (!cd) { html += '<div class="mcal-cell blank"></div>'; return; }
+      var ds = todayStr(cd);
       var mine = moodOf(ds, me), ta = moodOf(ds, 1 - me);
       var cls = "mcal-cell";
       if (ds === t) cls += " today";
       if (ds > t) cls += " fut";
-      html += '<button class="' + cls + '" data-mcal="' + ds + '"><span class="d">' + d + '</span><span class="dots">' +
-        (mine ? '<i class="dot" style="background:' + MOOD_COLORS[mine.mood] + '"></i>' : "") +
-        (ta ? '<i class="dot" style="background:' + MOOD_COLORS[ta.mood] + '"></i>' : "") + "</span></button>";
-    }
+      // 心情直接用表情表示：我的在前、TA 的在后
+      var faces = (mine ? icon(moodById(mine.mood).icon) : "") + (ta ? icon(moodById(ta.mood).icon) : "");
+      html += '<button class="' + cls + '" data-mcal="' + ds + '"><span class="d">' + cd.getDate() + '</span><span class="faces">' + faces + "</span></button>";
+    });
     html += '</div><div id="mcalDetail"></div>';
     wrap.innerHTML = html;
-    $("mcalPrev").addEventListener("click", function () { mcalYM = mcalYM.m === 0 ? { y: mcalYM.y - 1, m: 11 } : { y: mcalYM.y, m: mcalYM.m - 1 }; renderMoodCal(); });
-    $("mcalNext").addEventListener("click", function () { mcalYM = mcalYM.m === 11 ? { y: mcalYM.y + 1, m: 0 } : { y: mcalYM.y, m: mcalYM.m + 1 }; renderMoodCal(); });
+    $("mcalPrev").addEventListener("click", function () {
+      mcalCursor = week ? new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() - 7) : new Date(cur.getFullYear(), cur.getMonth() - 1, 1);
+      renderMoodCal();
+    });
+    $("mcalNext").addEventListener("click", function () {
+      mcalCursor = week ? new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 7) : new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+      renderMoodCal();
+    });
     wrap.querySelectorAll("[data-mcal]").forEach(function (c) {
       c.addEventListener("click", function () {
         wrap.querySelectorAll("[data-mcal]").forEach(function (x) { x.classList.toggle("sel", x === c); });
         renderMoodDetail(c.dataset.mcal);
       });
     });
-    renderMoodDetail(t); // 默认展示今天
+    // 详情默认展示今天；翻到不含今天的窗口时，展示窗口内最后一个已过去的日期
+    var detailDs = t, shown = cells.some(function (cd) { return cd && todayStr(cd) === t; });
+    if (!shown) {
+      for (var k = cells.length - 1; k >= 0; k--) { if (cells[k] && todayStr(cells[k]) < t) { detailDs = todayStr(cells[k]); break; } }
+      if (detailDs === t) { for (var k2 = 0; k2 < cells.length; k2++) { if (cells[k2]) { detailDs = todayStr(cells[k2]); break; } } }
+    }
+    renderMoodDetail(detailDs);
   }
   function renderMoodDetail(ds) {
     var box = $("mcalDetail"); if (!box) return;
@@ -3356,14 +3402,21 @@
   });
   // 补拍往日：任选一个以前的日期补上缺的自拍
   $("sfBackAny").addEventListener("click", function () {
-    var yest = todayStr(new Date(Date.now() - 86400000));
-    openSheet("补拍以往的自拍", '<div class="empty-tip" style="padding:4px 0 12px">选一个以往的日子，把缺的那张补上。如果那天已经拍过，新的会替换旧的。</div>' +
-      '<div class="field"><label>日期</label><input type="date" id="sfBackDate" value="' + yest + '" max="' + todayStr() + '" /></div>' +
+    // 默认定位到最近一个「我没拍过」的日子（最多回看 60 天），不用用户自己猜哪天缺
+    var def = "";
+    for (var i = 1; i <= 60 && !def; i++) {
+      var d = todayStr(new Date(Date.now() - i * 86400000));
+      if (!selfieFor(d, me)) def = d;
+    }
+    if (!def) def = todayStr(new Date(Date.now() - 86400000));
+    openSheet("补拍以往的自拍", '<div class="empty-tip" style="padding:4px 0 12px">选一个以前没拍过的日子补上。已经拍过的那天，直接在时间轴上点那张照片就能重拍。</div>' +
+      '<div class="field"><label>日期</label><input type="date" id="sfBackDate" value="' + def + '" max="' + todayStr() + '" /></div>' +
       '<button class="primary-btn" id="sfBackGo">选这天，去补拍</button><button class="ghost-btn" id="sfBackCancel">取消</button>');
     $("sfBackGo").addEventListener("click", function () {
       var d = ($("sfBackDate").value || "").trim();
       if (!d) { toast("先选一个日期"); return; }
       if (d > todayStr()) { toast("不能补拍未来的日子哦"); return; }
+      if (selfieFor(d, me)) { toast("这天你已经拍过啦，去时间轴点那张照片可以直接重拍"); return; }
       closeSheet(); setTimeout(function () { shootSelfie(d); }, 280);
     });
     $("sfBackCancel").addEventListener("click", closeSheet);
@@ -4124,6 +4177,8 @@
     if (top === "tppanel") { closeTreePanelUI(); return true; }  // 树页底部面板
     if (top === "treepage") { closeTreePageUI(); return true; }  // 恋爱树全屏页
     if (top === "album") { albumState = { mode: "list", id: null }; albumMode = "normal"; albumSel = {}; sortSrc = null; renderAlbum(); return true; }
+    // 其他标签页（悄悄话/相册/自拍/我们）：返回先回到首页，之后才是"再按一次退出"
+    if (currentTab && currentTab !== "home") { goTab("home"); return true; }
     return false;
   }
   function appBack() {
