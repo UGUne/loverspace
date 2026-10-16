@@ -193,6 +193,43 @@
   .mood-tl .mt-head b { color: var(--ink); font-size: 13px; }
   .mood-tl .mt-text { font-size: 14px; margin-top: 3px; }
 
+  /* 心情：首页今日卡片 */
+  .mood-today { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+  .mood-today .mt-big { width: 46px; height: 46px; border-radius: 50%; background: var(--pink-bg); color: var(--pink-deep); display: flex; align-items: center; justify-content: center; flex: none; }
+  .mood-today .mt-big svg.ic { width: 26px; height: 26px; }
+  .mood-quick { display: flex; gap: 6px; }
+  .mood-quick button { flex: 1; border: 1.5px solid var(--line); background: #fff; border-radius: 14px; padding: 9px 2px 7px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--ink-2); font-family: inherit; }
+  .mood-quick button:active { transform: scale(.92); }
+  .mood-quick svg.ic { width: 24px; height: 24px; }
+  .mood-quick span { font-size: 10px; }
+  .mood-ta-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .mood-ta-row .mood-ta-txt { font-size: 12px; color: var(--ink-2); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* 心情：月历 */
+  .mcal-seg { display: flex; gap: 8px; margin-bottom: 12px; }
+  .mcal-seg button { flex: 1; border: 1.5px solid var(--line); background: #fff; border-radius: 12px; padding: 7px 0; font-size: 13px; color: var(--ink-2); cursor: pointer; font-family: inherit; }
+  .mcal-seg button.on { border-color: var(--pink); color: var(--pink-deep); background: var(--pink-bg); font-weight: 600; }
+  .mcal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .mcal-nav b { font-size: 14px; }
+  .mcal-nav button { border: 1px solid var(--line); background: #fff; border-radius: 10px; width: 30px; height: 30px; font-size: 15px; line-height: 1; color: var(--ink); cursor: pointer; font-family: inherit; }
+  .mcal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .mcal-wd { text-align: center; font-size: 10px; color: var(--ink-2); padding: 2px 0; }
+  .mcal-cell { position: relative; border: none; background: #f6f4f8; border-radius: 10px; min-height: 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; padding: 0; font-family: inherit; }
+  .mcal-cell .d { font-size: 11px; color: var(--ink); }
+  .mcal-cell .dots { display: flex; gap: 3px; height: 8px; }
+  .mcal-cell .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .mcal-cell.blank { background: none; cursor: default; }
+  .mcal-cell.fut { opacity: .35; cursor: default; }
+  .mcal-cell.today .d { color: var(--pink-deep); font-weight: 700; }
+  .mcal-cell.sel { background: var(--pink-bg); box-shadow: 0 0 0 1.5px var(--pink) inset; }
+  .mcal-detail { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .mcal-drow { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; }
+  .mcal-drow .mt-face { width: 32px; height: 32px; border-radius: 50%; background: var(--pink-bg); color: var(--pink-deep); display: flex; align-items: center; justify-content: center; flex: none; }
+  .mcal-drow .mt-face svg.ic { width: 18px; height: 18px; }
+  .mcal-drow .mt-none { font-size: 13px; color: var(--ink-2); padding-top: 6px; }
+  body.dark .mood-quick button, body.dark .mcal-seg button, body.dark .mcal-nav button { background: #2e2638; border-color: #3a3145; color: #e8dfe6; }
+  body.dark .mcal-cell { background: #332b40; }
+  body.dark .mcal-cell .d { color: #e8dfe6; }
+
   .tree-stage { display: flex; flex-direction: column; align-items: center; padding: 8px 0 4px; }
   .grow-track { width: 100%; height: 10px; border-radius: 5px; background: var(--pink-soft); overflow: hidden; }
   .grow-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, #ffb0cc, #f2558d); transition: width .6s ease; }
@@ -732,6 +769,11 @@
     </div>
 
     <div class="card">
+      <div class="card-title"><svg class="ic t-ic"><use href="#i-mood"/></svg>今日心情<button class="more" id="moodCalBtn">心情日历 <svg class="ic" style="width:12px;height:12px"><use href="#i-chev"/></svg></button></div>
+      <div id="homeMood"></div>
+    </div>
+
+    <div class="card">
       <div class="card-title"><svg class="ic t-ic"><use href="#i-cal"/></svg>最近纪念日<button class="more" data-go="anni">全部 <svg class="ic" style="width:12px;height:12px"><use href="#i-chev"/></svg></button></div>
       <div id="homeAnni"></div>
     </div>
@@ -802,7 +844,7 @@
         </div>
         <div class="sf-stat" id="sfStat"></div>
       </div>
-      <div class="sf-btns"><button class="primary-btn" id="sfShoot"><svg class="ic"><use href="#i-cam"/></svg><span id="sfShootLbl">今天拍一张</span></button></div>
+      <div class="sf-btns"><button class="primary-btn" id="sfShoot"><svg class="ic"><use href="#i-cam"/></svg><span id="sfShootLbl">今天拍一张</span></button><button class="ghost-btn" id="sfBackAny" style="margin-top:0;flex:none;white-space:nowrap;padding:0 14px;width:auto">补拍往日</button></div>
     </div>
     <div class="card"><div id="sfTimeline"></div></div>
   </section>
@@ -1158,7 +1200,7 @@
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1031a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1032a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -2169,7 +2211,9 @@
       Array.prototype.forEach.call($("homeMemory").querySelectorAll("[data-mem]"), function(c){ c.onclick = function(){ var fp = findPhoto(c.dataset.mem); if (fp) openViewer(fp.photo); }; });
     } else { mc.style.display = "none"; }
     $("homeLove").textContent = todayLove();
+    renderMoodCard();
     if ($("memView")) $("memView").onclick = openMemorySheet;
+    var mcb = $("moodCalBtn"); if (mcb) mcb.onclick = openMoodTimeline;
   }
   // ===== 每日想你打卡 =====
   function missDays(who) { return (data.miss || []).filter(function (m) { return m.who === who; }); }
@@ -2196,6 +2240,44 @@
     save(); renderAll(); toast("已告诉 TA 你今天想 TA 了 💗 恋爱树成长 +1");
   }
   $("missHeart").addEventListener("click", doMiss);
+  // ===== 心情打卡：首页卡片 + 月历 =====
+  var MOOD_COLORS = { love: "#ff5c8a", happy: "#ffb020", calm: "#4fc3f7", sad: "#7986cb", angry: "#ef5350", tired: "#90a4ae" };
+  function moodOf(date, who) { return (data.moods || []).find(function (m) { return m.date === date && m.who === who; }) || null; }
+  function renderMoodCard() {
+    var box = $("homeMood"); if (!box) return;
+    var t = todayStr();
+    var mine = moodOf(t, me), ta = moodOf(t, 1 - me);
+    var html = "";
+    if (!mine) {
+      html += '<div style="font-size:12px;color:var(--ink-2);margin-bottom:8px">今天还没记录心情，点一下下面的表情就打卡好了</div>';
+      html += '<div class="mood-quick">' + MOODS.map(function (m) {
+        return '<button data-mquick="' + m.id + '"><svg class="ic"><use href="#i-' + m.icon + '"/></svg><span>' + m.name + "</span></button>";
+      }).join("") + "</div>";
+    } else {
+      var md = moodById(mine.mood);
+      html += '<div class="mood-today" data-moodedit="1"><div class="mt-big">' + icon(md.icon) + "</div>" +
+        '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">我今天 · ' + md.name + "</div>" +
+        (mine.note
+          ? '<div style="font-size:13px;color:var(--ink-2);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(mine.note) + "</div>"
+          : '<div style="font-size:12px;color:var(--ink-2);margin-top:3px">点这里可以修改，或补一句记录</div>') + "</div></div>";
+    }
+    var taName = (data.partners[1 - me] || {}).name || "?";
+    var taTxt = ta ? ("TA 今天 · " + moodById(ta.mood).name + (ta.note ? "：" + esc(ta.note) : "")) : "TA 今天还没记录";
+    html += '<div class="mood-ta-row"><div class="avatar p' + (1 - me) + '" style="width:26px;height:26px;font-size:11px;cursor:default">' +
+      ((data.partners[1 - me] || {}).avatar ? '<img src="' + imgSrc(data.partners[1 - me].avatar) + '" style="width:100%;height:100%;object-fit:cover"/>' : esc(taName.slice(0, 1))) + "</div>" +
+      '<div class="mood-ta-txt">' + taTxt + "</div></div>";
+    box.innerHTML = html;
+    var ed = box.querySelector("[data-moodedit]");
+    if (ed) ed.addEventListener("click", function () { openMoodSheet(); });
+    box.querySelectorAll("[data-mquick]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var id = b.dataset.mquick, ex = moodOf(t, me);
+        if (ex) { ex.mood = id; ex.ts = Date.now(); }
+        else (data.moods || (data.moods = [])).push({ id: uid(), who: me, date: t, mood: id, note: "", ts: Date.now() });
+        save(); renderAll(); toast("今天的心情已记录：" + moodById(id).name);
+      });
+    });
+  }
   // ===== 每日任务：随真实行为自动完成，每人每天各 +1 成长值 =====
   var DAILY_TASKS = [
     { key: "selfie", name: "拍一张今日自拍" },
@@ -2362,7 +2444,11 @@
     if (s) {
       return '<div class="sf-card ' + cls + '" data-sfview="' + s.id + '"><img src="' + imgSrc(s.src) + '" alt=""/><span class="sf-tag">' + esc((data.partners[s.who] || data.partners[0]).name) + "</span></div>";
     }
-    if (date !== today) return '<div class="sf-card ' + cls + '"><div class="sf-ph">这天没拍</div></div>';
+    if (date !== today) {
+      // 历史空卡：自己那一侧提供「补拍」，把以前没拍的日子补上
+      if (isMine) return '<div class="sf-card ' + cls + '"><div class="sf-ph">这天没拍<br/>补拍一张，留住回忆</div><div style="padding:0 6px 10px"><button class="mini-btn b" data-sfback="' + date + '">补拍</button></div></div>';
+      return '<div class="sf-card ' + cls + '"><div class="sf-ph">这天没拍</div></div>';
+    }
     if (isMine) return '<div class="sf-card ' + cls + '"><div class="sf-ph">你的位置还空着<br/>每天一张，记录今天的自己</div><div style="padding:0 6px 10px"><button class="mini-btn b" id="sfShoot2">自拍一下</button></div></div>';
     return '<div class="sf-card ' + cls + '"><div class="sf-ph">' + esc(data.partners[1 - me].name) + "还没发呢<br/>戳一下，让TA把这张交出来</div><div style=\"padding:0 6px 10px\"><button class=\"mini-btn p\" id=\"sfUrge\">催TA发</button></div></div>";
   }
@@ -2578,13 +2664,22 @@
   });
   window.addEventListener("scroll", closeMsgMenu, true);
 
-  function openMoodSheet() {
-    var done = data.moods.some(function (m) { return m.date === todayStr() && m.who === me; });
+  function openMoodSheet(dateStr) {
+    var d = dateStr || todayStr();
+    var isToday = d === todayStr();
+    var exist = moodOf(d, me);
     var html = '<div class="mood-bar">' + MOODS.map(function (m) {
       return '<button data-mood="' + m.id + '"><svg class="ic m-face"><use href="#i-' + m.icon + '"/></svg><span>' + m.name + "</span></button>";
-    }).join("") + '</div><input class="mood-note" id="moodNote" maxlength="60" placeholder="用一句话记录今天…" /><button class="primary-btn" id="moodSave">打卡</button>';
-    if (done) html = '<div class="empty-tip" style="padding:4px 0 14px">今天已经打过卡啦（再次提交会更新今天）</div>' + html;
-    openSheet("今日心情打卡", html);
+    }).join("") + '</div><input class="mood-note" id="moodNote" maxlength="60" placeholder="用一句话记录这天…" /><button class="primary-btn" id="moodSave">' + (exist ? "保存修改" : "打卡") + "</button>";
+    if (exist) html = '<div class="empty-tip" style="padding:4px 0 14px">' + (isToday ? "今天已经打过卡啦（再次提交会更新今天）" : "这天已经记录过，提交会更新那天的记录") + "</div>" + html;
+    var dl = new Date(d + "T00:00:00");
+    openSheet(isToday ? "今日心情打卡" : "补记 " + (dl.getMonth() + 1) + "月" + dl.getDate() + "日 心情", html);
+    // 补记/修改时预选当天已有的心情和备注，在原有基础上改更省事
+    if (exist) {
+      var pre = $("sheetBody").querySelector('[data-mood="' + exist.mood + '"]');
+      if (pre) pre.classList.add("on");
+      $("moodNote").value = exist.note || "";
+    }
     $("sheetBody").querySelectorAll("[data-mood]").forEach(function (b) {
       b.addEventListener("click", function () { $("sheetBody").querySelectorAll("[data-mood]").forEach(function (x) { x.classList.toggle("on", x === b); }); });
     });
@@ -2593,16 +2688,32 @@
       if (!on) { toast("先选一个心情吧"); return; }
       var note = ($("moodNote").value || "").trim();
       // 改稿保留原 id 原地更新：旧代码先删后 push 新 id，无墓碑，对方设备合并后会留下旧条目变成双份
-      var exist = (data.moods || []).find(function (m) { return m.date === todayStr() && m.who === me; });
-      if (exist) { exist.mood = on.dataset.mood; exist.note = note; exist.ts = Date.now(); }
+      var ex = moodOf(d, me);
+      if (ex) { ex.mood = on.dataset.mood; ex.note = note; ex.ts = Date.now(); }
       else {
-        data.moods = data.moods.filter(function (m) { return !(m.date === todayStr() && m.who === me); });
-        data.moods.push({ id: uid(), who: me, date: todayStr(), mood: on.dataset.mood, note: note, ts: Date.now() });
+        data.moods = data.moods.filter(function (m) { return !(m.date === d && m.who === me); });
+        data.moods.push({ id: uid(), who: me, date: d, mood: on.dataset.mood, note: note, ts: Date.now() });
       }
-      save(); closeSheet(); renderAll(); toast("打卡成功，今天也要甜甜的");
+      save(); closeSheet(); renderAll(); toast(ex ? "已更新这天的心情" : "打卡成功，今天也要甜甜的");
     });
   }
+  // 心情时间线：默认月历热力图（一眼看整月），可切换回列表
+  var mcalYM = null; // 月历当前查看的月份 {y, m}
   function openMoodTimeline() {
+    var now = new Date();
+    if (!mcalYM) mcalYM = { y: now.getFullYear(), m: now.getMonth() };
+    var html = '<div class="mcal-seg"><button data-mcalmode="cal" class="on">月历</button><button data-mcalmode="list">列表</button></div><div id="mcalWrap"></div>';
+    openSheet("心情日记", html);
+    $("sheetBody").querySelectorAll("[data-mcalmode]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        $("sheetBody").querySelectorAll("[data-mcalmode]").forEach(function (x) { x.classList.toggle("on", x === b); });
+        if (b.dataset.mcalmode === "cal") renderMoodCal(); else renderMoodList();
+      });
+    });
+    renderMoodCal();
+  }
+  function renderMoodList() {
+    var wrap = $("mcalWrap"); if (!wrap) return;
     var list = data.moods.slice().sort(function (a, b) { return b.ts - a.ts; });
     var html = list.length ? list.map(function (m) {
       var md = moodById(m.mood), p = data.partners[m.who] || data.partners[0];
@@ -2611,8 +2722,65 @@
         (m.note ? '<div class="mt-text">' + esc(m.note) + "</div>" : "") + "</div></div>";
     }).join("") : '<div class="empty-tip">还没有心情记录</div>';
     html += '<button class="ghost-btn" id="moodCheckBtn">今日打卡</button>';
-    openSheet("心情日记", html);
-    $("moodCheckBtn").addEventListener("click", openMoodSheet);
+    wrap.innerHTML = html;
+    $("moodCheckBtn").addEventListener("click", function () { closeSheet(); setTimeout(function () { openMoodSheet(); }, 300); });
+  }
+  function renderMoodCal() {
+    var wrap = $("mcalWrap"); if (!wrap) return;
+    var y = mcalYM.y, m = mcalYM.m;
+    var first = new Date(y, m, 1);
+    var lead = (first.getDay() + 6) % 7; // 周一为一周起点
+    var days = new Date(y, m + 1, 0).getDate();
+    var t = todayStr();
+    var html = '<div class="mcal-nav"><button id="mcalPrev" aria-label="上个月">‹</button><b>' + y + "年" + (m + 1) + '月</b><button id="mcalNext" aria-label="下个月">›</button></div><div class="mcal-grid">';
+    ["一", "二", "三", "四", "五", "六", "日"].forEach(function (w) { html += '<div class="mcal-wd">' + w + "</div>"; });
+    for (var i = 0; i < lead; i++) html += '<div class="mcal-cell blank"></div>';
+    for (var d = 1; d <= days; d++) {
+      var ds = y + "-" + String(m + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+      var mine = moodOf(ds, me), ta = moodOf(ds, 1 - me);
+      var cls = "mcal-cell";
+      if (ds === t) cls += " today";
+      if (ds > t) cls += " fut";
+      html += '<button class="' + cls + '" data-mcal="' + ds + '"><span class="d">' + d + '</span><span class="dots">' +
+        (mine ? '<i class="dot" style="background:' + MOOD_COLORS[mine.mood] + '"></i>' : "") +
+        (ta ? '<i class="dot" style="background:' + MOOD_COLORS[ta.mood] + '"></i>' : "") + "</span></button>";
+    }
+    html += '</div><div id="mcalDetail"></div>';
+    wrap.innerHTML = html;
+    $("mcalPrev").addEventListener("click", function () { mcalYM = mcalYM.m === 0 ? { y: mcalYM.y - 1, m: 11 } : { y: mcalYM.y, m: mcalYM.m - 1 }; renderMoodCal(); });
+    $("mcalNext").addEventListener("click", function () { mcalYM = mcalYM.m === 11 ? { y: mcalYM.y + 1, m: 0 } : { y: mcalYM.y, m: mcalYM.m + 1 }; renderMoodCal(); });
+    wrap.querySelectorAll("[data-mcal]").forEach(function (c) {
+      c.addEventListener("click", function () {
+        wrap.querySelectorAll("[data-mcal]").forEach(function (x) { x.classList.toggle("sel", x === c); });
+        renderMoodDetail(c.dataset.mcal);
+      });
+    });
+    renderMoodDetail(t); // 默认展示今天
+  }
+  function renderMoodDetail(ds) {
+    var box = $("mcalDetail"); if (!box) return;
+    var dl = new Date(ds + "T00:00:00");
+    var dlbl = (dl.getMonth() + 1) + "月" + dl.getDate() + "日" + (ds === todayStr() ? "（今天）" : "");
+    var html = '<div class="mcal-detail"><div style="font-size:13px;font-weight:600;margin-bottom:6px">' + dlbl + "</div>";
+    [me, 1 - me].forEach(function (w) {
+      var mm = moodOf(ds, w), p = data.partners[w] || data.partners[0];
+      if (mm) {
+        var md = moodById(mm.mood);
+        html += '<div class="mcal-drow"><div class="mt-face">' + icon(md.icon) + "</div>" +
+          '<div style="flex:1;min-width:0"><div style="font-size:13px"><b>' + esc(p.name) + "</b> · " + md.name + ' <span style="font-size:11px;color:var(--ink-2)">' + fmtTime(mm.ts) + "</span></div>" +
+          (mm.note ? '<div style="font-size:13px;margin-top:2px">' + esc(mm.note) + "</div>" : "") + "</div></div>";
+      } else {
+        html += '<div class="mcal-drow"><div class="mt-face" style="background:#f2eef5;color:#b9b3c0">' + icon("mood") + "</div>" +
+          '<div class="mt-none">' + esc(p.name) + (w === me ? " 这天没记录" : " 这天还没记录") + "</div></div>";
+      }
+    });
+    if (moodOf(ds, me)) html += '<button class="ghost-btn" id="mcalEdit" style="margin-top:8px">修改这天的心情</button>';
+    else if (ds <= todayStr()) html += '<button class="primary-btn" id="mcalBack" style="margin-top:8px">补记这天的心情</button>';
+    html += "</div>";
+    box.innerHTML = html;
+    // 先关月历面板再开打卡面板：openSheet 是复用同一个弹层，嵌套打开会让一次返回把两层都关掉
+    var eb = $("mcalEdit"); if (eb) eb.addEventListener("click", function () { closeSheet(); setTimeout(function () { openMoodSheet(ds); }, 300); });
+    var bb = $("mcalBack"); if (bb) bb.addEventListener("click", function () { closeSheet(); setTimeout(function () { openMoodSheet(ds); }, 300); });
   }
 
   var anCalMode = "solar"; // 纪念日面板记住上次选择的历法，连续添加不用反复切
@@ -3154,17 +3322,20 @@
   });
 
   // ===== 自拍交互 =====
-  function shootSelfie() {
+  function shootSelfie(backDate) {
+    var d = backDate || todayStr();
+    var isBack = !!backDate && backDate !== todayStr();
     pickImageMenu(function (f) {
       compressImage(f, 900, 0.7, function (durl) {
-        // 重拍保留原 id 原地更新（同 moodSave 的理由：避免对方设备出现双份）
-        var exist = (data.selfies || []).find(function (s) { return s.date === todayStr() && s.who === me; });
+        // 重拍/补拍保留原 id 原地更新（同 moodSave 的理由：避免对方设备出现双份）
+        var exist = (data.selfies || []).find(function (s) { return s.date === d && s.who === me; });
         if (exist) { exist.src = durl; exist.ts = Date.now(); }
         else {
-          data.selfies = (data.selfies || []).filter(function (s) { return !(s.date === todayStr() && s.who === me); });
-          data.selfies.unshift({ id: uid(), date: todayStr(), who: me, src: durl, ts: Date.now() });
+          data.selfies = (data.selfies || []).filter(function (s) { return !(s.date === d && s.who === me); });
+          data.selfies.unshift({ id: uid(), date: d, who: me, src: durl, ts: Date.now() });
         }
-        save(); renderAll(); toast("今天的自拍已打卡，TA马上能看到");
+        save(); renderAll();
+        toast(isBack ? ("已补拍 " + d.slice(5).replace("-", "月") + "日 的自拍，TA也能看到") : "今天的自拍已打卡，TA马上能看到");
       });
     });
   }
@@ -3178,8 +3349,24 @@
   $("sfTimeline").addEventListener("click", function (e) {
     var cell = e.target.closest("[data-sfview]");
     if (cell) { var s = (data.selfies || []).find(function (x) { return x.id === cell.dataset.sfview; }); if (s) { openViewer({ id: s.id, src: s.src, by: s.who, isSelfie: true }); } return; }
+    var bk = e.target.closest("[data-sfback]");
+    if (bk) { shootSelfie(bk.dataset.sfback); return; }
     if (e.target.closest("#sfShoot2")) { shootSelfie(); return; }
     if (e.target.closest("#sfUrge")) { data.selfieUrge = { who: me, ts: Date.now() }; save(); if (backend && backend.enabled && room) pushNotify(room, (me === 0 ? "a" : "b"), "urge"); toast("已提醒TA 📷"); }
+  });
+  // 补拍往日：任选一个以前的日期补上缺的自拍
+  $("sfBackAny").addEventListener("click", function () {
+    var yest = todayStr(new Date(Date.now() - 86400000));
+    openSheet("补拍以往的自拍", '<div class="empty-tip" style="padding:4px 0 12px">选一个以往的日子，把缺的那张补上。如果那天已经拍过，新的会替换旧的。</div>' +
+      '<div class="field"><label>日期</label><input type="date" id="sfBackDate" value="' + yest + '" max="' + todayStr() + '" /></div>' +
+      '<button class="primary-btn" id="sfBackGo">选这天，去补拍</button><button class="ghost-btn" id="sfBackCancel">取消</button>');
+    $("sfBackGo").addEventListener("click", function () {
+      var d = ($("sfBackDate").value || "").trim();
+      if (!d) { toast("先选一个日期"); return; }
+      if (d > todayStr()) { toast("不能补拍未来的日子哦"); return; }
+      closeSheet(); setTimeout(function () { shootSelfie(d); }, 280);
+    });
+    $("sfBackCancel").addEventListener("click", closeSheet);
   });
   function openPhotoAdd() {
     var al = curAlbum();
