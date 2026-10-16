@@ -1141,7 +1141,7 @@
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1028a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1029a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -3212,9 +3212,33 @@
       });
       var keys = Object.keys(names);
       function done(images) {
-        var blob = new Blob([JSON.stringify({ version: 2, data: snap, images: images || {} })], { type: "application/json" });
-        dl(blob, "loverspace-backup-" + todayStr() + ".json");
-        toast("备份文件已导出" + (keys.length ? "（含 " + Object.keys(images || {}).length + " 张原图）" : ""));
+        var json = JSON.stringify({ version: 2, data: snap, images: images || {} });
+        var fname = "loverspace-backup-" + todayStr() + ".json";
+        var imgN = keys.length ? Object.keys(images || {}).length : 0;
+        // App 内（Capacitor WebView）：<a download> 不会被处理，必须走原生桥写文件，
+        // 否则点了导出只弹 toast、什么文件都不落盘
+        var nb = window.LoverspaceNative;
+        if (nb && typeof nb.saveBackup === "function") {
+          var b64 = "";
+          try { b64 = btoa(unescape(encodeURIComponent(json))); } catch (e) { b64 = ""; } // UTF-8 安全 base64
+          if (b64) {
+            var r = String(nb.saveBackup(fname, b64));
+            if (r.indexOf("ok:") === 0) {
+              toast("备份已保存到手机「下载/loverspace」目录" + (imgN ? "（含 " + imgN + " 张原图）" : "") + "\n" + r.slice(3));
+            } else if (r === "need_perm") {
+              toast("请在弹窗中允许存储权限，然后再次点击导出");
+            } else {
+              toast("保存失败：" + r);
+            }
+            closeSheet();
+            return;
+          }
+          toast("备份数据编码失败，请重试"); closeSheet(); return;
+        }
+        // 浏览器（调试/网页版）：普通下载
+        var blob = new Blob([json], { type: "application/json" });
+        dl(blob, fname);
+        toast("备份文件已导出" + (imgN ? "（含 " + imgN + " 张原图）" : ""));
         closeSheet();
       }
       if (!keys.length) return done({});

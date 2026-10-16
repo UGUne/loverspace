@@ -47,9 +47,9 @@ public class MainActivity extends BridgeActivity {
         KeepAliveService.start(getApplicationContext());
       }
     } catch (Throwable ignore) {}
-    // 给前端网页暴露原生桥，用于设置别名 / 读取通知点击类型
+    // 给前端网页暴露原生桥，用于设置别名 / 读取通知点击类型 / 保存备份文件
     if (getBridge() != null && getBridge().getWebView() != null) {
-      getBridge().getWebView().addJavascriptInterface(new LsNative(getApplicationContext()), "LoverspaceNative");
+      getBridge().getWebView().addJavascriptInterface(new LsNative(getApplicationContext(), this), "LoverspaceNative");
     }
   }
 
@@ -58,14 +58,93 @@ public class MainActivity extends BridgeActivity {
     super.onResume();
     // 回到前台：只把桌面角标清零，不再清通知栏（用户还没读的通知应保留，
     // 之前在此处 clearAllNotifications 会误删刚到达、尚未查看的通知）。
-    // 已读的通知由 JPushReceiver.onNotifyMessageOpened（用户真正点开时）负责清除。
-    try { JPushInterface.setBadgeNumber(getApplicationContext(), 0); } catch (Throwable t) {}
+    // 已读的通知由 JPushReceiver.onNotifyMessageOpened（用户真正点开时）负责清除。    try { JPushInterface.setBadgeNumber(getApplicationContext(), 0); } catch (Throwable t) {}
+  }
+
+  // 旧版设备（API 24-28）导出备份时的存储权限申请结果：引导用户再次点击导出
+  @Override
+  public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    if (requestCode == 9001) {
+      boolean ok = grantResults.length > 0
+          && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED;
+      toastUi(ok ? "存储权限已授予，请再次点击「导出备份文件」" : "没有存储权限，无法保存备份文件");
+    }
+  }
+  private void toastUi(final String msg) {
+    try {
+      runOnUiThread(new Runnable() {
+        @Override
+        public void run() {
+          android.widget.Toast.makeText(MainActivity.this, msg, android.widget.Toast.LENGTH_LONG).show();
+        }
+      });
+    } catch (Throwable ignore) {}
   }
 
   // 前端通过 window.LoverspaceNative 调用的原生方法（同步，无回调）
   public static class LsNative {
     private final Context ctx;
-    LsNative(Context c) { ctx = c; }
+    private final android.app.Activity act;
+    LsNative(Context c, android.app.Activity a) { ctx = c; act = a; }
+    // ===== 备份导出：WebView 不处理 <a download>，导出必须走原生写文件 =====
+    // 返回 "ok:<路径>" / "need_perm" / "err:<原因>"
+    @JavascriptInterface
+    public String saveBackup(String name, String base64) {
+      try {
+        byte[] bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT);
+        return writeToDownloads(name, bytes);
+      } catch (Throwable t) {
+        return "err:" + t;
+      }
+    }
+    private String writeToDownloads(String name, byte[] bytes) {
+      // 防路径穿越：只保留安全字符
+      String safe = (name == null ? "backup.json" : name).replaceAll("[^a-zA-Z0-9._\\-\\u4e00-\\u9fa5]", "_");
+      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+        // API 29+：MediaStore.Downloads 免存储权限，文件落在「下载/loverspace」
+        try {
+          android.content.ContentValues cv = new android.content.ContentValues();
+          cv.put(android.provider.MediaStore.Downloads.DISPLAY_NAME, safe);
+          cv.put(android.provider.MediaStore.Downloads.MIME_TYPE, "application/json");
+          cv.put(android.provider.MediaStore.Downloads.RELATIVE_PATH, "Download/loverspace");
+          cv.put(android.provider.MediaStore.Downloads.IS_PENDING, 1);
+          android.net.Uri uri = act.getContentResolver().insert(
+              android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+          if (uri == null) return "err:insert-failed";
+          java.io.OutputStream os = act.getContentResolver().openOutputStream(uri);
+          if (os == null) return "err:open-failed";
+          os.write(bytes);
+          os.close();
+          cv.clear();
+          cv.put(android.provider.MediaStore.Downloads.IS_PENDING, 0);
+          act.getContentResolver().update(uri, cv, null, null);
+          return "ok:Download/loverspace/" + safe;
+        } catch (Throwable t) {
+          return "err:" + t;
+        }
+      }
+      // API 24-28：旧版直接写公共目录，需运行时存储权限
+      try {
+        if (act.checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+          act.requestPermissions(new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 9001);
+          return "need_perm";
+        }
+        java.io.File dir = new java.io.File(
+            android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "loverspace");
+        if (!dir.exists() && !dir.mkdirs()) return "err:mkdir-failed";
+        java.io.File f = new java.io.File(dir, safe);
+        java.io.FileOutputStream fos = new java.io.FileOutputStream(f);
+        fos.write(bytes);
+        fos.close();
+        android.media.MediaScannerConnection.scanFile(ctx, new String[]{f.getAbsolutePath()},
+            new String[]{"application/json"}, null);
+        return "ok:" + f.getAbsolutePath();
+      } catch (Throwable t) {
+        return "err:" + t;
+      }
+    }
     @JavascriptInterface
     public void setAlias(String alias) {
       try { JPushInterface.setAlias(ctx, (int)(System.currentTimeMillis() & 0xffff), alias); } catch (Throwable t) {}

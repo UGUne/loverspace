@@ -110,4 +110,8 @@
          使用 remoteMessaging 类型 FGS 所需的普通权限，旧系统上自动忽略 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
+    <!-- 备份导出：仅 Android 9 及更早（API 24-28）写公共下载目录需要运行时申请；
+         Android 10+ 走 MediaStore 免权限，此声明在新系统上自动忽略 -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 </manifest>
