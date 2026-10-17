@@ -1129,32 +1129,53 @@ try {
     };
   }
   // Supabase REST 分支：method = POST(创建) / GET(读取) / PUT(更新全量)
+  // Supabase 失败计数：连续失败自动降级到内置云端（对方项目被删/暂停时不能无限卡死轮询）
+  var sbFail = 0;
+  function sbFailHit(why) {
+    sbFail++;
+    if (usingSb() && sbFail >= 2) {
+      chooseBackend("local");
+      toast("Supabase 连接失败（" + why + "），已自动切换内置云端");
+    }
+  }
+  function sbOk() { sbFail = 0; }
+  function sbFetch(path, opt) {
+    // 与内置云端一致的 AbortController 超时：Supabase 域名失效/被墙时 fetch 可能长时间挂起，无超时会卡死轮询
+    if (typeof AbortController !== "function") return fetch(path, opt);
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () { ctrl.abort(); }, 8000);
+    opt.signal = ctrl.signal;
+    return fetch(path, opt).then(function (r) { clearTimeout(timer); return r; }, function (e) { clearTimeout(timer); throw e; });
+  }
   function sbRequest(method, id, body) {
     var base = SB_URL.replace(/\/+$/, "") + "/rest/v1/rooms";
     var opt = { headers: sbHeaders() };
-    function httpErr(status, txt) { return { error: "HTTP " + status + (txt ? " " + String(txt).slice(0, 70) : "") }; }
-    function netErr(e) { return { error: "网络不通(" + (e && e.message ? e.message : "fetch失败") + ")" }; }
+    function httpErr(status, txt) { sbFailHit("HTTP " + status); return { error: "HTTP " + status + (txt ? " " + String(txt).slice(0, 70) : "") }; }
+    function netErr(e) { sbFailHit((e && e.name === "AbortError") ? "超时" : "网络不通"); return { error: "网络不通(" + (e && e.message ? e.message : "fetch失败") + ")" }; }
     if (method === "POST") {
       var code = genCode();
       opt.method = "POST";
       opt.body = JSON.stringify({ id: code, data: null, updated_at: new Date().toISOString() });
-      return fetch(base, opt).then(function (r) {
+      return sbFetch(base, opt).then(function (r) {
           if (!r.ok) return r.text().then(function (t) { return httpErr(r.status, t); });
+          sbOk();
           return r.json().then(function (j) { var row = Array.isArray(j) ? j[0] : j; return { id: row ? row.id : code }; });
         }).catch(netErr);
     }
     if (method === "GET") {
       opt.method = "GET";
-      return fetch(base + "?id=eq." + encodeURIComponent(id), opt).then(function (r) {
+      return sbFetch(base + "?id=eq." + encodeURIComponent(id), opt).then(function (r) {
           if (!r.ok) return r.text().then(function (t) { return httpErr(r.status, t); });
+          sbOk();
           return r.json().then(function (j) { var row = Array.isArray(j) ? j[0] : null; return { id: id, exists: !!row, data: row ? row.data : null, ts: row && row.updated_at ? Date.parse(row.updated_at) : 0 }; });
         }).catch(netErr);
     }
     // 更新：PATCH 整行（前端已本地合并，写全量）
     opt.method = "PATCH";
     opt.body = JSON.stringify({ data: body.data, updated_at: new Date().toISOString() });
-    return fetch(base + "?id=eq." + encodeURIComponent(id), opt).then(function (r) {
+    return sbFetch(base + "?id=eq." + encodeURIComponent(id), opt).then(function (r) {
         if (!r.ok) return r.text().then(function (t) { return httpErr(r.status, t); });
+        sbOk();
         return { id: id };
       }).catch(netErr);
   }
@@ -1297,7 +1318,7 @@ try {
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1034b"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1035a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -4112,6 +4133,13 @@ try {
   async function bootApp(imported) {
     // imported=true 表示启动时已从分享链接导入过数据（hash 已清），不再 loadLocal 覆盖
     if (!imported) loadLocal();
+    // Supabase 模式启动预检：项目被删/暂停/被墙时一次判定直接降级，不等轮询重试
+    if (usingSb()) {
+      try {
+        var pr = await sbRequest("GET", "__PING__");
+        if (pr && pr.error) { chooseBackend("local"); toast("Supabase 连不上（" + pr.error + "），已切换内置云端"); }
+      } catch (e) { chooseBackend("local"); }
+    }
     await fetchServer();
     saveLocal();
     renderAll();
