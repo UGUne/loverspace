@@ -1201,7 +1201,7 @@
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1033a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1033b"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -1229,11 +1229,16 @@
       setTimeout(function () { ensureAlias(att + 1); }, 1000); return;
     }
     if (!rid) {
-      // 桥正常但拿不到 RegistrationID：拉取底层诊断（AppKey、包名、注册回调是否触发）辅助定位
+      // 桥正常但拿不到 RegistrationID：拉取底层诊断（origin 判定、AppKey、注册回调）辅助定位
       var diag = ""; try { if (typeof N.getPushDiag === "function") diag = N.getPushDiag(); } catch (e) {}
       var dmsg = "桥✅但JPush未返回ID";
       try {
         var d = JSON.parse(diag || "{}");
+        // origin 被拦时桥方法全部静默失败——优先报这个，否则后面的 AppKey 空等字样全是误判
+        if (d.originOk === false) {
+          toast("⚠️ 推送未连接：页面地址不在原生白名单（" + (d.webViewUrl || "?") + "），需更新到最新版 App");
+          return;
+        }
         var ak = d.appkey || "";
         dmsg += "｜AppKey:" + (ak ? ak.substring(0, 6) + "…(" + ak.length + "位)" : "空❗")
               + "｜pkg:" + (d.pkg || "?")

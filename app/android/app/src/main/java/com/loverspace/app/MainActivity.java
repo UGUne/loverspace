@@ -89,32 +89,52 @@ public class MainActivity extends BridgeActivity {
     private final android.app.Activity act;
     private final android.webkit.WebView wv;
     // JS 桥 origin 白名单：远程页面一旦被篡改/引流到恶意站点，桥方法（写文件、操控推送别名）全部失效。
-    // 白名单 = capacitor.config.json 里配置的后端地址 + Capacitor 本地协议 + 本地调试地址。
+    // 白名单 = capacitor.config.json 里配置的后端地址 + 官方生产域名兜底 + Capacitor 本地协议 + 本地调试地址。
+    // 按「源（scheme://host[:port]）」比较而非整串前缀：容忍末尾斜杠/路径差异，并允许网关把 http 强跳 https 后的同源访问。
     private static String[] ALLOWED_ORIGINS = null;
     LsNative(Context c, android.app.Activity a, android.webkit.WebView w) { ctx = c; act = a; wv = w; }
+    private static String originOf(String url) {
+      if (url == null) return null;
+      java.util.regex.Matcher m = java.util.regex.Pattern
+          .compile("^([a-zA-Z][a-zA-Z0-9+.-]*)://([^/?#]+)").matcher(url);
+      if (!m.find()) return null;
+      return m.group(1).toLowerCase() + "://" + m.group(2).toLowerCase();
+    }
+    private void buildAllowedOrigins() {
+      java.util.List<String> list = new java.util.ArrayList<>();
+      list.add("capacitor://localhost");
+      list.add("http://localhost");
+      list.add("https://localhost");
+      list.add("file://");
+      // 官方生产域名兜底：assets 里的 capacitor.config.json 缺失/损坏时，仍能连上自家后端
+      // （与 APP_BUILD.md 记录的 BACKEND_URL 一致；将来换域名只改这里 + 仓库变量）
+      list.add("https://a4af07ad6a4543814.app.workbuddy.host");
+      try {
+        java.io.InputStream is = ctx.getAssets().open("capacitor.config.json");
+        String json = new java.io.Scanner(is, "UTF-8").useDelimiter("\\A").next();
+        is.close();
+        org.json.JSONObject o = new org.json.JSONObject(json);
+        if (o.has("server")) {
+          String surl = o.getJSONObject("server").optString("url", "");
+          if (surl.startsWith("http")) list.add(surl);
+        }
+      } catch (Throwable ignore) {}
+      ALLOWED_ORIGINS = list.toArray(new String[0]);
+    }
     private boolean originOk() {
       try {
         String u = wv == null ? null : wv.getUrl();
         if (u == null) return true; // 初始 about:blank 阶段放行（页面尚未加载）
-        if (ALLOWED_ORIGINS == null) {
-          java.util.List<String> list = new java.util.ArrayList<>();
-          list.add("capacitor://localhost");
-          list.add("http://localhost");
-          list.add("https://localhost");
-          list.add("file://");
-          try {
-            java.io.InputStream is = ctx.getAssets().open("capacitor.config.json");
-            String json = new java.util.Scanner(is, "UTF-8").useDelimiter("\\A").next();
-            is.close();
-            org.json.JSONObject o = new org.json.JSONObject(json);
-            if (o.has("server")) {
-              String surl = o.getJSONObject("server").optString("url", "");
-              if (surl.startsWith("http")) list.add(surl);
-            }
-          } catch (Throwable ignore) {}
-          ALLOWED_ORIGINS = list.toArray(new String[0]);
+        if (ALLOWED_ORIGINS == null) buildAllowedOrigins();
+        String uo = originOf(u);
+        for (String ok : ALLOWED_ORIGINS) {
+          if (u.startsWith(ok)) return true; // 前缀直配（file:// 等无「源」可解析的场景）
+          if (uo == null) continue;
+          String oo = originOf(ok);
+          if (oo == null) continue;
+          if (oo.equals(uo)) return true; // 同源：容忍末尾斜杠、路径、大小写差异
+          if (uo.equals(oo.replaceFirst("^http://", "https://"))) return true; // 配置写 http、被网关强跳 https
         }
-        for (String ok : ALLOWED_ORIGINS) if (u.startsWith(ok)) return true;
         return false;
       } catch (Throwable t) { return false; }
     }
@@ -205,11 +225,23 @@ public class MainActivity extends BridgeActivity {
         return rid;
       } catch (Throwable t) { return ""; }
     }
-    // 推送底层诊断：返回 AppKey、RegistrationID、注册回调是否触发过等，用于定位“拿不到 ID”的根因。
+    // 推送底层诊断：返回 WebView 地址/白名单/origin 判定 + AppKey、RegistrationID、注册回调是否触发过等。
+    // 注意：URL/白名单部分刻意不做 origin 校验——诊断必须「被拦住时也能看见原因」，否则 origin 问题永远定位不了。
     @JavascriptInterface
     public String getPushDiag() {
-      if (!originOk()) return "{}";
+      if (ALLOWED_ORIGINS == null) buildAllowedOrigins();
       JSONObject o = new JSONObject();
+      try {
+        o.put("webViewUrl", wv == null ? "" : String.valueOf(wv.getUrl()));
+        o.put("allowedOrigins", android.text.TextUtils.join(",", ALLOWED_ORIGINS));
+        o.put("originOk", originOk());
+      } catch (Throwable ignore) {}
+      if (!originOk()) {
+        try {
+          o.put("blocked", "当前页面 origin 不在白名单（对比 webViewUrl 与 allowedOrigins），桥方法全部被拦");
+        } catch (Throwable ignore) {}
+        return o.toString();
+      }
       try {
         SharedPreferences sp = ctx.getSharedPreferences("ls_push", Context.MODE_PRIVATE);
         o.put("rid", JPushInterface.getRegistrationID(ctx));
@@ -245,7 +277,11 @@ public class MainActivity extends BridgeActivity {
     // 读取前先强制重新 init 并等待 3s，确保抓到“新鲜”的初始化日志（否则被 WebView 日志冲掉）。
     @JavascriptInterface
     public String getPushLog() {
-      if (!originOk()) return "(origin-blocked)";
+      if (!originOk()) {
+        if (ALLOWED_ORIGINS == null) buildAllowedOrigins();
+        return "(origin-blocked) webView=" + (wv == null ? "?" : String.valueOf(wv.getUrl()))
+            + " ｜ allowed=" + android.text.TextUtils.join(",", ALLOWED_ORIGINS);
+      }
       StringBuilder sb = new StringBuilder();
       java.io.BufferedReader r = null;
       try {
