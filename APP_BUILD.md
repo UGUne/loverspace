@@ -152,5 +152,9 @@ App 在 `app/capacitor.config.json` 里用占位符 `https://REPLACE_WITH_YOUR_B
   后端能正常返回首页（`curl https://你的地址/` 能看到网页 HTML）。
 - **微信里还是打不开 App 地址**：属于微信对陌生域名的策略，点右上角「··· → 在浏览器打开」，
   或「添加到桌面」做入口；App 本身不走微信，不受影响。
+- **推送诊断显示 `(origin-blocked)` / 收不到推送通知**：原生桥的 origin 白名单没放行当前页面。
+  设置 → 推送诊断里看 `webViewUrl` 与 `allowedOrigins` 是否同源；v1.2.0 起白名单已按「源」比较
+  （容忍斜杠/路径/http→https 强跳）并内置官方域名兜底，装 v1.2.0 及以上版本即可。
+  诊断显示 `originOk: true` 但 `regId` 为空，则是极光注册问题，看 `log` 字段并发我定位。
 - **想再出正式签名版（上架用）**：在 `app/android` 里配置签名 keystore 后 `assembleRelease`，
   个人安装用 debug 版即可。
