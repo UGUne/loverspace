@@ -100,6 +100,30 @@ public class MainActivity extends BridgeActivity {
       if (!m.find()) return null;
       return m.group(1).toLowerCase() + "://" + m.group(2).toLowerCase();
     }
+    // WebView.getUrl() 只能在创建 WebView 的 UI 线程调用；@JavascriptInterface 方法跑在桥线程，
+    // 直接调会抛异常（被 originOk 的 catch 吞掉后永远返回 false，桥全程失效——v1031a 的真实根因）。
+    // 这里用 runOnUiThread + 闩锁同步取 URL，1s 超时返回 null（按「页面未就绪」放行，不误伤）。
+    private String webViewUrlSync() {
+      final android.webkit.WebView v = wv;
+      if (v == null) return null;
+      final String[] box = new String[1];
+      boolean sameThread = (act != null && act.getMainLooper().getThread() == Thread.currentThread());
+      if (sameThread) {
+        try { box[0] = v.getUrl(); } catch (Throwable t) {}
+        return box[0];
+      }
+      final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+      try {
+        act.runOnUiThread(new Runnable() {
+          @Override public void run() {
+            try { box[0] = v.getUrl(); } catch (Throwable t) {}
+            latch.countDown();
+          }
+        });
+        latch.await(1, java.util.concurrent.TimeUnit.SECONDS);
+      } catch (Throwable t) {}
+      return box[0];
+    }
     private void buildAllowedOrigins() {
       java.util.List<String> list = new java.util.ArrayList<>();
       list.add("capacitor://localhost");
@@ -123,7 +147,7 @@ public class MainActivity extends BridgeActivity {
     }
     private boolean originOk() {
       try {
-        String u = wv == null ? null : wv.getUrl();
+        String u = webViewUrlSync();
         if (u == null) return true; // 初始 about:blank 阶段放行（页面尚未加载）
         if (ALLOWED_ORIGINS == null) buildAllowedOrigins();
         String uo = originOf(u);
@@ -232,7 +256,8 @@ public class MainActivity extends BridgeActivity {
       if (ALLOWED_ORIGINS == null) buildAllowedOrigins();
       JSONObject o = new JSONObject();
       try {
-        o.put("webViewUrl", wv == null ? "" : String.valueOf(wv.getUrl()));
+        String u0 = webViewUrlSync();
+        o.put("webViewUrl", u0 == null ? "" : u0);
         o.put("allowedOrigins", android.text.TextUtils.join(",", ALLOWED_ORIGINS));
         o.put("originOk", originOk());
       } catch (Throwable ignore) {}
@@ -279,7 +304,8 @@ public class MainActivity extends BridgeActivity {
     public String getPushLog() {
       if (!originOk()) {
         if (ALLOWED_ORIGINS == null) buildAllowedOrigins();
-        return "(origin-blocked) webView=" + (wv == null ? "?" : String.valueOf(wv.getUrl()))
+        String ub = webViewUrlSync();
+        return "(origin-blocked) webView=" + (ub == null ? "?" : ub)
             + " ｜ allowed=" + android.text.TextUtils.join(",", ALLOWED_ORIGINS);
       }
       StringBuilder sb = new StringBuilder();
