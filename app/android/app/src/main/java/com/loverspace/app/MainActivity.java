@@ -111,7 +111,7 @@ public class MainActivity extends BridgeActivity {
       list.add("https://a4af07ad6a4543814.app.workbuddy.host");
       try {
         java.io.InputStream is = ctx.getAssets().open("capacitor.config.json");
-        String json = new java.io.Scanner(is, "UTF-8").useDelimiter("\\A").next();
+        String json = new java.util.Scanner(is, "UTF-8").useDelimiter("\\A").next();
         is.close();
         org.json.JSONObject o = new org.json.JSONObject(json);
         if (o.has("server")) {
