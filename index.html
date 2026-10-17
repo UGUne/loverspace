@@ -15,6 +15,15 @@
 <link rel="apple-touch-icon" href="/icons/icon-192.png" />
 <link rel="icon" href="/icons/icon-192.png" />
 <title>恋人空间</title>
+<script>
+/* 开屏前读深色偏好，避免 #boot 粉底闪一下；body.dark 仍由 applyTheme 正式接管 */
+try {
+  var t = localStorage.getItem("ls.theme.dark");
+  if (t === "1" || t === "true" || (t === "auto" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+    document.documentElement.classList.add("dark");
+  }
+} catch (e) {}
+</script>
 <style>
   :root {
     --pink: #ff7ba9;
@@ -163,7 +172,10 @@
   .bubble-row.me { flex-direction: row-reverse; }
   .bubble-row .b-avatar { width: 34px; height: 34px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; font-weight: 700; overflow: hidden; }
   .bubble-row .b-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .bubble { max-width: 68%; background: #fff; border-radius: 4px 14px 14px 14px; padding: 9px 12px; font-size: 14px; line-height: 1.5; box-shadow: 0 2px 8px rgba(255,119,170,.12); position: relative; word-break: break-word; }
+  .bubble { max-width: 100%; background: #fff; border-radius: 4px 14px 14px 14px; padding: 9px 12px; font-size: 14px; line-height: 1.5; box-shadow: 0 2px 8px rgba(255,119,170,.12); position: relative; word-break: break-word; }
+  /* 气泡列：气泡 + 下方的送达/已读小字（不再塞进气泡里，深色下也能看清） */
+  .bubble-row .b-col { display: flex; flex-direction: column; min-width: 0; max-width: 72%; }
+  .bubble-row .b-col .bubble { max-width: 100%; }
   .bubble-row.me .bubble { background: linear-gradient(135deg, #ff8fb5, #f2558d); color: #fff; border-radius: 14px 4px 14px 14px; }
   .bubble .b-time { display: block; font-size: 10px; opacity: .55; margin-top: 4px; }
   .chat-empty { text-align: center; color: var(--ink-2); font-size: 13px; padding: 30px 0; }
@@ -558,6 +570,9 @@
   .seg { display: flex; gap: 8px; }
   .seg button { flex: 1; border: 1.5px solid var(--line); background: #fff; border-radius: 12px; padding: 9px 4px; cursor: pointer; font-size: 14px; color: var(--ink); }
   .seg button.on { border-color: var(--pink); background: var(--pink-bg); color: var(--pink-deep); font-weight: 700; }
+  .seg.three button { font-size: 13px; padding: 9px 2px; }
+  /* 设置页底部版本号：诊断用；同时是「清空全部数据」的隐藏入口（长按 1 秒） */
+  .set-ver { text-align: center; font-size: 10px; letter-spacing: 1px; color: var(--ink-2); opacity: .55; margin-top: 14px; padding: 8px 0 2px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   /* 纪念日农历选择器 */
   .lunar-pick { display: flex; gap: 8px; }
   .lunar-pick select { flex: 1; border: 1.5px solid var(--line); background: #fff; border-radius: 12px; padding: 10px 8px; font-size: 14px; color: var(--ink); }
@@ -578,6 +593,46 @@
   body.dark .msg-menu { background: #2e2638; box-shadow: 0 8px 28px rgba(0,0,0,.5); }
   body.dark .msg-menu button { color: #e8dfe6; }
   body.dark .msg-menu button:active { background: #3a3145; }
+  /* ===== 暗黑模式增强（对比度 / 降饱和 / 压顶栏 / 消白边） ===== */
+  body.dark {
+    --ink-2: #b7a9b8;   /* 次级文字提亮：灰字黑底看不清 */
+    --line: #3d3348;
+    --pink-soft: #3a2f45;
+    --pink-bg: #2c2434;
+    --card: #241e2c;
+    --shadow: 0 6px 24px rgba(0,0,0,.38);
+  }
+  html.dark #boot { background: #1f1a26; }
+  body.dark #boot { background: #1f1a26; }
+  /* 顶部两条压暗：状态栏 + 标题栏原来都是亮粉渐变，夜间晃眼 */
+  body.dark .app-statusbar { background: linear-gradient(135deg, #3b2f47, #2b2333); }
+  body.dark .appbar { background: linear-gradient(180deg, #322a3d, #282130); }
+  body.dark .appbar h1 { text-shadow: none; }
+  body.dark .appbar .logo { box-shadow: 0 3px 8px rgba(0,0,0,.4); }
+  body.dark .appbar .topbtn { background: rgba(255,255,255,.14); color: #f3e9f1; }
+  /* 底部标签栏：未选中文字提亮，选中改柔和粉 */
+  body.dark .tabbar button { color: #a396a8; }
+  body.dark .tabbar button.on { color: #ff9dbd; }
+  /* 聊天输入栏白边：sticky/emoji/kb 三种形态的背景都换成深色 */
+  body.dark .chat-inputbar { background: linear-gradient(transparent, #1f1a26 40%); }
+  body.dark.emoji-open .chat-inputbar, body.dark.kb-open .chat-inputbar { background: #1f1a26; }
+  body.dark .emoji-btn { background: #2e2638; border-color: #3a3145; }
+  body.dark .mood-bar button { background: #2e2638; border-color: #3a3145; }
+  /* 设置/纪念日等面板里的白底分段按钮 */
+  body.dark .seg button { background: #2e2638; border-color: #3a3145; color: #e8dfe6; }
+  body.dark .seg button.on { background: #3c2d47; border-color: #a35c85; color: #ffa8c6; }
+  /* 高亮块降饱和：特别关注横幅、情话、快捷语、相册添加块 */
+  body.dark .home-special { background: linear-gradient(135deg, #54365a, #3f2747); box-shadow: 0 6px 16px rgba(0,0,0,.3); }
+  body.dark .loveword, body.dark .chat-love { color: #f191b4; }
+  body.dark .chat-quick .qk { background: #33263c; border-color: #4a3a55; color: #f191b4; }
+  body.dark .photo-add { background: rgba(255,255,255,.05); border-color: #4a3d55; color: #cfc2cf; }
+  body.dark .quick .q-ic, body.dark .grow-fill, body.dark .water-btn { filter: brightness(.85) saturate(.9); }
+  body.dark .water-btn:disabled { background: #3a3145; color: #9a8fa0; }
+  body.dark .grow-track { background: #3a2f45; }
+  body.dark .lunar-leap input { accent-color: #e07fa5; }
+  body.dark .bubble .b-time { opacity: .75; }
+  body.dark .b-read { color: #a99bab; }
+  body.dark .bubble-row.me .b-read { color: #e07fa5; }
   /* ===== 那年今日 / 时间线 ===== */
   .loveword-card .loveword { font-size: 14px; line-height: 1.6; color: var(--pink-deep); font-weight: 600; padding: 4px 0; }
   #homeMemory { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
@@ -620,8 +675,9 @@
   .msg-menu button { display: block; width: 100%; text-align: left; padding: 11px 16px; font-size: 14px; border: none; background: none; color: var(--ink); border-radius: 8px; cursor: pointer; }
   .msg-menu button:active { background: var(--pink-bg); }
   .msg-menu button.danger { color: #ff4d6d; }
-  .b-read { font-size: 10px; color: var(--ink-2); margin-left: 6px; }
-  .bubble-row.me .b-read { color: var(--pink-deep); }
+  /* 送达/已读：气泡外下方的独立小字，对齐气泡内侧 */
+  .b-read { font-size: 10px; color: var(--ink-2); margin: 3px 6px 0; align-self: flex-start; }
+  .bubble-row.me .b-read { color: var(--pink-deep); align-self: flex-end; }
   /* ===== 动态表情动画（仿 QQ 动图贴纸） ===== */
   @keyframes st-heartbeat { 0%,100% { transform: scale(1); } 25% { transform: scale(1.22); } 50% { transform: scale(.94); } 75% { transform: scale(1.12); } }
   @keyframes st-bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
@@ -916,7 +972,7 @@
     selfies: [],
     miss: [],
     _deleted: { messages: [], anniversaries: [], moods: [], photos: [], selfies: [], albums: [], treeCards: [] },
-    theme: { color: "#ff7ba9", dark: false, font: "default" },
+    theme: { color: "#ff7ba9", dark: "0", font: "default" },
     selfieUrge: null
   };
   var data = null;
@@ -962,9 +1018,12 @@
     data.tree.cards.forEach(function (c) { if (c && typeof c === "object") { if (typeof c.text !== "string") c.text = ""; if (typeof c.who !== "number") c.who = 0; } });
     data.tree.cards = data.tree.cards.filter(function (c) { return c && typeof c === "object" && c.id; });
     // 树下小狗（点击互动计数，双人同步）
-    if (!data.theme || typeof data.theme !== "object") data.theme = { color: "#ff7ba9", dark: false, font: "default" };
+    if (!data.theme || typeof data.theme !== "object") data.theme = { color: "#ff7ba9", dark: "0", font: "default" };
     if (!data.theme.color) data.theme.color = "#ff7ba9";
-    if (typeof data.theme.dark !== "boolean") data.theme.dark = false;
+    // dark 三态："0" 浅色 / "1" 暗黑 / "auto" 跟随系统；旧版布尔值迁移为字符串
+    if (data.theme.dark === true) data.theme.dark = "1";
+    else if (data.theme.dark === false) data.theme.dark = "0";
+    if (data.theme.dark !== "0" && data.theme.dark !== "1" && data.theme.dark !== "auto") data.theme.dark = "0";
     if (!data.theme.font) data.theme.font = "default";
     if (data.tree.daily.date !== todayStr()) { data.tree.daily.date = todayStr(); data.tree.daily.acts = { water: [0, 0], feed: [0, 0], play: [0, 0] }; data.tree.daily.claimed = {}; }
     // 浇水日志（用于连续浇树天数）
@@ -984,6 +1043,8 @@
       // 配额写满：不能再静默——否则用户以为存住了，杀进程/刷新后回退旧状态
       quotaWarnAt = Date.now();
     }
+    // 单独存一份深色偏好：开屏脚本在加载完整数据前就能读到，避免粉底闪屏
+    try { localStorage.setItem("ls.theme.dark", String(data.theme && data.theme.dark || "0")); } catch (e) {}
     try { localStorage.setItem("loverspace.backup.v1", JSON.stringify({ ts: Date.now(), data: data })); } catch (e) {}
   }
   var quotaWarnAt = 0;
@@ -1201,7 +1262,7 @@
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1033c"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1034a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -1801,8 +1862,11 @@
     return rgbToHex(c[0]+(t-c[0])*p, c[1]+(t-c[1])*p, c[2]+(t-c[2])*p);
   }
   function hexA(hex, a) { var c = hexToRgb(hex); return "rgba("+c[0]+","+c[1]+","+c[2]+","+a+")"; }
+  function systemDark() {
+    try { return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches); } catch (e) { return false; }
+  }
   function applyTheme() {
-    var t = data.theme || (data.theme = { color: "#ff7ba9", dark: false, font: "default" });
+    var t = data.theme || (data.theme = { color: "#ff7ba9", dark: "0", font: "default" });
     var root = document.documentElement, c = t.color || "#ff7ba9";
     root.style.setProperty("--pink", c);
     root.style.setProperty("--pink-deep", shade(c, -16));
@@ -1815,8 +1879,20 @@
     else if (t.font === "serif") ff = "Georgia, \"Songti SC\", serif";
     else if (t.font === "hand") ff = "\"Xingkai SC\", \"STKaiti\", cursive";
     root.style.setProperty("--font", ff);
-    document.body.classList.toggle("dark", !!t.dark);
+    // dark 三态："0" 浅色 / "1" 暗黑 / "auto" 跟随系统
+    var dark = t.dark === "auto" ? systemDark() : (t.dark === "1" || t.dark === true);
+    document.body.classList.toggle("dark", !!dark);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", dark ? "#1f1a26" : c);
   }
+  // 系统深色模式切换时，选了「跟随系统」就实时换肤
+  (function () {
+    var mq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+    if (!mq) return;
+    var onSys = function () { if (data && data.theme && data.theme.dark === "auto") applyTheme(); };
+    if (mq.addEventListener) mq.addEventListener("change", onSys);
+    else if (mq.addListener) mq.addListener(onSys);
+  })();
   var THEME_COLORS = ["#ff7ba9","#ff8a5c","#ff5c7c","#a86bff","#5c8aff","#3fae6e","#ffb02e"];
   var THEME_FONTS = [["default","默认"],["round","圆润"],["serif","衬线"],["hand","手写"]];
   // ===== 情话每日推送 =====
@@ -2350,8 +2426,9 @@
       }
       return '<div class="bubble-row' + (mine ? " me" : "") + '" data-id="' + m.id + '">' +
         '<div class="b-avatar avatar p' + m.who + '">' + av + "</div>" +
-        '<div class="bubble' + cls + '">' + inner + '<span class="b-time">' + fmtTime(m.ts) + "</span>" +
-        (mine ? '<span class="b-read">' + (m.read && m.read[1 - me] ? "已读 ✓" : "送达") + "</span>" : "") +
+        '<div class="b-col">' +
+        '<div class="bubble' + cls + '">' + inner + '<span class="b-time">' + fmtTime(m.ts) + "</span></div>" +
+        (mine ? '<div class="b-read">' + (m.read && m.read[1 - me] ? "已读 ✓" : "送达") + "</div>" : "") +
         "</div></div>";
     }).join("");
     if ($("chatLoveBar")) $("chatLoveBar").textContent = todayLove();
@@ -3773,7 +3850,7 @@
       : '<div class="field"><label>当前为本地模式。用「发布」后通过「创建/加入空间码」即可云端实时同步。</label></div>';
     var html = roomLine +
       '<div class="field"><label>主题色</label><div class="theme-colors" id="themeColors">' + THEME_COLORS.map(function(c){return '<button type="button" class="tc" data-c="'+c+'" style="background:'+c+'"></button>';}).join("") + '</div></div>' +
-      '<div class="field"><label>外观模式</label><div class="seg" id="themeDark"><button type="button" data-d="0">浅色</button><button type="button" data-d="1">暗黑</button></div></div>' +
+      '<div class="field"><label>外观模式</label><div class="seg three" id="themeDark"><button type="button" data-d="0">浅色</button><button type="button" data-d="1">暗黑</button><button type="button" data-d="auto">跟随系统</button></div></div>' +
       '<div class="field"><label>字体</label><div class="seg" id="themeFont">' + THEME_FONTS.map(function(f){return '<button type="button" data-f="'+f[0]+'">'+f[1]+'</button>';}).join("") + '</div></div>' +
       '<div class="field"><label>空间名称</label><input type="text" id="stSpace" maxlength="16" value="' + esc(data.spaceName) + '" /></div>' +
       '<div class="field"><label>在一起日期</label><input type="date" id="stStart" value="' + esc(data.startedDate) + '" /></div>' +
@@ -3783,16 +3860,8 @@
       '<button class="ghost-btn" id="stBackDiag" style="margin-top:8px;border-color:#a8d0f5;color:#3a7bd5">⌨️ 返回键诊断（返回键失灵时点它）</button>' +
       '<button class="ghost-btn" id="stReinit" style="margin-top:8px;border-color:#a8d0f5;color:#3a7bd5">🔄 重置推送注册（显示未连接时用）</button>' +
       '<button class="ghost-btn" id="stLeave" style="border-color:#f0c4d2;color:#d66a92">退出空间 / 切换空间码</button>' +
-      '<button class="ghost-btn" id="stClear" style="border-color:#f0c4d2;color:#d66a92">清空全部数据（慎点）</button>' +
-      '<div class="field" style="margin-top:14px;padding:13px 14px;background:var(--pink-bg);border-radius:14px">' +
-      '<div style="font-weight:700;color:var(--pink-deep);margin-bottom:6px">📨 让消息提醒更及时（保活设置）</div>' +
-      '<div style="font-size:13px;color:var(--ink-2);line-height:1.7">当前用「本地通知 + 后台轮询」接收 TA 的悄悄话 / 催自拍。App 在后台时若被系统清理就收不到，请按你的手机做以下设置（你们都是 vivo）：</div>' +
-      '<div style="font-size:13px;color:var(--ink);line-height:1.95;margin-top:8px">' +
-      '① 设置 → 电池 → 后台耗电管理 → 恋人空间 → 设为「允许后台高耗电」<br/>' +
-      '② 设置 → 应用与权限 → 应用管理 → 恋人空间 → 权限 → 自启动 → 允许<br/>' +
-      '③ 多任务卡片 → 下拉把本 App 锁定（防误清）<br/>' +
-      '④ 设置 → 通知 → 恋人空间 → 允许通知 / 悬浮通知 / 锁屏通知 全部打开' +
-      '</div></div>';
+      // 「清空全部数据」是毁灭性操作：不做成按钮，改为长按最底部的版本号才弹出（防误触）
+      '<div class="set-ver" id="setVer">' + PUSH_BUILD + '</div>';
     openSheet("设置", html);
     var themeBind = function(cid, attr, getv, setv) {
       var box = $(cid); if (!box) return;
@@ -3806,7 +3875,7 @@
       });
     };
     themeBind("themeColors", "data-c", function(){return (data.theme.color||"#ff7ba9").toLowerCase();}, function(v){data.theme.color=v;});
-    themeBind("themeDark", "data-d", function(){return data.theme.dark?"1":"0";}, function(v){data.theme.dark=(v==="1");});
+    themeBind("themeDark", "data-d", function(){return String(data.theme.dark||"0");}, function(v){data.theme.dark=v;});
     themeBind("themeFont", "data-f", function(){return data.theme.font||"default";}, function(v){data.theme.font=v;});
     if ($("copyRoom")) $("copyRoom").addEventListener("click", function () { copyText(room, "空间码已复制：" + room); });
     $("stSave").addEventListener("click", function () {
@@ -3857,11 +3926,37 @@
       $("leaveYes").addEventListener("click", function () { localStorage.removeItem(LS_ROOM); clearJPushAlias(); toast("已退出，刷新页面可换空间"); closeSheet(); });
       $("leaveNo").addEventListener("click", closeSheet);
     });
-    $("stClear").addEventListener("click", function () {
-      openSheet("确认清空？", '<div class="empty-tip" style="padding:6px 0 16px">所有留言、照片、纪念日都会被清空，无法恢复。</div><button class="primary-btn" id="clearYes" style="background:linear-gradient(135deg,#ff7b7b,#e33d3d);box-shadow:0 6px 16px rgba(227,61,61,.3)">确认清空</button><button class="ghost-btn" id="clearNo">取消</button>');
-      $("clearYes").addEventListener("click", function () { data = clone(DEFAULT); save(); renderAll(); closeSheet(); toast("已清空"); });
-      $("clearNo").addEventListener("click", closeSheet);
-    });
+    // 毁灭性操作「清空全部数据」的隐蔽入口：长按设置页最底部的版本号 1.2 秒才弹出确认
+    var verEl = $("setVer");
+    var lpTimer = null, lpFired = false;
+    function lpArm() {
+      lpDisarm();
+      lpTimer = setTimeout(function () {
+        lpTimer = null; lpFired = true;
+        openClearConfirm();
+        if (navigator.vibrate) { try { navigator.vibrate(30); } catch (e) {} }
+      }, 1200);
+    }
+    function lpDisarm() { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } }
+    if (verEl) {
+      verEl.addEventListener("touchstart", lpArm, { passive: true });
+      verEl.addEventListener("mousedown", lpArm);
+      ["touchend", "touchcancel", "touchmove", "mouseup", "mouseleave"].forEach(function (ev) {
+        verEl.addEventListener(ev, lpDisarm);
+      });
+      verEl.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+      // 普通轻点只给提示，不弹面板（防误触）
+      verEl.addEventListener("click", function () {
+        if (lpFired) { lpFired = false; return; }
+        toast("长按版本号 1 秒可唤出清空数据（防误触）");
+      });
+    }
+  }
+  // 清空全部数据：两步确认（隐藏入口 + 红色确认按钮），误触成本拉满
+  function openClearConfirm() {
+    openSheet("确认清空？", '<div class="empty-tip" style="padding:6px 0 16px">所有留言、照片、纪念日都会被清空，无法恢复。</div><button class="primary-btn" id="clearYes" style="background:linear-gradient(135deg,#ff7b7b,#e33d3d);box-shadow:0 6px 16px rgba(227,61,61,.3)">确认清空</button><button class="ghost-btn" id="clearNo">取消</button>');
+    $("clearYes").addEventListener("click", function () { data = clone(DEFAULT); save(); renderAll(); closeSheet(); toast("已清空"); });
+    $("clearNo").addEventListener("click", closeSheet);
   }
 
   function tryImportFromHash() {
