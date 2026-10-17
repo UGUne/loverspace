@@ -19,6 +19,10 @@
 /* 开屏前读深色偏好，避免 #boot 粉底闪一下；body.dark 仍由 applyTheme 正式接管 */
 try {
   var t = localStorage.getItem("ls.theme.dark");
+  if (t === null) { // 首次/清过键：回退读主数据里的 theme.dark
+    var raw = localStorage.getItem("loverspace.data.v2");
+    if (raw) { var d = JSON.parse(raw); if (d && d.theme) t = String(d.theme.dark); }
+  }
   if (t === "1" || t === "true" || (t === "auto" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
     document.documentElement.classList.add("dark");
   }
@@ -595,6 +599,7 @@ try {
   body.dark .msg-menu button:active { background: #3a3145; }
   /* ===== 暗黑模式增强（对比度 / 降饱和 / 压顶栏 / 消白边） ===== */
   body.dark {
+    --ink: #ece2ea;     /* 主文字色提亮：所有 color:var(--ink) 的元素一处生效 */
     --ink-2: #b7a9b8;   /* 次级文字提亮：灰字黑底看不清 */
     --line: #3d3348;
     --pink-soft: #3a2f45;
@@ -633,6 +638,36 @@ try {
   body.dark .bubble .b-time { opacity: .75; }
   body.dark .b-read { color: #a99bab; }
   body.dark .bubble-row.me .b-read { color: #e07fa5; }
+  /* ===== v1034b：深色模式二轮修复（白底控件 / 灰字提亮） ===== */
+  /* 原生控件（日期选择器、下拉、滚动条）随深色渲染 */
+  body.dark { color-scheme: dark; }
+  /* ① 设置页表单输入框：.field input[type] 特异度 (0,2,1) 压过 body.dark input (0,1,2)，需同名覆写 */
+  body.dark .field input[type="text"], body.dark .field input[type="date"], body.dark .field input[type="url"] { background: #2e2638; color: #e8dfe6; border-color: #3a3145; }
+  /* ② 次级按钮 ghost-btn：设置/相册/各类弹窗里大量使用的白底描边按钮 */
+  body.dark .ghost-btn { background: #2e2638; border-color: #4a3d55; color: #f191b4; }
+  body.dark .ghost-btn:active { background: #3a3145; }
+  /* ③ 身份选择按钮 idpick */
+  body.dark .idpick button { background: #2e2638; border-color: #3d3348; color: #e8dfe6; }
+  body.dark .idpick button.on { background: #3c2d47; border-color: #a35c85; color: #ffa8c6; }
+  /* ④ 入口页 roomGate：亮粉渐变底 + 白卡片 + 输入框 */
+  body.dark #roomGate { background: linear-gradient(160deg, #2b2333, #1f1a26); }
+  body.dark .gate-card { background: #241e2c; box-shadow: 0 20px 50px rgba(0,0,0,.5); }
+  body.dark .gate-input { background: #2e2638; border-color: #3a3145; color: #ffa8c6; }
+  body.dark .gate-input.pwd { color: #e8dfe6; }
+  body.dark .gate-err { color: #ffa8c6; }
+  /* ⑤ 相册容量警示条（浅粉底深粉字） */
+  body.dark .album-cap.warn { background: #3a2430; border-color: #5a3040; color: #f191b4; }
+  /* ⑥ 设置页内联彩色 ghost-btn 变体：内联样式优先级最高，需 ID + !important 提亮 */
+  body.dark #stSync { color: #ffa8c6 !important; border-color: #5a3a55 !important; }
+  body.dark #stDiag, body.dark #stBackDiag, body.dark #stReinit { color: #8fc3ff !important; border-color: #3f5b7d !important; }
+  body.dark #pvOff, body.dark #stLeave { color: #f191b4 !important; border-color: #5a3040 !important; }
+  body.dark #tcDel { color: #ff9d7a !important; border-color: #5a3040 !important; }
+  /* ⑦ 内容色变量化（对应 JS 模板内联样式的 var() 化）：心愿卡黄底、果实金字、日历占位脸 */
+  body.dark { --wish-bg: linear-gradient(160deg,#3a2f45,#2c2434); --wish-ink: #e8dfe6; --fruit: #e8b34a; --mt-face-bg: #3a3145; --mt-face-ink: #a99bab; }
+  /* ⑧ 树上心愿卡小卡片（CSS 类黄底深字） */
+  body.dark .tc-card { background: linear-gradient(160deg,#4a3a55,#382c44); color: #e8dfe6; box-shadow: 0 3px 8px rgba(0,0,0,.4); }
+  body.dark .tc-card .tc-who { color: #b89a5e; }
+  body.dark .tc-card.memo { background: linear-gradient(160deg,#4a2f42,#3a2434); color: #f191b4; }
   /* ===== 那年今日 / 时间线 ===== */
   .loveword-card .loveword { font-size: 14px; line-height: 1.6; color: var(--pink-deep); font-weight: 600; padding: 4px 0; }
   #homeMemory { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
@@ -1262,7 +1297,7 @@ try {
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1034a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1034b"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -1884,6 +1919,18 @@ try {
     document.body.classList.toggle("dark", !!dark);
     var meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", dark ? "#1f1a26" : c);
+  }
+  // gate 入口页阶段（loadLocal 之前）提前应用深色，避免深色用户先看到亮粉入口页
+  function applyEarlyTheme() {
+    try {
+      var t = localStorage.getItem("ls.theme.dark");
+      if (t === null) {
+        var raw = localStorage.getItem("loverspace.data.v2");
+        if (raw) { var d = JSON.parse(raw); if (d && d.theme) t = String(d.theme.dark); }
+      }
+      var dark = t === "1" || t === "true" || (t === "auto" && systemDark());
+      document.body.classList.toggle("dark", dark);
+    } catch (e) {}
   }
   // 系统深色模式切换时，选了「跟随系统」就实时换肤
   (function () {
@@ -2898,7 +2945,7 @@ try {
           '<div style="flex:1;min-width:0"><div style="font-size:13px"><b>' + esc(p.name) + "</b> · " + md.name + ' <span style="font-size:11px;color:var(--ink-2)">' + fmtTime(mm.ts) + "</span></div>" +
           (mm.note ? '<div style="font-size:13px;margin-top:2px">' + esc(mm.note) + "</div>" : "") + "</div></div>";
       } else {
-        html += '<div class="mcal-drow"><div class="mt-face" style="background:#f2eef5;color:#b9b3c0">' + icon("mood") + "</div>" +
+        html += '<div class="mcal-drow"><div class="mt-face" style="background:var(--mt-face-bg,#f2eef5);color:var(--mt-face-ink,#b9b3c0)">' + icon("mood") + "</div>" +
           '<div class="mt-none">' + esc(p.name) + (w === me ? " 这天没记录" : " 这天还没记录") + "</div></div>";
       }
     });
@@ -3158,8 +3205,8 @@ try {
     var nm = nextMilestone();
     var got = (f.milestones || []).map(function (n) { var m = fruitMilestone(n); return m ? m.name : null; }).filter(Boolean);
     var html = '<div style="background:linear-gradient(135deg,#fff6e0,#ffe9c4);border:2px solid #f0c33c;border-radius:14px;padding:12px 14px;margin:12px 0 0">' +
-      '<div style="font-size:13px;font-weight:700;color:#a5741a">🍎 爱情果实 · 已收获 ' + f.count + ' 颗</div>' +
-      '<div style="font-size:11px;color:#b08b3e;margin-top:3px">满级后，两人当天都浇过水，树就会结出 1 颗果实</div>';
+      '<div style="font-size:13px;font-weight:700;color:var(--fruit,#a5741a)">🍎 爱情果实 · 已收获 ' + f.count + ' 颗</div>' +
+      '<div style="font-size:11px;color:var(--fruit,#b08b3e);margin-top:3px">满级后，两人当天都浇过水，树就会结出 1 颗果实</div>';
     if (nm) {
       var pct = Math.min(100, Math.round((f.count / nm.n) * 100));
       html += '<div class="grow-track" style="margin-top:8px;height:8px"><div class="grow-fill" style="width:' + pct + '%;background:linear-gradient(90deg,#ffd84d,#f0a020)"></div></div>' +
@@ -3167,7 +3214,7 @@ try {
     } else {
       html += '<div class="grow-lbl" style="margin-top:4px">全部装扮已解锁，这就是属于你们的参天大树 🌳</div>';
     }
-    if (got.length) html += '<div style="font-size:11px;color:#a5741a;margin-top:6px">已解锁装扮：' + got.map(function (n) { return "「" + n + "」"; }).join(" ") + "</div>";
+    if (got.length) html += '<div style="font-size:11px;color:var(--fruit,#a5741a);margin-top:6px">已解锁装扮：' + got.map(function (n) { return "「" + n + "」"; }).join(" ") + "</div>";
     return html + "</div>";
   }
   // ===== 心愿卡：挂卡 / 查看 / 删除 =====
@@ -3189,7 +3236,7 @@ try {
   }
   function openCardSheet(c) {
     var mine = c.who === me;
-    openSheet("心愿卡", '<div style="background:linear-gradient(160deg,#fff8d6,#ffefb0);border-radius:12px;padding:16px;font-size:14px;line-height:1.6;color:#6b4f1d;word-break:break-all">' + esc(c.text) + "</div>" +
+    openSheet("心愿卡", '<div style="background:var(--wish-bg,linear-gradient(160deg,#fff8d6,#ffefb0));border-radius:12px;padding:16px;font-size:14px;line-height:1.6;color:var(--wish-ink,#6b4f1d);word-break:break-all">' + esc(c.text) + "</div>" +
       '<div style="font-size:12px;color:var(--ink-2);margin-top:8px">—— ' + esc((data.partners[c.who] || data.partners[0]).name) + " · " + new Date(c.ts || Date.now()).toLocaleDateString("zh-CN") + "</div>" +
       (mine ? '<button class="ghost-btn" id="tcDel" style="margin-top:12px;color:#e2603f">摘下这张卡片</button>' : ""));
     if (mine) {
@@ -4254,6 +4301,7 @@ try {
   });
 
   var hashImported = tryImportFromHash(); // 分享链接导入（成功则返回 true，hash 已清）
+  applyEarlyTheme(); // gate 入口页也要跟随深色偏好
   if (room) { $("roomGate").classList.add("hide"); bootApp(hashImported); } else { bindGate(); }
   // ===== 移动端返回键：子界面优先关闭，根界面两次返回才退出 =====
   var lastBack = 0, suppressPopUntil = 0;
