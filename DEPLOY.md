@@ -29,7 +29,15 @@ Vercel 的域名（`.vercel.app`）不在拦截范围内，微信能直接打开
    - 再点 **Create** → 选 **Blob Store** → 创建并 **Connect**（自动注入 `BLOB_READ_WRITE_TOKEN`）。
 3. 回到 **Deployments** 重新部署一次（Redeploy），让函数读到大环境变量。
 
-### 3. 完成
+### 3. 配置推送（极光 JPush）——想让「催自拍 / 新消息」通知送达
+Vercel 项目 → **Settings → Environment Variables**，添加（值与极光控制台一致）：
+- `JPUSH_APPKEY` = 极光后台的应用 AppKey
+- `JPUSH_MASTERSECRET` = 极光后台的 Master Secret
+- vivo 机型测试期保持默认 `VIVO_PUSH_MODE=1`（仅送测试设备）；正式上架 vivo 商店后改为 `0`
+
+配好后 Redeploy。不配则推送静默跳过（App 内的本地通知兜底仍然生效，只是杀后台后收不到）。
+
+### 4. 完成
 部署完成后拿到的 `https://<你的项目>.vercel.app` 就是微信可直接打开的地址。
 两手机都用这个链接进入、用空间码互相同步即可，功能与现在完全一致。
 

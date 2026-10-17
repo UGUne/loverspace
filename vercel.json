@@ -3,6 +3,7 @@
   "functions": {
     "api/room.mjs": { "maxDuration": 10 },
     "api/upload.mjs": { "maxDuration": 30 },
-    "api/restore-images.mjs": { "maxDuration": 30 }
+    "api/restore-images.mjs": { "maxDuration": 30 },
+    "api/push/notify.mjs": { "maxDuration": 10 }
   }
 }
