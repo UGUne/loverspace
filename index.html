@@ -963,7 +963,7 @@ try {
       <button class="menu-item" id="miShare"><svg class="ic m-ic"><use href="#i-share"/></svg>分享给另一半<span class="sub">生成同步链接</span><svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg></button>
       <button class="menu-item" id="miPriv"><svg class="ic m-ic"><use href="#i-lock"/></svg>加密与隐私<span class="sub" id="miPrivSub"></span><svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg></button>
       <button class="menu-item" id="miBackup"><svg class="ic m-ic"><use href="#i-download"/></svg>备份与恢复<span class="sub"></span><svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg></button>
-      <button class="menu-item" id="miSb"><svg class="ic m-ic"><use href="#i-cloud"/></svg>后端配置<span class="sub" id="miSbSub">Supabase 已启用</span><svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg></button>
+      <button class="menu-item" id="miSb"><svg class="ic m-ic"><use href="#i-cloud"/></svg>后端配置<span class="sub" id="miSbSub">内置云端</span><svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg></button>
       <button class="menu-item" id="miSet"><svg class="ic m-ic"><use href="#i-gear"/></svg>设置<span class="sub"></span><svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg></button>
     </div>
   </section>
@@ -1112,8 +1112,12 @@ try {
   // 后端模式：双云端自动探测 —— 同源内置云端优先（页面就从它加载，可达性最好），失败自动切 Supabase
   var SB_URL = (localStorage.getItem("ls.sburl") || "https://fjhtlriruwyiqafawoip.supabase.com").trim();
   var SB_KEY = (localStorage.getItem("ls.sbkey") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqaHRscmlydXd5aXFhZmF3b2lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NDA1NjYsImV4cCI6MjEwNzAxNjU2Nn0.WwSnnP9M4qHSbQiNzosY6yH-U3OczCVJTsgKgZbccxY").trim();
-  var USE_SB = localStorage.getItem("ls.backend") === "sb";
-  function sbReady() { return SB_URL && SB_KEY; }
+  // ===== 后端总开关（v1036a）=====
+  // Supabase 项目 fjhtlriruwyiqafawoip 已失效（域名解析失败）：暂时停用，内置云端为唯一默认后端。
+  // 以后自建/恢复了 Supabase 项目，把这里改回 true 即可恢复双后端（sb 代码与自动降级逻辑都保留）。
+  var SB_ENABLED = false;
+  var USE_SB = SB_ENABLED && localStorage.getItem("ls.backend") === "sb";
+  function sbReady() { return SB_ENABLED && SB_URL && SB_KEY; }
   function usingSb() { return USE_SB && sbReady(); }
   function chooseBackend(mode) {
     USE_SB = (mode === "sb" && sbReady());
@@ -1318,7 +1322,7 @@ try {
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1035a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1036a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -2636,7 +2640,7 @@ try {
     $("miAnniSub").textContent = data.anniversaries.length ? data.anniversaries.length + " 个" : "";
     $("miMoodSub").textContent = data.moods.length ? data.moods.length + " 条" : "";
     $("miTreeSub").textContent = treeStage().stage.name;
-    var sbSub = $("miSbSub"); if (sbSub) sbSub.textContent = sbReady() ? "Supabase 已启用" : (room ? "默认后端" : "默认后端");
+    var sbSub = $("miSbSub"); if (sbSub) sbSub.textContent = "内置云端";
     $("miPrivSub").textContent = encPwd ? "已开启 · 云端只存密文" : "未开启";
     $("miIdSub").textContent = data.partners[me].name;
   }
@@ -3871,20 +3875,20 @@ try {
   function openSbConfig() {
     var html = '<div class="field"><label>Supabase 项目 URL</label><input id="sbUrl" value="' + esc(SB_URL) + '" placeholder="https://xxxx.supabase.co" /></div>' +
       '<div class="field"><label>anon key（公开密钥，前端可用）</label><input id="sbKey" value="' + esc(SB_KEY) + '" placeholder="eyJhbGciOi..." /></div>' +
-      '<button class="primary-btn" id="sbSave">保存并启用</button>' +
-      '<div class="gate-note" style="margin-top:14px">启用后所有数据走 Supabase 云端（全球托管、公网稳定可达），空间码机制不变。需先在 Supabase 建好 rooms 表并开放 anon 读写权限。两手机各填一次即可。</div>';
+      '<button class="primary-btn" id="sbSave">保存</button>' +
+      '<div class="gate-note" style="margin-top:14px">当前默认使用<b>内置云端</b>（同源部署，随 App 一起更新）。原 Supabase 项目已失效停用：如自建/恢复了新项目，在此填写 URL 与 anon key 并保存，重启 App 后生效。</div>';
     openSheet("后端配置", html);
     $("sbSave").addEventListener("click", function () {
       SB_URL = ($("sbUrl").value || "").trim();
       SB_KEY = ($("sbKey").value || "").trim();
       localStorage.setItem("ls.sburl", SB_URL);
       localStorage.setItem("ls.sbkey", SB_KEY);
-      if (SB_URL && SB_KEY) { localStorage.setItem("ls.backend", "sb"); USE_SB = true; }
+      if (SB_URL && SB_KEY) { localStorage.setItem("ls.backend", "sb"); USE_SB = SB_ENABLED; }
       else { localStorage.setItem("ls.backend", "local"); USE_SB = false; }
-      $("miSbSub").textContent = sbReady() ? "Supabase 已启用" : "默认后端";
+      $("miSbSub").textContent = "内置云端";
       backend.enabled = false; backend.ts = 0;
       closeSheet();
-      toast(sbReady() ? "已启用 Supabase，刷新页面后生效" : "已清空，改回默认后端");
+      toast(SB_ENABLED ? (sbReady() ? "已启用 Supabase，刷新页面后生效" : "已清空，改回默认后端") : "已保存；当前暂用内置云端（Supabase 停用中）");
     });
   }
   function openPrivacy() {
@@ -4139,6 +4143,8 @@ try {
         var pr = await sbRequest("GET", "__PING__");
         if (pr && pr.error) { chooseBackend("local"); toast("Supabase 连不上（" + pr.error + "），已切换内置云端"); }
       } catch (e) { chooseBackend("local"); }
+    } else if (!SB_ENABLED && localStorage.getItem("ls.backend") === "sb") {
+      localStorage.setItem("ls.backend", "local"); // 总开关停用：规范化旧标记，设置页显示回到内置云端
     }
     await fetchServer();
     saveLocal();
