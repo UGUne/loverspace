@@ -6,6 +6,8 @@ const DATA_DIR = path.join(__dirname, "data");
 const FILE = path.join(DATA_DIR, "rooms.json");
 const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
 let rooms = {};
+// 房间总数上限：PUT 自动认领 + POST 创建都受此约束，防匿名滥用把磁盘撑爆（当前约 90 个，留足余量）
+const ROOM_CAP = 400;
 
 const app = express();
 app.use(express.json({ limit: "64mb" }));
@@ -103,6 +105,7 @@ function genId() {
 
 // 创建共享空间，返回空间码
 app.post("/api/room", function (req, res) {
+  if (Object.keys(rooms).length >= ROOM_CAP) return res.status(507).json({ error: "room-cap" });
   const id = genId();
   rooms[id] = { data: null, ts: 0 };
   persist();
@@ -127,9 +130,13 @@ app.get("/api/room/:id", function (req, res) {
 // 更新共享空间数据：按 _updated 时间戳守卫接受写入，避免连续快速保存时旧请求后到覆盖新数据
 app.put("/api/room/:id", function (req, res) {
   const id = String(req.params.id).toUpperCase();
-  const r = rooms[id];
-  // 房间必须已存在（POST /api/room 创建）：拒绝匿名 PUT 任意 id 建房间，防止磁盘被无限占用
-  if (!r) return res.status(404).json({ error: "no-room" });
+  let r = rooms[id];
+  // 房间不存在时自动认领创建（后端切换场景：如 Supabase 迁回内置云端，客户端带旧房间码而来）。
+  // 防滥用：房间总数上限 ROOM_CAP，满则拒绝；已存在则走原覆盖逻辑（幂等）。
+  if (!r) {
+    if (Object.keys(rooms).length >= ROOM_CAP) return res.status(507).json({ error: "room-cap" });
+    r = rooms[id] = { data: null, ts: 0 };
+  }
   if (req.body && req.body.data != null) {
     const incomingRev = (req.body.data._updated) || 0;
     const curRev = (r.data && r.data._updated) || 0;
