@@ -1322,7 +1322,7 @@ try {
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1037a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1038a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -1472,7 +1472,11 @@ try {
   }
   function roomCreate() { return roomApi("POST"); }
   function roomGet(id) { return roomApi("GET", id); }
-  function roomPut(id, payload) { return roomApi("PUT", id, { data: payload }); }
+  function roomPut(id, payload, ver) {
+    // ver：明文版本号。加密数据的 _updated 在密文里服务端看不到，会把版本守卫误判成 0 而被拒——
+    // 因此加密上传时把版本号放到密文外层一起传（v1038a 修复：加密房间第二次起上传全被拒的 bug）
+    return roomApi("PUT", id, ver != null ? { data: payload, _updated: ver } : { data: payload });
+  }
   function fetchServer() {
     if (!room) return Promise.resolve(false);
     return roomGet(room).then(applyRemote);
@@ -1485,7 +1489,7 @@ try {
       var payloadP = (encPwd && subtle) ? encryptData(data).catch(function () { return null; }) : Promise.resolve(data);
       payloadP.then(function (payload) {
         if (!payload) return;
-        roomPut(room, payload).then(function (r) { if (r && r.ts) backend.ts = r.ts; });
+        roomPut(room, payload, data._updated).then(function (r) { if (r && r.ts) backend.ts = r.ts; });
       });
     }
   }
@@ -1496,7 +1500,7 @@ try {
     var payloadP = (encPwd && subtle) ? encryptData(data).catch(function () { return null; }) : Promise.resolve(data);
     payloadP.then(function (payload) {
       if (!payload) return;
-      roomPut(room, payload).then(function (r) { if (r && r.ts) backend.ts = r.ts; });
+      roomPut(room, payload, data._updated).then(function (r) { if (r && r.ts) backend.ts = r.ts; });
     });
   }
   // 立即同步：先拉云端合并（消息/照片按 id 并集），再把本地真实数据推上去。用于把只存在本机的数据补同步到云端。

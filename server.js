@@ -124,6 +124,7 @@ app.get("/api/room/:id", function (req, res) {
     return;
   }
   res.setHeader("ETag", '"' + (r.ts || 0) + '"');
+  console.log("[room] GET " + id + " -> 200 (" + JSON.stringify(r.data || {}).length + "B)");
   res.json({ id: id, exists: true, data: r.data, ts: r.ts });
 });
 
@@ -138,7 +139,9 @@ app.put("/api/room/:id", function (req, res) {
     r = rooms[id] = { data: null, ts: 0 };
   }
   if (req.body && req.body.data != null) {
-    const incomingRev = (req.body.data._updated) || 0;
+    // 版本号优先取外层 _updated：加密上传时 data 是 {enc,iv,ct} 密文，内层看不到版本号，
+    // 只读内层会把每次加密写入都误判成 0 而拒绝（v1038a 修复：加密房间第二次起上传全被拒）
+    const incomingRev = (req.body._updated != null ? req.body._updated : (req.body.data && req.body.data._updated)) || 0;
     const curRev = (r.data && r.data._updated) || 0;
     // 只接受“新于或等于”当前版本的写入；过期的旧请求直接丢弃，不被接受
     if (incomingRev >= curRev) {
@@ -149,6 +152,9 @@ app.put("/api/room/:id", function (req, res) {
       r.ts = now;
       rooms[id] = r;
       persist();
+      console.log("[room] PUT " + id + " 接受 (" + JSON.stringify(req.body.data).length + "B, enc=" + (req.body.data.enc || 0) + ")");
+    } else {
+      console.log("[room] PUT " + id + " 拒绝(旧版本 " + incomingRev + " < " + curRev + ")");
     }
   }
   res.json({ id: id, ts: r.ts });
@@ -167,6 +173,7 @@ app.post("/api/push/notify", async function (req, res) {
     var fromRole = (body.fromRole === "b") ? "b" : "a";
     var type = (body.type === "urge") ? "urge" : "msg";
     if (!room) return res.status(400).json({ error: "bad" });
+    console.log("[push] notify room=" + room + " from=" + fromRole + " type=" + type);
     var otherAlias = "ls_" + room + "_" + (fromRole === "a" ? "b" : "a");
     var preview = body.text ? (String(body.text).slice(0, 30)) : "";
     var alert = (type === "urge" ? "TA催你拍自拍啦 📷" : ("TA发来悄悄话 💌" + (preview ? ("：" + preview) : "")));
@@ -206,6 +213,7 @@ app.post("/api/push/notify", async function (req, res) {
       body: JSON.stringify(payload)
     });
     var txt = await r.text();
+    console.log("[push] JPush 回执 room=" + room + " status=" + r.status + " ok=" + r.ok);
     res.json({ ok: r.ok, status: r.status, raw: txt.slice(0, 200) });
   } catch (e) {
     res.json({ ok: false, error: String((e && e.message) || e) });
