@@ -593,6 +593,9 @@ try {
   .frog-scene { flex: 1; position: relative; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 6vh; }
   .frog-big { position: relative; width: min(78vw, 360px); max-height: 62vh; cursor: pointer; line-height: 0; filter: drop-shadow(0 18px 30px rgba(80,70,40,.22)); }
   .frog-big svg { width: 100%; height: auto; max-height: 62vh; }
+  .frog-big canvas { width: 100% !important; height: auto !important; max-height: 62vh; }
+  #frogBigFallback, #petSceneFallback { pointer-events: none; }
+  #frogBigFallback svg, #petSceneFallback svg { width: 100%; height: auto; }
   .frog-ground { position: absolute; left: 10%; right: 10%; bottom: 0; height: 18%; background: radial-gradient(ellipse at center, rgba(120,150,100,.28) 0%, transparent 70%); border-radius: 50%; pointer-events: none; }
   .frog-actions { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; display: flex; gap: 14px; justify-content: center; padding: 22px 18px calc(18px + env(safe-area-inset-bottom)); background: linear-gradient(0deg, rgba(255,255,255,.92), rgba(255,255,255,.6) 60%, transparent); }
   .frog-actions .fbtn { flex: 1; max-width: 150px; border: none; border-radius: 24px; padding: 13px 0; font-size: 15px; font-weight: 700; color: #fff; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 8px 22px rgba(0,0,0,.16); cursor: pointer; }
@@ -1040,6 +1043,7 @@ try {
 <input type="file" id="filePick" accept="image/*" style="display:none" />
 <input type="file" id="fileCamera" accept="image/*" capture="environment" style="display:none" />
 
+<script src="js/frog3d.js"></script>
 <script>
 (function () {
   "use strict";
@@ -1375,7 +1379,7 @@ try {
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1040a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1041a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -3167,6 +3171,11 @@ try {
     }
   }
   function petSquishNow(sel) {
+    // 优先 3D 实例
+    if (window.Frog3D) {
+      var id = sel === "#frogBig" ? "roomFrog" : "sceneFrog";
+      if (Frog3D.get(id)) { Frog3D.squish(id); return; }
+    }
     var g = document.querySelector(sel + " .pet-body-g");
     var b = document.querySelector(sel + " .pet-belly");
     if (g) { g.classList.remove("pet-squish"); g.getBoundingClientRect(); g.classList.add("pet-squish"); setTimeout(function () { g.classList.remove("pet-squish"); }, 700); }
@@ -3174,6 +3183,10 @@ try {
   }
   function petFeedAnim(sel) {
     sel = sel || "#petScene";
+    if (window.Frog3D) {
+      var id = sel === "#frogBig" ? "roomFrog" : "sceneFrog";
+      if (Frog3D.get(id)) { Frog3D.feed(id); return; }
+    }
     var st = $(sel.replace("#", "")); if (!st) return;
     var foods = ["🍓", "🍰", "🍼", "🐛", "🍇"];
     var f = document.createElement("div");
@@ -3184,6 +3197,10 @@ try {
     setTimeout(function () { petSquishNow(sel); petHearts(st); }, 720);
   }
   function petPlayAnim(sel) {
+    if (window.Frog3D) {
+      var id = sel === "#frogBig" ? "roomFrog" : "sceneFrog";
+      if (Frog3D.get(id)) { Frog3D.play(id); return; }
+    }
     var g = document.querySelector(sel + " .pet-body-g");
     if (!g) return;
     g.classList.remove("pet-wiggle"); g.getBoundingClientRect(); g.classList.add("pet-wiggle");
@@ -3191,6 +3208,10 @@ try {
   }
   function petPoke(sel, bubbleCls, popCls) {
     sel = sel || "#petScene";
+    if (window.Frog3D) {
+      var id = sel === "#frogBig" ? "roomFrog" : "sceneFrog";
+      if (Frog3D.get(id)) { Frog3D.squish(id); return; }
+    }
     petSquishNow(sel);
     var st = $(sel.replace("#", "")); if (!st) return;
     var words = ["啵~", "boing!", "Q弹！", "咕？", "嘿嘿♡"];
@@ -3209,7 +3230,7 @@ try {
     var bub = "";
     if ((p.hunger || 0) < 30) bub = "饿饿，饭饭！";
     else if ((p.hunger || 0) < 60) bub = "有点馋了…";
-    return '<div class="pet-scene-stage" id="petScene" title="点我和奶蛙互动">' + (bub ? '<div class="pet-bubble">' + bub + "</div>" : "") + petSVG(120) + "</div>";
+    return '<div class="pet-scene-stage" id="petScene" title="点我和奶蛙互动">' + (bub ? '<div class="pet-bubble">' + bub + "</div>" : "") + '<div id="petScene3d" style="width:100%;height:100%;"></div>' + '<div id="petSceneFallback" style="width:100%;height:100%;position:absolute;left:0;top:0;">' + petSVG(120) + '</div>' + "</div>";
   }
   // ===== 奶蛙独立互动房间 =====
   function openFrogRoom() {
@@ -3221,6 +3242,7 @@ try {
   function closeFrogRoomUI() {
     $("frogRoom").classList.remove("open");
     document.body.classList.remove("frogroom-open");
+    if (window.Frog3D) Frog3D.dispose("roomFrog");
   }
   function renderFrogRoom() {
     recomputePet();
@@ -3238,7 +3260,7 @@ try {
       '</div></div>' +
       '<div class="frog-scene">' +
       '<div class="frog-ground"></div>' +
-      '<div class="frog-big" id="frogBig">' + (bub ? '<div class="frog-bubble">' + bub + '</div>' : '') + petSVG("100%") + '</div>' +
+      '<div class="frog-big" id="frogBig">' + (bub ? '<div class="frog-bubble">' + bub + '</div>' : '') + '<div id="frogBig3d" style="width:100%;height:100%;"></div>' + '<div id="frogBigFallback" style="width:100%;height:100%;position:absolute;left:0;top:0;">' + petSVG("100%") + '</div>' + '</div>' +
       '</div>' +
       '<div class="frog-hint">戳戳大肚皮，或者喂点好吃的 🍚</div>' +
       '<div class="frog-actions">' +
@@ -3250,6 +3272,18 @@ try {
     $("frogBig").addEventListener("click", function (e) { e.stopPropagation(); petPokeBig(); });
     var fbtn = $("frogFeed"); if (fbtn && !fbtn.disabled) fbtn.addEventListener("click", function () { interact("feed", "#frogBig"); });
     var pbtn = $("frogPlay"); if (pbtn && !pbtn.disabled) pbtn.addEventListener("click", function () { interact("play", "#frogBig"); });
+    // ===== 初始化 3D 大奶蛙 =====
+    if (window.Frog3D) {
+      Frog3D.loadThree(function (ok) {
+        if (!ok) { console.warn("Three.js 加载失败，奶蛙显示降级"); return; }
+        var inst = Frog3D.create("roomFrog", "frogBig3d", { scale: 1.0, cameraZ: 4.0 });
+        if (inst) {
+          inst.onClick = function () { petPokeBig(); };
+          Frog3D.setMouth("roomFrog", (data.tree.pet.hunger || 0) < 30 ? "sad" : "smile");
+          var fb = $("frogBigFallback"); if (fb) fb.style.display = "none";
+        }
+      });
+    }
   }
   // 面板宠物状态卡：名字/等级 + 饱食度/心情条 + 喂食/陪玩按钮
   function petCardHtml() {
@@ -3492,6 +3526,7 @@ try {
     $("treePage").classList.remove("open");
     document.body.classList.remove("tp-open");
     tpPanelOpen = false; // 整页关闭后重置面板状态，下次进入是干净的沉浸画面
+    if (window.Frog3D) Frog3D.dispose("sceneFrog");
   }
   // 底部面板：阶段/成长/果实/挂件/每日任务，默认收起，保证沉浸
   function openTreePanel() {
@@ -3601,6 +3636,17 @@ try {
       var h = Math.round(scene.getBoundingClientRect().height + 20) + "px";
       scene.querySelectorAll(".petal-layer").forEach(function (l) { l.style.setProperty("--fall-dist", h); });
     });
+    // ===== 初始化 3D 小奶蛙 =====
+    if (window.Frog3D) {
+      Frog3D.loadThree(function (ok) {
+        if (!ok) { console.warn("Three.js 加载失败，奶蛙显示降级"); return; }
+        var inst = Frog3D.create("sceneFrog", "petScene3d", { scale: 0.62, cameraZ: 4.5, autoRotate: true });
+        if (inst) {
+          inst.onClick = function () { openFrogRoom(); };
+          var fb = $("petSceneFallback"); if (fb) fb.style.display = "none";
+        }
+      });
+    }
   }
   var pickCb = null;
   $("filePick").addEventListener("change", function () { var f = this.files[0]; this.value = ""; if (f && pickCb) pickCb(f); });
