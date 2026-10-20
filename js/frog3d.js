@@ -149,7 +149,23 @@ var Frog3D = (function () {
     return group;
   }
 
+  // v1042a: 外层包装。WebGL 不可用时 THREE 内部会抛异常，若不拦住会冒泡到 openTreePage()，
+  // 导致树页面连 open 都加不上（用户看到"什么都没有"）。失败则静默返回 null，保留原图降级。
   function create(id, containerId, opts) {
+    try {
+      return createInner(id, containerId, opts);
+    } catch (e) {
+      console.warn("[Frog3D] 3D 初始化失败，保留原图显示:", (e && e.message) || e);
+      try { dispose(id); } catch (e2) {}
+      try {
+        var c = document.getElementById(containerId);
+        if (c) c.innerHTML = "";
+      } catch (e3) {}
+      return null;
+    }
+  }
+
+  function createInner(id, containerId, opts) {
     opts = opts || {};
     if (!window.THREE) return null;
     var container = document.getElementById(containerId);
