@@ -565,6 +565,29 @@ try {
   @keyframes petHeart { 0% { opacity: 0; transform: translateY(8px) scale(.5); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-36px) scale(1.15); } }
   .pet-info { text-align: left; }
   .mini-btn:disabled { opacity: .5; }
+  /* ===== 奶蛙（v1039a）：场景站位 + Q弹肚皮 + 喂食/戳肚皮动画 ===== */
+  .pet-scene-stage { position: absolute; left: 3%; bottom: 1%; z-index: 6; width: 96px; line-height: 0; cursor: pointer; }
+  .pet-scene-stage svg { width: 100%; height: auto; }
+  .pet-bubble { position: absolute; top: -16px; left: 58%; transform: translateX(-50%); background: #fff; border: 1.5px solid #f0c4d2; border-radius: 12px; padding: 4px 9px; font-size: 11px; font-weight: 700; color: var(--ink); white-space: nowrap; line-height: 1.4; animation: petBubbleIn .4s cubic-bezier(.3,1.45,.55,1); }
+  .pet-bubble::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border: 5px solid transparent; border-top-color: #f0c4d2; }
+  @keyframes petBubbleIn { 0% { opacity: 0; transform: translateX(-50%) scale(.6); } 100% { opacity: 1; transform: translateX(-50%) scale(1); } }
+  .pet-body-g { transform-box: fill-box; transform-origin: 50% 100%; }
+  .pet-squish { animation: petSquish .62s cubic-bezier(.3,1.45,.55,1); }
+  @keyframes petSquish { 0% { transform: scale(1,1); } 30% { transform: scale(1.12,.84); } 62% { transform: scale(.93,1.1); } 82% { transform: scale(1.04,.97); } 100% { transform: scale(1,1); } }
+  .pet-belly { transform-box: fill-box; transform-origin: 50% 50%; animation: petBellyIdle 2.8s ease-in-out infinite; }
+  @keyframes petBellyIdle { 0%,100% { transform: scale(1,1); } 50% { transform: scale(1.035,.955); } }
+  .pet-belly.poke { animation: petBellyPoke .68s cubic-bezier(.3,1.45,.55,1); }
+  @keyframes petBellyPoke { 0% { transform: scale(1,1); } 35% { transform: scale(1.16,.8); } 65% { transform: scale(.9,1.14); } 85% { transform: scale(1.05,.96); } 100% { transform: scale(1,1); } }
+  .pet-food { position: absolute; left: 50%; top: 40%; z-index: 8; font-size: 24px; line-height: 1; pointer-events: none; animation: petFoodIn .95s ease-in forwards; }
+  @keyframes petFoodIn { 0% { transform: translate(48px,30px) scale(.5) rotate(-18deg); opacity: 0; } 22% { opacity: 1; } 62% { transform: translate(4px,-2px) scale(1.08) rotate(6deg); } 78% { transform: translate(0,3px) scale(.8); opacity: 1; } 100% { transform: translate(0,9px) scale(0); opacity: 0; } }
+  .pet-pop { position: absolute; z-index: 8; font-size: 13px; font-weight: 700; color: #e8893c; text-shadow: 0 1px 0 #fff; pointer-events: none; animation: petHeart 1.2s ease-out forwards; }
+  body.dark .pet-card { background: linear-gradient(135deg,#2e2638,#3a2f45); }
+  body.dark .pet-bar { background: #3d3348; }
+  body.dark .pet-name { color: #ece2ea; }
+  body.dark .pet-stat { color: #b7a9b8; }
+  body.dark .pet-bubble { background: #2e2638; border-color: #4a3d55; color: #ece2ea; }
+  body.dark .pet-bubble::after { border-top-color: #4a3d55; }
+  body.dark .pet-pop { color: #f5b04a; text-shadow: 0 1px 0 #241e2c; }
   .tbtn span { font-size: 11px; }
   /* ===== 主题 / 皮肤 ===== */
   body { font-family: var(--font, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif); }
@@ -1001,7 +1024,7 @@ try {
     anniversaries: [],
     messages: [],
     moods: [],
-    tree: { growth: 0, lastWater: [0, 0], tasks: [], feed: [0, 0], play: [0, 0], daily: { date: "", acts: { water: [0, 0], feed: [0, 0], play: [0, 0] }, claimed: {} }, pet: { name: "小甜", hunger: 100, mood: 100, lastFed: 0, lastPlay: 0, lvl: 1, cared: 0 }, fruits: { count: 0, lastDate: "", milestones: [] }, cards: [], hungPhoto: [null, null] },
+    tree: { growth: 0, lastWater: [0, 0], tasks: [], feed: [0, 0], play: [0, 0], daily: { date: "", acts: { water: [0, 0], feed: [0, 0], play: [0, 0] }, claimed: {} }, pet: { name: "奶蛙", hunger: 100, mood: 100, lastFed: 0, lastPlay: 0, lvl: 1, cared: 0 }, fruits: { count: 0, lastDate: "", milestones: [] }, cards: [], hungPhoto: [null, null] },
     albums: [],
     photos: [],
     selfies: [],
@@ -1038,7 +1061,8 @@ try {
     if (!data.tree.tasks) data.tree.tasks = [];
     if (!Array.isArray(data.tree.feed)) data.tree.feed = [0, 0];
     if (!Array.isArray(data.tree.play)) data.tree.play = [0, 0];
-    if (!data.tree.pet || typeof data.tree.pet !== "object") data.tree.pet = { name: "小甜", hunger: 100, mood: 100, lastFed: 0, lastPlay: 0, lvl: 1, cared: 0 };
+    if (!data.tree.pet || typeof data.tree.pet !== "object") data.tree.pet = { name: "奶蛙", hunger: 100, mood: 100, lastFed: 0, lastPlay: 0, lvl: 1, cared: 0 };
+    if (data.tree.pet && data.tree.pet.name === "小甜") data.tree.pet.name = "奶蛙"; // v1039a：形象接入，占位名升级为奶蛙（改名过的不受影响）
     if (!data.tree.daily || typeof data.tree.daily !== "object") data.tree.daily = { date: "", acts: { water: [0, 0], feed: [0, 0], play: [0, 0] }, claimed: {} };
     if (!data.tree.daily.acts || typeof data.tree.daily.acts !== "object") data.tree.daily.acts = { water: [0, 0], feed: [0, 0], play: [0, 0] };
     if (!data.tree.daily.claimed || typeof data.tree.daily.claimed !== "object") data.tree.daily.claimed = {};
@@ -1322,7 +1346,7 @@ try {
       };
     } catch (e) {}
   }
-  var PUSH_BUILD = "v1038a"; // 推送诊断版本标记：确认手机加载的是哪版网页
+  var PUSH_BUILD = "v1039a"; // 推送诊断版本标记：确认手机加载的是哪版网页
   var PUSH_REINITED = false;
   function initJPush() {
     ensureAlias(); // 等待 SDK 注册完成后再设别名
@@ -1666,7 +1690,7 @@ try {
       pet: (function () {
         var lp = local.tree.pet || {}, rp = remote.tree.pet || {};
         var later = (lp.lastFed || 0) + (lp.lastPlay || 0) >= (rp.lastFed || 0) + (rp.lastPlay || 0) ? lp : rp;
-        return { name: later.name || "小甜", hunger: Math.max(lp.hunger || 0, rp.hunger || 0), mood: Math.max(lp.mood || 0, rp.mood || 0), lastFed: Math.max(lp.lastFed || 0, rp.lastFed || 0), lastPlay: Math.max(lp.lastPlay || 0, rp.lastPlay || 0), lvl: Math.max(lp.lvl || 1, rp.lvl || 1), cared: Math.max(lp.cared || 0, rp.cared || 0) };
+        return { name: later.name || "奶蛙", hunger: Math.max(lp.hunger || 0, rp.hunger || 0), mood: Math.max(lp.mood || 0, rp.mood || 0), lastFed: Math.max(lp.lastFed || 0, rp.lastFed || 0), lastPlay: Math.max(lp.lastPlay || 0, rp.lastPlay || 0), lvl: Math.max(lp.lvl || 1, rp.lvl || 1), cared: Math.max(lp.cared || 0, rp.cared || 0) };
       })(),
       fruits: (function () {
         function blank() { return { count: 0, lastDate: "", milestones: [] }; }
@@ -3052,34 +3076,51 @@ try {
   // ② renderAll() 中调用 recomputePet() 做饥饿/心情实时衰减并显示进度条；
   // ③ 用 interact("feed") / interact("play") 暴露喂食/陪玩按钮（逻辑已写好，ACT_CONF 已配置）。
   function petSVG() {
+    // 奶蛙形象（v1039a）：黄胖梨形身 + 奶油大肚皮（Q弹）+ 绿圈黑瞳大眼 + 橄榄色小手小脚
     var lvl = data.tree.pet.lvl || 1;
+    var hunger = (typeof recomputePet === "function" ? data.tree.pet.hunger : 100) || 0;
     var acc = "";
     if (lvl >= 8) acc += '<path d="M48 12 L52 4 L56 9 L60 2 L64 9 L68 4 L72 12 Z" fill="#ffcf3f" stroke="#e8a90c" stroke-width="1" stroke-linejoin="round"/>';
     else if (lvl >= 3) acc += '<path d="M60 13 C59 7 62 3 68 2 C67 8 64 12 60 13 Z" fill="#6fbf73"/><path d="M60 13 C61 8 59 5 55 4 C56 9 58 12 60 13 Z" fill="#8fd3a8"/>';
-    var blush = lvl >= 5 ? '<ellipse cx="40" cy="57" rx="4.5" ry="2.6" fill="#ffb3c7" opacity=".7"/><ellipse cx="80" cy="57" rx="4.5" ry="2.6" fill="#ffb3c7" opacity=".7"/>' : "";
+    var blush = lvl >= 5 ? '<ellipse cx="41.5" cy="50" rx="4.2" ry="2.4" fill="#ffb3c7" opacity=".65"/><ellipse cx="78.5" cy="50" rx="4.2" ry="2.4" fill="#ffb3c7" opacity=".65"/>' : "";
+    // 心情嘴型：饿了(30)撇嘴委屈，平时微笑
+    var mouth = hunger < 30
+      ? '<path d="M54 54 Q60 50 66 54" stroke="#7a5b33" stroke-width="1.7" fill="none" stroke-linecap="round"/>'
+      : '<path d="M54.5 52.5 Q60 56 65.5 52.5" stroke="#7a5b33" stroke-width="1.7" fill="none" stroke-linecap="round"/>';
     return '<svg viewBox="0 0 120 118" width="128" height="126">' +
       "<defs>" +
-      '<linearGradient id="pgBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe98f"/><stop offset="1" stop-color="#ffd21e"/></linearGradient>' +
-      '<radialGradient id="pgGlow" cx=".5" cy=".45" r=".6"><stop offset="0" stop-color="#ffe9a0" stop-opacity=".6"/><stop offset="1" stop-color="#ffe9a0" stop-opacity="0"/></radialGradient>' +
+      '<linearGradient id="pgBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe181"/><stop offset=".55" stop-color="#fdd24d"/><stop offset="1" stop-color="#f5bd38"/></linearGradient>' +
+      '<radialGradient id="pgBelly" cx=".5" cy=".42" r=".72"><stop offset="0" stop-color="#fdf7e3"/><stop offset="1" stop-color="#f1ddA4"/></radialGradient>' +
+      '<radialGradient id="pgGlow" cx=".5" cy=".45" r=".6"><stop offset="0" stop-color="#ffe9a0" stop-opacity=".55"/><stop offset="1" stop-color="#ffe9a0" stop-opacity="0"/></radialGradient>' +
       "</defs>" +
-      '<circle cx="60" cy="62" r="54" fill="url(#pgGlow)"/>' +
-      '<ellipse cx="60" cy="111" rx="27" ry="5" fill="rgba(120,90,40,.14)"/>' +
+      '<circle cx="60" cy="60" r="54" fill="url(#pgGlow)"/>' +
+      '<ellipse cx="60" cy="109.5" rx="29" ry="4.5" fill="rgba(110,85,35,.16)"/>' +
+      '<ellipse cx="46.5" cy="96" rx="6" ry="8.5" fill="#f2bd33"/>' +
+      '<ellipse cx="73.5" cy="96" rx="6" ry="8.5" fill="#f2bd33"/>' +
+      '<ellipse cx="43" cy="104" rx="10" ry="4.2" fill="#8f8055" transform="rotate(-5 43 104)"/>' +
+      '<ellipse cx="77" cy="104" rx="10" ry="4.2" fill="#8f8055" transform="rotate(5 77 104)"/>' +
       '<g class="pet-bob">' +
+      '<g class="pet-body-g">' +
       acc +
-      '<ellipse cx="28" cy="64" rx="6" ry="10" fill="#ffd21e" transform="rotate(16 28 64)"/>' +
-      '<ellipse cx="92" cy="64" rx="6" ry="10" fill="#ffd21e" transform="rotate(-16 92 64)"/>' +
-      '<path d="M60 14 C44 14 33 28 30 48 C27 70 33 96 60 96 C87 96 93 70 90 48 C87 28 76 14 60 14 Z" fill="url(#pgBody)"/>' +
-      '<ellipse cx="60" cy="76" rx="20" ry="15" fill="#fff3c4" opacity=".65"/>' +
-      '<ellipse cx="46" cy="97" rx="9" ry="5" fill="#ffd21e"/><ellipse cx="74" cy="97" rx="9" ry="5" fill="#ffd21e"/>' +
-      '<circle cx="47" cy="46" r="8" fill="#fff"/><circle cx="73" cy="46" r="8" fill="#fff"/>' +
-      '<circle cx="47" cy="46" r="5.6" fill="#cfe08a"/><circle cx="73" cy="46" r="5.6" fill="#cfe08a"/>' +
-      '<circle cx="47" cy="46" r="3.7" fill="#26221c"/><circle cx="73" cy="46" r="3.7" fill="#26221c"/>' +
-      '<circle cx="48.4" cy="44.4" r="1.3" fill="#fff"/><circle cx="74.4" cy="44.4" r="1.3" fill="#fff"/>' +
-      '<rect class="pet-lid" x="39" y="37" width="16" height="18" rx="8" fill="#ffd845" style="transform-origin:47px 37px"/>' +
-      '<rect class="pet-lid" x="65" y="37" width="16" height="18" rx="8" fill="#ffd845" style="transform-origin:73px 37px"/>' +
-      '<path d="M54 62 Q60 66 66 62" stroke="#8a5a2b" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+      '<path d="M60 14 C48.5 14 41 22 38.5 34 C35.5 50 26.5 58 26.5 75 C26.5 92 41 100 60 100 C79 100 93.5 92 93.5 75 C93.5 58 84.5 50 81.5 34 C79 22 71.5 14 60 14 Z" fill="url(#pgBody)"/>' +
+      '<ellipse class="pet-belly" cx="60" cy="76.5" rx="25" ry="18.5" fill="url(#pgBelly)"/>' +
+      '<ellipse cx="33.5" cy="65" rx="6" ry="12.5" fill="#f7c43c" transform="rotate(12 33.5 65)"/>' +
+      '<ellipse cx="86.5" cy="65" rx="6" ry="12.5" fill="#f7c43c" transform="rotate(-12 86.5 65)"/>' +
+      '<ellipse cx="30.5" cy="76" rx="4.8" ry="4" fill="#8f8055" transform="rotate(12 30.5 76)"/>' +
+      '<ellipse cx="89.5" cy="76" rx="4.8" ry="4" fill="#8f8055" transform="rotate(-12 89.5 76)"/>' +
+      '<circle cx="48.5" cy="40.5" r="7.6" fill="#fff"/>' +
+      '<circle cx="71.5" cy="40.5" r="7.6" fill="#fff"/>' +
+      '<circle cx="48.5" cy="40.5" r="6.1" fill="#a9c86b"/>' +
+      '<circle cx="71.5" cy="40.5" r="6.1" fill="#a9c86b"/>' +
+      '<circle cx="48.5" cy="40.5" r="4.3" fill="#221f18"/>' +
+      '<circle cx="71.5" cy="40.5" r="4.3" fill="#221f18"/>' +
+      '<circle cx="50.1" cy="38.7" r="1.5" fill="#fff"/>' +
+      '<circle cx="73.1" cy="38.7" r="1.5" fill="#fff"/>' +
+      '<rect class="pet-lid" x="41" y="33" width="15" height="16" rx="7.5" fill="#ffd95e" style="transform-origin:48.5px 33px"/>' +
+      '<rect class="pet-lid" x="64" y="33" width="15" height="16" rx="7.5" fill="#ffd95e" style="transform-origin:71.5px 33px"/>' +
+      mouth +
       blush +
-      "</g></svg>";
+      "</g></g></svg>";
   }
   function petHearts() {
     var st = $("petStage"); if (!st) return;
@@ -3092,6 +3133,75 @@ try {
     }
   }
   function treeCooldown(ts, hours) { return Date.now() - (ts || 0) > hours * 3600 * 1000; }
+  // ===== 奶蛙互动动画（v1039a）=====
+  function petSquishNow() {
+    var g = document.querySelector("#petScene .pet-body-g");
+    var b = document.querySelector("#petScene .pet-belly");
+    if (g) { g.classList.remove("pet-squish"); g.getBoundingClientRect(); g.classList.add("pet-squish"); setTimeout(function () { g.classList.remove("pet-squish"); }, 700); }
+    if (b) { b.classList.remove("poke"); b.getBoundingClientRect(); b.classList.add("poke"); setTimeout(function () { b.classList.remove("poke"); }, 750); }
+  }
+  function petFeedAnim() {
+    var st = $("petScene"); if (!st) return;
+    var foods = ["🍓", "🍰", "🍼", "🐛", "🍇"];
+    var f = document.createElement("div");
+    f.className = "pet-food";
+    f.textContent = foods[Math.floor(Math.random() * foods.length)];
+    st.appendChild(f);
+    setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 1050);
+    setTimeout(function () { petSquishNow(); petHearts(); }, 720); // 吃到嘴里再 Q 弹 + 冒爱心
+  }
+  function petPlayAnim() {
+    var g = document.querySelector("#petScene .pet-body-g");
+    if (!g) return;
+    g.classList.remove("pet-wiggle"); g.getBoundingClientRect(); g.classList.add("pet-wiggle");
+    setTimeout(function () { g.classList.remove("pet-wiggle"); }, 700);
+  }
+  function petPoke() {
+    petSquishNow();
+    var st = $("petScene"); if (!st) return;
+    var words = ["啵~", "boing!", "Q弹！", "咕？", "嘿嘿♡"];
+    var pop = document.createElement("div");
+    pop.className = "pet-pop";
+    pop.textContent = words[Math.floor(Math.random() * words.length)];
+    pop.style.left = (30 + Math.random() * 40) + "%";
+    pop.style.top = (6 + Math.random() * 22) + "%";
+    st.appendChild(pop);
+    setTimeout(function () { if (pop.parentNode) pop.parentNode.removeChild(pop); }, 1250);
+  }
+  // 场景里的奶蛙站位：饿了冒对话气泡
+  function petSceneHtml() {
+    var p = data.tree.pet;
+    var bub = "";
+    if ((p.hunger || 0) < 30) bub = "饿饿，饭饭！";
+    else if ((p.hunger || 0) < 60) bub = "有点馋了…";
+    return '<div class="pet-scene-stage" id="petScene">' + (bub ? '<div class="pet-bubble">' + bub + "</div>" : "") + petSVG() + "</div>";
+  }
+  // 面板宠物状态卡：名字/等级 + 饱食度/心情条 + 喂食/陪玩按钮
+  function petCardHtml() {
+    var p = data.tree.pet;
+    var hCol = (p.hunger || 0) < 30 ? "background:linear-gradient(135deg,#ffb37a,#f2703c)" : "";
+    var mCol = (p.mood || 0) < 30 ? "background:linear-gradient(135deg,#b8c4f5,#6a7bd8)" : "";
+    return '<div class="pet-card" style="flex-direction:row;align-items:center;gap:12px">' +
+      '<div style="font-size:30px;line-height:1;flex:none">🐸</div>' +
+      '<div class="pet-info">' +
+      '<div class="pet-name">' + esc(p.name || "奶蛙") + ' <span style="font-size:11px;color:var(--ink-2);font-weight:400">Lv.' + (p.lvl || 1) + " · 陪伴 " + (p.cared || 0) + ' 次</span><button class="ghost-btn" id="petRename" style="padding:2px 9px;font-size:10px;margin-left:6px;vertical-align:middle">✏️ 改名</button></div>' +
+      '<div class="pet-stat" style="margin-top:6px">🍚 饱食度 ' + Math.round(p.hunger || 0) + "%（4 小时可喂一次）</div>" +
+      '<div class="pet-bar"><i style="width:' + Math.max(3, Math.round(p.hunger || 0)) + "%;" + hCol + '"></i></div>' +
+      '<div class="pet-stat" style="margin-top:5px">🎾 心情 ' + Math.round(p.mood || 0) + "%（4 小时可陪玩一次）</div>" +
+      '<div class="pet-bar"><i style="width:' + Math.max(3, Math.round(p.mood || 0)) + "%;" + mCol + '"></i></div>' +
+      '<div class="pet-btns"><button class="mini-btn" id="actFeed2" style="background:linear-gradient(135deg,#ffd84d,#f0a020)">🍚 喂食</button><button class="mini-btn" id="actPlay2" style="background:linear-gradient(135deg,#b5a3ff,#7b5cf0)">🎾 陪玩</button></div>' +
+      "</div></div>";
+  }
+  function openPetRename() {
+    openSheet("给「" + (data.tree.pet.name || "奶蛙") + "」改名", '<div class="field"><label>新名字（最多 6 个字）</label><input id="petNameIn" maxlength="6" value="' + esc(data.tree.pet.name || "") + '" /></div><button class="primary-btn" id="petNameGo">保存</button>');
+    $("petNameGo").addEventListener("click", function () {
+      var v = ($("petNameIn").value || "").trim();
+      if (!v) { toast("名字不能为空"); return; }
+      data.tree.pet.name = v;
+      save(); closeSheet(); renderAll(); openTreePage();
+      toast("已改名为「" + v + "」");
+    });
+  }
   function recomputePet() {
     var p = data.tree.pet;
     var eh = Math.floor((Date.now() - (p.lastFed || 0)) / 3600000);
@@ -3137,7 +3247,8 @@ try {
     if (key === "water") harvestFruit();
     toast(treeStage().idx > before ? "升级啦！恋爱树长成了「" + treeStage().stage.name + "」" : ACT_CONF[key].name + "成功，成长值 +1");
     openTreePage();
-    if (key !== "water") petHearts();
+    if (key === "feed") petFeedAnim();
+    else if (key === "play") { petHearts(); petPlayAnim(); }
   }
   // ===== 树场景氛围层：纪念日花瓣 + 季节/节日粒子 + 横幅 =====
   function treeSceneExtra(sp) {
@@ -3324,6 +3435,7 @@ try {
   }
   var tpPanelOpen = false; // 底部面板展开状态：重绘时保持，避免挂卡后面板被收起
   function renderTreePage() {
+    recomputePet(); // 饥饿/心情按时间实时衰减（由 lastFed/lastPlay 推导，各端算出一致）
     var st = treeStage();
     var sp = specialDayToday();
     var sceneExtra = treeSceneExtra(sp) + treeOrnaments(sp);
@@ -3343,6 +3455,7 @@ try {
     var panel = '<div class="tp-grab" id="tpGrab"></div>' + grow +
       '<div class="sign-board"><div class="sign-row"><span>我连续浇树</span><b>' + waterStreak(me) + '</b><span>天</span></div>' +
       '<div class="sign-row"><span>TA连续浇树</span><b>' + waterStreak(1 - me) + '</b><span>天</span></div></div>' +
+      petCardHtml() +
       (!st.next ? fruitBoard() : "") +
       '<div class="tree-actions">' +
       '<button class="tbtn" id="actWish" style="background:linear-gradient(135deg,#ffd84d,#f0a020);box-shadow:0 6px 16px rgba(240,160,32,.28)"' + (wishCnt >= 2 ? " disabled" : "") + ">💌 挂心愿卡 " + wishCnt + "/2</button>" +
@@ -3360,10 +3473,12 @@ try {
         treeSkyDecor() +
         '<button class="tp-close" id="tpClose" aria-label="关闭">' + icon("x") + "</button>" +
         '<div class="tp-stage-name">' + st.stage.name + "</div>" +
-        '<div class="tree-scene">' + treeSVG(420, { noSky: true }) + sceneExtra + "</div>" +
+        '<div class="tree-scene">' + treeSVG(420, { noSky: true }) + sceneExtra + petSceneHtml() + "</div>" +
       "</div>" +
       '<div class="tp-fabs">' +
       '<button class="tp-fab" id="actWater">💧 ' + actLabel("water") + "</button>" +
+      '<button class="tp-fab" id="actFeed" style="background:linear-gradient(135deg,#ffd84d,#f0a020);box-shadow:0 6px 16px rgba(240,160,32,.28)">🍚 ' + actLabel("feed") + "</button>" +
+      '<button class="tp-fab" id="actPlay" style="background:linear-gradient(135deg,#b5a3ff,#7b5cf0);box-shadow:0 6px 16px rgba(123,92,240,.28)">🎾 ' + actLabel("play") + "</button>" +
       '<button class="tp-fab ghost" id="tpMore">' + (tpPanelOpen ? "✕ 收起" : "☰ 更多") + "</button>" +
       "</div>" +
       '<div class="tp-mask' + (tpPanelOpen ? " open" : "") + '" id="tpMask"></div>' +
@@ -3371,6 +3486,12 @@ try {
     $("treePage").innerHTML = html;
     $("tpClose").addEventListener("click", function () { history.back(); });
     $("actWater").addEventListener("click", function () { interact("water"); });
+    $("actFeed").addEventListener("click", function () { interact("feed"); });
+    $("actPlay").addEventListener("click", function () { interact("play"); });
+    $("petScene").addEventListener("click", function (e) { e.stopPropagation(); petPoke(); });
+    var prn = $("petRename"); if (prn) prn.addEventListener("click", function () { openPetRename(); });
+    var af2 = $("actFeed2"); if (af2) af2.addEventListener("click", function () { interact("feed"); });
+    var ap2 = $("actPlay2"); if (ap2) ap2.addEventListener("click", function () { interact("play"); });
     $("tpMore").addEventListener("click", function () {
       if (tpPanelOpen) history.back();
       else openTreePanel();
