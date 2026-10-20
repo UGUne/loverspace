@@ -19,127 +19,132 @@ var Frog3D = (function () {
   function createFrog(THREE) {
     var group = new THREE.Group();
 
-    // 材质
-    var bodyMat = new THREE.MeshStandardMaterial({ color: 0xf7c93e, roughness: 0.55, metalness: 0.05 });
-    var bellyMat = new THREE.MeshStandardMaterial({ color: 0xf5e5b0, roughness: 0.65, metalness: 0.02 });
-    var eyeMat = new THREE.MeshStandardMaterial({ color: 0x9bd476, roughness: 0.35, metalness: 0.1 });
-    var pupilMat = new THREE.MeshStandardMaterial({ color: 0x1f1c16, roughness: 0.2, metalness: 0 });
-    var handMat = new THREE.MeshStandardMaterial({ color: 0x6e6146, roughness: 0.7, metalness: 0 });
+    // 材质（v1043a: 加轻微自发光，夜晚场景不发黑）
+    var bodyMat = new THREE.MeshStandardMaterial({ color: 0xfbcf45, roughness: 0.6, metalness: 0.03, emissive: 0x2f2508 });
+    var bellyMat = new THREE.MeshStandardMaterial({ color: 0xf3e8c8, roughness: 0.7, metalness: 0.02, emissive: 0x211d11 });
+    var eyeMat = new THREE.MeshStandardMaterial({ color: 0x9fce6e, roughness: 0.35, metalness: 0.05 });
+    var pupilMat = new THREE.MeshStandardMaterial({ color: 0x241f16, roughness: 0.25, metalness: 0 });
+    var darkMat = new THREE.MeshStandardMaterial({ color: 0x8a8168, roughness: 0.75, metalness: 0 });
 
-    // 身体（梨形：上窄下宽，拉长）
-    var bodyGeo = new THREE.SphereGeometry(1, 48, 48);
-    bodyGeo.scale(0.92, 1.42, 0.82);
+    // ===== 身体（v1043a: 旋转曲面，控制点测自三视图——圆头/窄脖/宽肚/圆底）=====
+    var ctrl = [
+      [-0.82, 0.56], [-0.60, 0.84], [-0.35, 1.00], [-0.12, 1.05],
+      [0.10, 0.99], [0.32, 0.79], [0.52, 0.63], [0.78, 0.68],
+      [1.06, 0.71], [1.30, 0.58], [1.45, 0.37], [1.54, 0.001]
+    ];
+    var pts3 = [];
+    for (var ci = 0; ci < ctrl.length; ci++) pts3.push(new THREE.Vector3(ctrl[ci][1], ctrl[ci][0], 0));
+    var curve = new THREE.CatmullRomCurve3(pts3);
+    var lathePts = curve.getPoints(48).map(function (p) {
+      return new THREE.Vector2(Math.max(p.x, 0.001), p.y);
+    });
+    var bodyGeo = new THREE.LatheGeometry(lathePts, 64);
     var body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.position.y = 0.15;
+    body.scale.z = 0.88; // 前后略扁
     body.castShadow = true;
     group.add(body);
 
-    // 肚皮（大圆，稍微凸出）
+    // 肚皮（大椭圆奶油色，微凸于身前）
     var bellyGeo = new THREE.SphereGeometry(1, 48, 48);
-    bellyGeo.scale(0.72, 0.92, 0.58);
     var belly = new THREE.Mesh(bellyGeo, bellyMat);
-    belly.position.set(0, -0.12, 0.42);
+    belly.scale.set(0.86, 0.58, 0.5);
+    belly.position.set(0, -0.12, 0.55);
     belly.castShadow = true;
     group.add(belly);
 
-    // 头部（身体上半部自然形成，无需单独部件）
-
-    // 眼睛
-    var eyeGeo = new THREE.SphereGeometry(0.16, 32, 32);
+    // 眼睛（嵌在头两侧表面，绿虹膜大黑瞳）
+    var eyeGeo = new THREE.SphereGeometry(0.15, 32, 32);
     var eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeL.position.set(-0.28, 0.95, 0.78);
-    eyeL.scale.set(1, 1.15, 0.9);
+    eyeL.position.set(-0.38, 1.16, 0.52);
+    eyeL.scale.set(1, 1.07, 0.85);
     group.add(eyeL);
     var eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeR.position.set(0.28, 0.95, 0.78);
-    eyeR.scale.set(1, 1.15, 0.9);
+    eyeR.position.set(0.38, 1.16, 0.52);
+    eyeR.scale.set(1, 1.07, 0.85);
     group.add(eyeR);
 
     // 瞳孔
-    var pupilGeo = new THREE.SphereGeometry(0.075, 24, 24);
+    var pupilGeo = new THREE.SphereGeometry(0.088, 24, 24);
     var pupilL = new THREE.Mesh(pupilGeo, pupilMat);
-    pupilL.position.set(-0.28, 0.95, 0.88);
-    pupilL.scale.set(1, 1.1, 0.7);
+    pupilL.position.set(-0.38, 1.17, 0.62);
+    pupilL.scale.set(1, 1.08, 0.6);
     group.add(pupilL);
     var pupilR = new THREE.Mesh(pupilGeo, pupilMat);
-    pupilR.position.set(0.28, 0.95, 0.88);
-    pupilR.scale.set(1, 1.1, 0.7);
+    pupilR.position.set(0.38, 1.17, 0.62);
+    pupilR.scale.set(1, 1.08, 0.6);
     group.add(pupilR);
 
     // 高光
     var hlGeo = new THREE.SphereGeometry(0.03, 12, 12);
     var hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     var hlL = new THREE.Mesh(hlGeo, hlMat);
-    hlL.position.set(-0.24, 1.0, 0.92);
+    hlL.position.set(-0.31, 1.22, 0.68);
     group.add(hlL);
     var hlR = new THREE.Mesh(hlGeo, hlMat);
-    hlR.position.set(0.32, 1.0, 0.92);
+    hlR.position.set(0.45, 1.22, 0.68);
     group.add(hlR);
 
-    // 嘴巴（简单弧线用 Torus 截段）
-    var mouthGeo = new THREE.TorusGeometry(0.11, 0.018, 8, 24, Math.PI);
-    var mouthMat = new THREE.MeshBasicMaterial({ color: 0x6b5030 });
+    // 嘴巴（v1043a: 不再绕 X 旋转 90°——那会正面变成一条线；改在 XY 平面取下半弧=微笑）
+    var mouthGeo = new THREE.TorusGeometry(0.26, 0.018, 8, 32, Math.PI);
+    var mouthMat = new THREE.MeshBasicMaterial({ color: 0x5c4a2e });
     var mouth = new THREE.Mesh(mouthGeo, mouthMat);
-    mouth.position.set(0, 0.72, 0.82);
-    mouth.rotation.x = Math.PI / 2;
+    mouth.position.set(0, 0.98, 0.63);
     mouth.rotation.z = Math.PI;
+    mouth.rotation.x = -0.12;
     group.add(mouth);
 
-    // 左臂（下垂）
+    // 手臂（贴身垂在体侧，上端连肩）
     var armGeo = new THREE.SphereGeometry(1, 32, 32);
-    armGeo.scale(0.14, 0.72, 0.14);
+    armGeo.scale(0.145, 0.46, 0.145);
     var armL = new THREE.Mesh(armGeo, bodyMat);
-    armL.position.set(-0.78, 0.15, 0.15);
-    armL.rotation.z = 0.12;
+    armL.position.set(-0.94, -0.08, 0.30);
+    armL.rotation.z = 0.16;
     group.add(armL);
-    // 右臂
     var armR = new THREE.Mesh(armGeo, bodyMat);
-    armR.position.set(0.78, 0.15, 0.15);
-    armR.rotation.z = -0.12;
+    armR.position.set(0.94, -0.08, 0.30);
+    armR.rotation.z = -0.16;
     group.add(armR);
 
-    // 左手掌
-    var handGeo = new THREE.SphereGeometry(0.14, 24, 24);
-    handGeo.scale(1, 0.75, 0.9);
-    var handL = new THREE.Mesh(handGeo, handMat);
-    handL.position.set(-0.88, -0.52, 0.2);
-    handL.rotation.z = 0.15;
+    // 手（深灰"手套"垂在肚皮两侧）
+    var handGeo = new THREE.SphereGeometry(0.17, 24, 24);
+    handGeo.scale(1, 1.3, 0.8);
+    var handL = new THREE.Mesh(handGeo, darkMat);
+    handL.position.set(-1.0, -0.5, 0.34);
+    handL.rotation.z = 0.12;
     group.add(handL);
-    // 右手掌
-    var handR = new THREE.Mesh(handGeo, handMat);
-    handR.position.set(0.88, -0.52, 0.2);
-    handR.rotation.z = -0.15;
+    var handR = new THREE.Mesh(handGeo, darkMat);
+    handR.position.set(1.0, -0.5, 0.34);
+    handR.rotation.z = -0.12;
     group.add(handR);
 
-    // 左腿
+    // 腿（短粗外八）
     var legGeo = new THREE.SphereGeometry(1, 32, 32);
-    legGeo.scale(0.22, 0.65, 0.18);
+    legGeo.scale(0.28, 0.58, 0.24);
     var legL = new THREE.Mesh(legGeo, bodyMat);
-    legL.position.set(-0.32, -1.12, 0);
-    legL.rotation.z = -0.08;
+    legL.position.set(-0.38, -1.20, 0);
+    legL.rotation.z = -0.30;
     group.add(legL);
-    // 右腿
     var legR = new THREE.Mesh(legGeo, bodyMat);
-    legR.position.set(0.32, -1.12, 0);
-    legR.rotation.z = 0.08;
+    legR.position.set(0.38, -1.20, 0);
+    legR.rotation.z = 0.30;
     group.add(legR);
 
-    // 左脚掌
-    var footGeo = new THREE.SphereGeometry(0.28, 32, 32);
-    footGeo.scale(1.15, 0.4, 0.75);
-    var footL = new THREE.Mesh(footGeo, handMat);
-    footL.position.set(-0.38, -1.78, 0.12);
-    footL.rotation.z = -0.1;
+    // 脚（大蹼）
+    var footGeo = new THREE.SphereGeometry(0.30, 32, 32);
+    footGeo.scale(1.45, 0.4, 0.95);
+    var footL = new THREE.Mesh(footGeo, darkMat);
+    footL.position.set(-0.52, -1.76, 0.16);
+    footL.rotation.z = -0.21;
     group.add(footL);
-    // 右脚掌
-    var footR = new THREE.Mesh(footGeo, handMat);
-    footR.position.set(0.38, -1.78, 0.12);
-    footR.rotation.z = 0.1;
+    var footR = new THREE.Mesh(footGeo, darkMat);
+    footR.position.set(0.52, -1.76, 0.16);
+    footR.rotation.z = 0.21;
     group.add(footR);
 
-    // 收藏关键部件供动画使用
+    // 收藏关键部件供动画使用（bellyBase: 肚皮基准 scale，呼吸动画按它缩放）
     group.userData = {
       body: body, belly: belly,
+      bellyBase: belly.scale.clone(),
       eyeL: eyeL, eyeR: eyeR,
       pupilL: pupilL, pupilR: pupilR,
       mouth: mouth,
@@ -187,22 +192,28 @@ var Frog3D = (function () {
 
     var scene = new THREE.Scene();
     var camera = new THREE.PerspectiveCamera(38, w / h, 0.1, 100);
-    camera.position.set(0, 0.3, opts.cameraZ || 4.2);
-    camera.lookAt(0, 0.1, 0);
+    // v1043a: 相机自动适配——按容器宽高比计算距离，保证模型（高约3.4/宽约2.3）尽量占满可视区
+    var FOVT = Math.tan(19 * Math.PI / 180);
+    var needH = 1.80, needW = 1.30; // 模型半高/半宽 + 留白
+    var autoZ = Math.max(needH / FOVT, needW / (FOVT * Math.max(w / h, 0.3)));
+    camera.position.set(0, 0.15, opts.cameraZ || autoZ);
+    camera.lookAt(0, -0.12, 0);
 
-    // 灯光
-    var ambient = new THREE.AmbientLight(0xffffff, 0.65);
+    // 灯光（v1043a: 半球光模拟均匀柔光，整体提亮，避免夜晚场景发黑）
+    var hemi = new THREE.HemisphereLight(0xffffff, 0x9a8c5a, 0.55);
+    scene.add(hemi);
+    var ambient = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambient);
-    var keyLight = new THREE.DirectionalLight(0xfff5e0, 1.1);
+    var keyLight = new THREE.DirectionalLight(0xfff5e0, 1.0);
     keyLight.position.set(3, 5, 4);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.width = 1024;
     keyLight.shadow.mapSize.height = 1024;
     scene.add(keyLight);
-    var fillLight = new THREE.DirectionalLight(0xd4ecff, 0.45);
+    var fillLight = new THREE.DirectionalLight(0xd4ecff, 0.4);
     fillLight.position.set(-3, 2, 2);
     scene.add(fillLight);
-    var rimLight = new THREE.DirectionalLight(0xffe9a0, 0.35);
+    var rimLight = new THREE.DirectionalLight(0xffe9a0, 0.3);
     rimLight.position.set(0, 3, -4);
     scene.add(rimLight);
 
@@ -211,7 +222,7 @@ var Frog3D = (function () {
     var groundMat = new THREE.ShadowMaterial({ opacity: 0.18 });
     var ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -1.95;
+    ground.position.y = -1.92;
     ground.receiveShadow = true;
     scene.add(ground);
 
@@ -249,10 +260,11 @@ var Frog3D = (function () {
       var dt = clock.getDelta();
       inst.time += dt;
 
-      // 待机呼吸（肚皮轻微缩放）
+      // 待机呼吸（肚皮按基准 scale 轻微缩放）
       var belly = frog.userData.belly;
+      var bb = frog.userData.bellyBase;
       var breath = 1 + Math.sin(inst.time * 2.2) * 0.025;
-      belly.scale.set(0.72 * breath, 0.92 * breath, 0.58 * breath);
+      belly.scale.set(bb.x * breath, bb.y * breath, bb.z * breath);
 
       // Q弹动画
       if (inst.squishT > 0) {
