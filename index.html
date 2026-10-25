@@ -283,9 +283,9 @@ try {
   .tabbar button .dot.on { display: block; }
   body.dark .tabbar button .dot { border-color: rgba(40,32,48,.95); }
 
-  .mask { position: fixed; inset: 0; background: rgba(70,40,55,.45); z-index: 111; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .mask { position: fixed; inset: 0; background: rgba(70,40,55,.45); z-index: 121; opacity: 0; pointer-events: none; transition: opacity .2s; }
   .mask.open { opacity: 1; pointer-events: auto; }
-  .sheet { position: fixed; bottom: 0; left: 0; transform: translateY(105%); width: 100%; max-width: none; max-height: 86dvh; overflow-y: auto; background: #fff; border-radius: 22px 22px 0 0; z-index: 112; padding: 18px 18px calc(20px + env(safe-area-inset-bottom)); transition: transform .26s cubic-bezier(.32,.72,.35,1); }
+  .sheet { position: fixed; bottom: 0; left: 0; transform: translateY(105%); width: 100%; max-width: none; max-height: 86dvh; overflow-y: auto; background: #fff; border-radius: 22px 22px 0 0; z-index: 122; padding: 18px 18px calc(20px + env(safe-area-inset-bottom)); transition: transform .26s cubic-bezier(.32,.72,.35,1); }
   .sheet.open { transform: translateY(0); }
   .sheet-head { display: flex; align-items: center; margin-bottom: 14px; }
   .sheet-head h3 { font-size: 16px; font-weight: 700; flex: 1; }
