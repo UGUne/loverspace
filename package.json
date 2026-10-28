@@ -4,11 +4,13 @@
   "description": "恋人空间 - 双人情侣空间（带轻后端实时同步）",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node tests/test27_frog_house.js && node tests/test28_v1060a.js && node tests/test29_unlimited.js && node tests/test30_poop.js"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.1",
     "@vercel/kv": "^3.0.0",
-    "express": "^4.22.3"
+    "express": "^4.22.3",
+    "ws": "^8.18.0"
   }
 }
