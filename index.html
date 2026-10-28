@@ -1162,6 +1162,7 @@ try {
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function loadLocal() {
+    var loadChanged = false;
     try { data = JSON.parse(localStorage.getItem(LS_DATA)); } catch (e) { data = null; }
     if (!data || typeof data !== "object") { try { var bk = JSON.parse(localStorage.getItem("loverspace.backup.v1")); if (bk && bk.data) data = bk.data; } catch (e) {} }
     if (!data || typeof data !== "object") data = clone(DEFAULT);
@@ -1204,7 +1205,7 @@ try {
     else if (data.theme.dark === false) data.theme.dark = "0";
     if (data.theme.dark !== "0" && data.theme.dark !== "1" && data.theme.dark !== "auto") data.theme.dark = "0";
     if (!data.theme.font) data.theme.font = "default";
-    if (data.tree.daily.date !== todayStr()) { data.tree.daily.date = todayStr(); data.tree.daily.acts = { water: [0, 0], feed: [0, 0], play: [0, 0] }; data.tree.daily.claimed = {}; }
+    if (data.tree.daily.date !== todayStr()) { data.tree.daily.date = todayStr(); data.tree.daily.acts = { water: [0, 0], feed: [0, 0], play: [0, 0] }; data.tree.daily.claimed = {}; loadChanged = true; }
     // 浇水日志（用于连续浇树天数）
     if (!data.tree.waterLog || typeof data.tree.waterLog !== "object") data.tree.waterLog = {};
     [0, 1].forEach(function (i) {
@@ -1215,7 +1216,9 @@ try {
     if (!Array.isArray(data.miss)) data.miss = [];
     if (!data._deleted.albums) data._deleted.albums = [];
     if (!data._deleted.treeCards) data._deleted.treeCards = [];
+    return loadChanged;
   }
+  var lastBackupAt = 0;
   function saveLocal() {
     try { localStorage.setItem(LS_DATA, JSON.stringify(data)); }
     catch (e) {
@@ -1224,7 +1227,11 @@ try {
     }
     // 单独存一份深色偏好：开屏脚本在加载完整数据前就能读到，避免粉底闪屏
     try { localStorage.setItem("ls.theme.dark", String(data.theme && data.theme.dark || "0")); } catch (e) {}
-    try { localStorage.setItem("loverspace.backup.v1", JSON.stringify({ ts: Date.now(), data: data })); } catch (e) {}
+    // 完整备份节流：避免每次保存都把整份(可能很大的)数据再串化+写入一遍，显著减少大存档下的
+    // 保存/启动卡顿；60s 内的重复保存跳过备份写入(仅作回退用，稍旧无碍)
+    if (Date.now() - lastBackupAt > 60000) {
+      try { localStorage.setItem("loverspace.backup.v1", JSON.stringify({ ts: Date.now(), data: data })); lastBackupAt = Date.now(); } catch (e) {}
+    }
   }
   var quotaWarnAt = 0;
   // 本地是否有真实内容（防止全新 App 把默认空数据推上云端覆盖真实数据）
@@ -4897,7 +4904,8 @@ try {
   }
   async function bootApp(imported) {
     // imported=true 表示启动时已从分享链接导入过数据（hash 已清），不再 loadLocal 覆盖
-    if (!imported) loadLocal();
+    var bootChanged = false;
+    if (!imported) bootChanged = loadLocal();
     // Supabase 模式启动预检：项目被删/暂停/被墙时一次判定直接降级，不等轮询重试
     if (usingSb()) {
       try {
@@ -4908,8 +4916,10 @@ try {
       localStorage.setItem("ls.backend", "local"); // 总开关停用：规范化旧标记，设置页显示回到内置云端
     }
     // 首屏优先：不 await 云端请求（休眠/冷启动时也不卡启动），同步交给后台 wakeSync 渐进唤醒
-    saveLocal();
     renderAll();
+    // 启动不在首帧前同步落盘：避免对(可能很大的)存档做整份 JSON 串化+双写阻塞首屏；
+    // 仅当 loadLocal 实际改动(迁移/跨天重置)时才延后落盘，正常返回直接跳过——大存档冷启动明显变快
+    if (bootChanged) setTimeout(saveLocal, 600);
     appReady = true;
     if (quotaWarnAt) { toast("本地存储已满，新内容可能保存失败，建议导出备份后清理照片"); quotaWarnAt = 0; }
     renderDots();
