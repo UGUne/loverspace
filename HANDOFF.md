@@ -1,0 +1,102 @@
+# 项目交接文档：恋人空间 / 奶蛙屋（单文件 webapp）
+
+> 给接手本项目的 AI 看：读完本文件即可直接修改 `/workspace/index.html`。改完务必跑第 4 节四套回归。
+
+## 0.5 新沙箱复原指引（重要：本文件已可在任意沙箱 git clone 复原）
+> ⚠️ 网络受限说明（实测）：本沙箱对 github.com 443 端口连接超时、对 Library 上传代理返回 403，**git 推送与资料库上传均不可达**。因此「git clone」流程在受限网络下不可用。兜底传递方式见下方「A. 附件传递」。
+
+**A. 附件传递（网络受限时唯一可靠方式）**：上一个 AI 已把 `index.html + HANDOFF.md + package.json + tests/` 打成 `toolchain_v1066b.zip` 交付。在下一个 AI 的对话里把它作为附件上传，解压到 `/workspace` 即可：
+```
+cd /workspace && unzip -o toolchain_v1066b.zip
+npm install            # 装 ws 等依赖（package.json 已含 ws）
+node tests/test27_frog_house.js   # 确认 v1066a 基线达标（应 18 通过 / 0 失败）
+```
+- zip 内的 `index.html` 即**精确交付版本**（v1066a，1,789,604 字节，`PUSH_BUILD="v1066a"`）。若你手上另有资料库页面（如 1,810,685 字符那份），以本 zip 的 `index.html` 为准覆盖。
+
+**B. git clone（仅当沙箱可访问 github.com 时）**：
+上一任 AI 的交接曾假设「同一沙箱」，但本平台每次新对话通常是**全新沙箱**（`/workspace` 为空、无 `.git`、`/tmp` 无脚本）。请用以下流程在任意沙箱复原完整工具链（不再依赖某个特定沙箱）：
+```
+git clone https://github.com/UGUne/loverspace.git /workspace   # 或 git pull（若已 clone）
+cd /workspace && npm install                                   # 装 ws 等依赖（含测试依赖）
+node tests/test27_frog_house.js                                # 跑回归，确认 v1066a 基线达标
+```
+> 注意：若 `git clone` 报 `Failed to connect to github.com port 443`，说明当前沙箱无外网，请改用上方「A. 附件传递」。
+- 若 `git clone` 报鉴权失败：仓库为私有，需在沙箱配置可访问 GitHub 的凭据；或退而求其次见 §0.6 Q2 的兜底方案（由用户把 `tests/` 内容贴入新沙箱）。
+- 仓库根即为 `/workspace`，`index.html` 在根目录，测试脚本在 `tests/`（脚本硬编码 `file:///workspace/index.html`，所以必须 clone 到 `/workspace`）。
+- `google-chrome` 需在沙箱可用（脚本用 CDP 直连，无需 webdriver）。若缺失：`apt-get install -y chromium` 或用平台提供的浏览器。
+
+## 0.6 对下一个 AI 五问的答复
+**Q1 源码真相来源？** source of truth = git 仓库 `https://github.com/UGUne/loverspace.git`，分支 `master`，HEAD = `index.html`（v1066a，`PUSH_BUILD="v1066a"`，1,789,604 字节，与本沙箱工作文件逐字节一致）。新 AI 改 `/workspace/index.html`，交付物就是它，重新部署/导入资料库时从这个文件来。
+
+**Q2 测试与素材如何转移？** 已解决：test27–30、shots_v1066a、dbg_drag、shot_hint2、gen_foods.py、foods.json 全部版本化进仓库 `tests/`（见 §4）。`git clone` 即带齐。参照截图（视觉基线）不必要——测试脚本断言 DOM 状态而非像素；如需人工目视，`shots_v1066a.js` 会现场重新生成 `/tmp/shots_v1066a/`。兜底：若 clone 不可行，由用户把 `tests/` 目录内容贴入新沙箱 `/workspace/tests/` 即可。
+
+**Q3 环境依赖？** 需 node v22 + `google-chrome` + `ws`（`npm i ws`，已写入 package.json）。**playwright 不需要**（旧文档误提，实际用原生 CDP + ws）。已补「环境准备」到 §0.5 与本文件各处。
+
+**Q4 体积差异（部署页 1,810,685 字符 vs 文档 1,752,181）？** 文档里的 1,752,181 是**删 hug/cheer 常量前的旧估算**，不代表最终文件；本仓库 HEAD 的精确值是 **1,789,604 字节**（已 `wc -c` 核对）。你看到的 1,810,685 字符多半是**资料库/部署页**那份独立产物（可能是打包、或不同构建、或含历史 build 输出），与仓库 HEAD 不是同一文件。`.index.html` 中确有两段推送诊断 `console.log`（约 4725/4736 行：`"=== 推送诊断 ["+PUSH_BUILD+"] "+new Date().toLocaleString()+" ==="`），那是**有意的推送/返回键诊断**，仅 2 行，不是 58k 差异来源。结论：以 `git HEAD` 的 `index.html` 为唯一精确交付版本，重新部署时从它覆盖资料库页面。
+
+**Q5 交付流程适配？** 保持**本地 git 流程**（不是「下载页面→编辑→导入节点」）：`git clone` → 编辑 `/workspace/index.html` → 跑 `tests/` 四套回归 → `git commit && git push` → 由部署环节从推送的 `index.html` 同步到资料库/线上。资料库页面应视为“产物”，由其从仓库生成，不要在资料库里手改。
+
+## 0. 背景
+单文件「恋人空间」web 应用 `/workspace/index.html`，内含养蛙小游戏「奶蛙屋」。最近在迭代奶蛙的姿势帧、拉屎/喂食玩法与拖拽投喂。最新已交付 **v1066a**（commit `f54b3d9`，已 push 到 `origin/master`）。
+
+## 1. 关键约束（务必先读，避免踩坑）
+- **单文件 IIFE 结构**：主逻辑包在 `(function(){...})()` 里，内部函数（`frogPose`、`renderFrogRoom`、`petFeedAnim`…）与常量（`FROG_F_*_B64`、`FROG_FOODS`…）**外部 `evaluate` 不可达**。自动化测试只能：① 用 DOM 事件（点击 / 合成 PointerEvent）驱动；② 必要时注入 base64 覆盖 `img.src`。
+- **`img.src.length` = base64 字符数 + 23**（前缀 `data:image/webp;base64,` 占 23 字符，别记成 22）。测试用 `src.length` 间接判断帧内容。
+- **真实 localStorage key：`loverspace.data.v2`**（JSON，含 `theme`、`tree.pet` 等）。测试用 CDP 直连 `file:///workspace/index.html`，**无需起服务**。
+- **⚠️ CSS 里绝不能用 `//` 注释**！`<style>` 中写 `// xxx` 会把下一条规则的选择器吞成非法选择器，导致整条规则被丢弃且不报错。必须用 `/* */`。这是 v1066a 期间最隐蔽的 bug。
+- **合成拖拽**：`el.dispatchEvent(new PointerEvent('pointerdown'/'pointermove'/'pointerup', {clientX, clientY, pointerId:9, bubbles:true, cancelable:true}))` 能完整驱动拖拽系统（`setPointerCapture` 对合成 pointerId 会抛错但被 try/catch 吞掉，不影响）。
+- **嘴边投放区**：与 `frFoodFly` 终点一致，嘴位于 `#frogBig` 的 **(46%, 13%)**；命中判定 `px∈[0.30,0.62] && py∈[0.02,0.24]`（frogBig 相对坐标）。
+- **`treeCooldown` 用 `>=`**：`return Date.now() - (ts||0) >= hours*3600*1000;`（v1066a 修的并发竞态，别改回 `>`，否则喂食按钮周期性假禁用）。
+- **`poopFloor` 持久化**：地上待收回/待投喂的奶屎数存 `data.tree.pet.poopFloor`，`renderFrogRoom` 时重生，跨房间重渲染不丢失。
+- **历史栈分层**：`openSheet` pushState → 返回先关 sheet 再关房（topLayer 顺序 `frogroom > sheet`）。测试若只开选择器不关，会污染历史栈导致后续断言误判。
+- **先落库再播动画**：`frogFeedStats`（内部会 `renderFrogRoom` 重建 DOM）必须先于张嘴/飞食动画执行，否则重建把动画元素擦掉。
+
+## 2. 当前文件状态（v1066a，commit `f54b3d9`）
+- 体积 **1,789,604 字节**（删 hug/cheer 常量后，已 `wc -c` 核对；旧文档 1,752,181 是删前估算，作废）。文件内 `PUSH_BUILD = "v1066a"`。
+- 文件位置：`/workspace/index.html`（工作区唯一交付物；未跟踪的 `pose_*.png`、`shots_*_/` 是历史素材/截图，按惯例不入库）。
+
+## 3. 奶蛙屋功能现状（已完成）
+| 模块 | 实现 |
+|---|---|
+| 姿势帧 | 仅 `stretch`（举手打招呼）、`hold`（抱肚）两帧：`FROG_F_STRETCH_B64` / `FROG_F_HOLD_B64`。`frogPose(which, ms)`；戳肚皮 `petPoke` 45% 概率触发 |
+| 拉屎 | `frogToiletGo()`（20s 冷却）→ 马桶动画 → 落地 `frogPoopPop(animate)`，**落地不自动消失** |
+| 收回奶屎 | 点地上奶屎 → `collecting` 收回动画 → `poop+1`、徽标刷新、toast |
+| 投喂奶屎 | 拖奶屎到嘴边 → `poopFloor-1` → `frogFeedEffect("poop")` |
+| 喂食选择器 | `openFeedChoice()`：5 张食物卡 +（有库存时）奶屎卡带红色徽标；3 列网格美化 |
+| 手持食物 | `frogSpawnHoldFood(b64, kind)`：选后手持悬浮，**可拖喂也可点按喂** |
+| 通用拖拽 | `makeFeedDraggable(el, opts)`：按下 px 化→移动判拖拽→嘴边虚线提示圈（hot 高亮）→区内=onFeed、区外=弹回、不动=onTap |
+| 食物素材 | `FROG_FOODS = [{name:"草莓",b64:FROG_FOOD_STRAW_B64}, ...]` 共 5 种（草莓/小蛋糕/奶瓶/小青虫/葡萄），PIL 生成 140×140 RGBA webp |
+| 喂食特效 | `frogFeedStats`（growth/cared/hunger=100/lastFed/lvl、save、toast）+ `frogMouthOpen` + squish/happy/hearts |
+| 树屋飞食 | `petFeedAnim(sel)`：树场景也用生成食物图飞入（不再用 emoji） |
+
+## 4. 测试与截图脚本（已版本化到仓库 `tests/`）
+> 注意：脚本用原生 **CDP + `ws`**（非 playwright）。Chrome 用 `--headless=new --remote-debugging-port=926X` 直连，**无需起服务**。依赖：`npm install`（含 `ws`）。
+- `tests/test27_frog_house.js`（18 项）— 蛙屋整体回归
+- `tests/test28_v1060a.js`（9 项）— 姿势帧字节长、闭眼帧干净度（眼周亮度差≤0.5、无白斑）、离场定时器回落
+- `tests/test29_unlimited.js`（5 项）— 喂食/陪玩不限次连续触发
+- `tests/test30_poop.js`（9 项）— 拉屎落地不收回 → 点击收回 → 冷却拒拉；选择器构成 → 选奶屎/食物 → 拖到嘴边 → 饱食度100
+- `tests/shots_v1066a.js` — 6 张截图：`/tmp/shots_v1066a/{01_room,02_feed_sheet,03_hold_food,04_drag_hint,05_poop_floor,06_collected}.png`
+- `tests/dbg_drag.js` / `tests/shot_hint2.js` — 拖拽探针（验证 `.fr-food-hold` 绝对定位 54px、提示圈 parentNode=frogBig、食物中心与提示圈中心重合）
+- 食物图生成：`tests/gen_foods.py` + `tests/foods.json`（草莓 5659 / 小蛋糕 3863 / 奶瓶 2155 / 小青虫 5519 / 葡萄 8511 base64 字符）
+- `tests/README.md` — 运行说明与环境准备
+
+**回归基线（v1066a 达标）**：test27 18/18 + test28 9/9 + test29 5/5 + test30 9/9；7 张视觉截图达标。
+
+## 5. Git 状态
+- 分支 `master`，最新提交 `f54b3d9`（已 push 到 `origin/master`，与 `origin/HEAD` 同步）。
+- 提交信息风格：版本号 + 中文要点（见 `git log` 历史）。每次改动后跑四套测试 → 重拍关键截图 → 提交推送。
+
+## 6. 可能的下一步（仅建议，未做）
+1. **移动端真机/触屏验证**：目前用合成 PointerEvent 测，可补真机触摸手势回归。
+2. **食物种类扩展**：继续用 PIL 加食物图，注意同时更新 `FROG_FOODS` 与选择器渲染。
+3. **多姿势回归**：v1066a 只剩两帧，若用户要求加姿势，注意帧常量 + `frogPose` 白名单 + test28 字节长断言同步更新。
+4. **拖拽体验打磨**：手持食物与落地奶屎纵向已错开（hold top:78% / poop bottom:6%），但同帧若既有手持又有落地奶屎，点击命中需确认无遮挡歧义。
+5. **重构可选**：若后续测试频繁受阻于 IIFE 不可达，可在末尾挂 `window.__DEBUG` 暴露关键函数（仅调试用，不进交付）。
+
+## 7. 改动后的交付流程（请照做）
+1. `git clone https://github.com/UGUne/loverspace.git /workspace`（新沙箱）或 `git pull`（已有），`npm install`。
+2. `Read` `/workspace/index.html` 相关段落（用 Grep 定位函数/常量行号）。
+3. 用 `Edit` 改代码（遵守第 1 节约束，尤其 CSS 注释用 `/* */`）。
+4. 跑回归：`node tests/test27_frog_house.js`、`tests/test28_v1060a.js`、`tests/test29_unlimited.js`、`tests/test30_poop.js`，全部 0 失败。
+5. 必要改动后重拍截图：`node tests/shots_v1066a.js`，用 Read 目视确认无视觉回归。
+6. `git add index.html HANDOFF.md tests/ && git commit && git push`，commit message 用「vXXXXa: 中文要点」格式，末尾附回归结果；部署环节从推送的 `index.html` 同步到资料库/线上。
