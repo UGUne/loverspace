@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/test27_frog_house.js && node tests/test28_v1060a.js && node tests/test29_unlimited.js && node tests/test30_poop.js"
+    "test": "node tests/test27_frog_house.js && node tests/test28_v1060a.js && node tests/test29_unlimited.js && node tests/test30_poop.js && node tests/test31_storage.js"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.1",
