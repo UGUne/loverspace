@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+  <aapt:attr name="android:drawable">
+    <vector
+        android:width="120dp"
+        android:height="109dp"
+        android:viewportWidth="32"
+        android:viewportHeight="29">
+      <group
+          android:name="heart"
+          android:pivotX="16"
+          android:pivotY="14.5">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M16 29S2.5 19.5 2.5 10.8C2.5 5.6 6.4 2 10.6 2 13.4 2 15.6 3.6 16 5.4 16.4 3.6 18.6 2 21.4 2 25.6 2 29.5 5.6 29.5 10.8 29.5 19.5 16 29 16 29z" />
+      </group>
+    </vector>
+  </aapt:attr>
+  <target android:name="heart">
+    <aapt:attr name="android:animation">
+      <set android:ordering="together">
+        <objectAnimator
+            android:propertyName="scaleX"
+            android:duration="1150"
+            android:valueFrom="1"
+            android:valueTo="1.18"
+            android:valueType="floatType"
+            android:repeatCount="infinite"
+            android:repeatMode="reverse" />
+        <objectAnimator
+            android:propertyName="scaleY"
+            android:duration="1150"
+            android:valueFrom="1"
+            android:valueTo="1.18"
+            android:valueType="floatType"
+            android:repeatCount="infinite"
+            android:repeatMode="reverse" />
+      </set>
+    </aapt:attr>
+  </target>
+</animated-vector>
