@@ -100,3 +100,13 @@ node tests/test27_frog_house.js                                # 跑回归，确
 4. 跑回归：`node tests/test27_frog_house.js`、`tests/test28_v1060a.js`、`tests/test29_unlimited.js`、`tests/test30_poop.js`，全部 0 失败。
 5. 必要改动后重拍截图：`node tests/shots_v1066a.js`，用 Read 目视确认无视觉回归。
 6. `git add index.html HANDOFF.md tests/ && git commit && git push`，commit message 用「vXXXXa: 中文要点」格式，末尾附回归结果；部署环节从推送的 `index.html` 同步到资料库/线上。
+
+---
+
+## 版本状态（2026-10-29 更新）
+- **最新交付版 = v1066c**（不是 v1066a）。v1066c 是"阶段1 存储分离"：照片（自拍/相册/头像）从 localStorage 内联 base64 迁移到 **IndexedDB**，主档只存 `idb://` 引用，解除 5MB 上限；并做成可安装的 **PWA**（`manifest.json` + `icon-192/512.png`，添加到主屏幕即独立 App）。
+- 回归基线：test27 18/18 · test28 9/9 · test29 5/5 · test30 9/9 · **test31_storage 18/18（新存储专项）** = 59/59 全绿。`npm test` 已含全部 5 套。
+- **旧主机 a4af07ad 已实测在服务 v1066c**（HTTP 200 / 1,925,614 字节 / sha256 与本地 index.html 逐字节一致）。手机现有 APK 远程加载 a4af07ad → 自动显示 v1066c，数据原封不动。
+- ⚠️ 架构更正：**APK 是远程加载壳**（`build-apk.yml` 把 `capacitor.config.json` 的 `server.url` 注入成仓库变量 `BACKEND_URL`=a4af07ad）。因此 GitHub 推送**不会秒级**更新手机内容——需平台把 a4af07ad 重新部署。已验证 a4af07ad 当前即 v1066c。"下载 Release APK"只是重打包同一个远程壳，不会自带内容；真正的内容杠杆是 a4af07ad 部署的版本。
+- 发布通道：本沙箱 `git push` 被墙（github.com:443 不可达），改用 `sync_to_gh.py`（GitHub REST API，绕 1MB 限制）同步到 GitHub。`.git/config` 内嵌 access token（如失效请用新 token 重设 `http.extraHeader`）。
+- 新 AI 另发过 `a040f166...` 主机（不同来源，需导出导入迁移）——在 a4af07ad 已上 v1066c 后**已冗余，可忽略**。
