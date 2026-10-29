@@ -84,7 +84,7 @@ function httpGet(path) {
 
   var ver = await evaluate("(function(){ var m=document.documentElement.outerHTML.match(/PUSH_BUILD = \"(v\\d+[a-z])\"/); return m?m[1]:'NOT_FOUND' })()");
   console.log("  版本号: " + ver);
-  if (ver === 'v1066e') ok("T0: 版本号 v1066e（单层启动屏：仅保留原生爱心屏）"); else fail('T0', String(ver));
+  if (ver === 'v1066f') ok("T0: 版本号 v1066f（原生层只铺粉底 + 网页朱珊空间启动屏）"); else fail('T0', String(ver));
 
   // T0b: 已登录(本地有房间码)时，<head> 脚本在首帧前打 has-room，CSS 让 roomGate 不渲染——杜绝开屏闪一下创建/加入房间页
   var hasRoom = await evaluate("(function(){ return document.documentElement.classList.contains('has-room') })()");
@@ -92,10 +92,10 @@ function httpGet(path) {
   if (hasRoom && gateHidden) ok("T0b: 已登录首帧即隐藏创建/加入房间页（不闪房间页）");
   else fail("T0b", "hasRoom=" + hasRoom + " gateHidden=" + gateHidden);
 
-  // T0c: 网页层启动屏(bootfx)已彻底移除——冷启动只有原生爱心一层，不再有两层打架
-  var bfxGone = await evaluate("(function(){ return document.getElementById('bootfx') === null; })()");
-  if (bfxGone) ok("T0c: 网页启动层已移除（仅保留原生启动屏）");
-  else fail("T0c", "bootfx 仍存在于 DOM 中");
+  // T0c: 网页层启动屏(bootfx)在 App 就绪后应已收起(display:none),不遮挡界面
+  var bfxHidden = await evaluate("(function(){ var b=document.getElementById('bootfx'); return !!b && getComputedStyle(b).display === 'none'; })()");
+  if (bfxHidden) ok("T0c: 朱珊空间网页启动屏在 App 就绪后已收起（不遮挡）");
+  else fail("T0c", "bootfx 仍可见，可能卡在开屏");
 
   // 打开奶蛙屋
   await evaluate("(function(){ var el=document.querySelector('[data-go=\"tree\"]'); if(el)el.click() })()");
