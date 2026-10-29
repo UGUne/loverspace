@@ -1,7 +1,7 @@
 {
-  "name": "恋人空间 · 奶蛙屋",
-  "short_name": "奶蛙屋",
-  "description": "情侣专属的养蛙小屋",
+  "name": "恋人空间",
+  "short_name": "恋人空间",
+  "description": "恋人空间 · 专属养蛙小屋",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
