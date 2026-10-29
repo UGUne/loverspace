@@ -37,6 +37,8 @@
 | `selfies[]` | `{id, date, who, src, ts}`，`src` 为照片 | `:4303` | ✅ 是 |
 | `albums[].photos[]` | `{id, src, thumb, ts, by}` | `:4360 / :4364 / :4378` | ✅ 是（**最大照片池**，`.photos` 出现 61 次） |
 | `photos[]` | 旧字段，启动时被迁移进 albums | `:1177` | 历史 |
+| `partners[].avatar` | `{name, avatar}`，`avatar` 为图片 | `:1143 / :4492` | ✅ 是（**用户拍照/选相册上传，crop 到 320 的 base64**，参与同步 `:1822`） |
+| `tree.hungPhoto[]` | 树上挂件照片位 `[null,null]` | `:1197 / :4046` | ⚠️ **仅存 photo id 引用**（指向 albums.photos），不存独立 base64，随相册迁移自然跟过 |
 | `messages[]` | `{id, who, text/sticker, ts, read}` | `:2922 / :2953` | ❌ 当前仅文本/贴纸，**无图片字段** |
 
 ### 1.3 同步模型（分离的硬约束）
@@ -46,7 +48,9 @@
 
 ### 1.4 现状结论
 - `indexedDB` 在代码中 **0 次出现**，当前完全未使用。
-- 真正的大体积来自 `selfies` 与 `albums.photos`；`messages` 当前无图片，阶段 1 主要为消息图片**预留路径**。
+- 真正的大体积来自 **`selfies`、`albums.photos` 与 `partners[].avatar`**（三者均为用户上传图片的 base64 内联）；`messages` 当前无图片，阶段 1 主要为消息图片**预留路径**。
+- **非大体积、无需分离**：`theme`（仅 color/dark/font 纯文本枚举，无图）、内置贴纸 `STICKERS`（静态数组，不进主档）、`favicon`（HTML 静态资源，非业务数据）。
+- **引用类、无需单独分离**：`tree.hungPhoto` 与旧字段 `photos[]` 不存独立 base64（前者存 photo id 引用、后者启动即并入相册），随 `albums.photos` 处理即可。
 
 ---
 
@@ -87,7 +91,7 @@
 执行顺序（**不可调换**）：
 
 1. **先备份**：确保 `loverspace.backup.v1` 为迁移前最新完整主档。
-2. **遍历** `selfies` 与 `albums[].photos`，对每条 `src` 为 `data:`/`http(s):` 内联图：
+2. **遍历** `selfies`、`albums[].photos` 与 `partners[].avatar`，对每条 `src`/`avatar` 为 `data:`/`http(s):` 内联图：
    - 写入 IDB（key = 该记录 `id`，`src` 原值），**逐条 `await` 确认写入成功**；
    - 校验：从 IDB 读回比对字节，确认一致。
 3. **改写主档**：所有条目校验通过后，才把主档里对应 `src` 改为 `idb://<id>`，设 `data._storage = 2`。
@@ -175,7 +179,7 @@ App 内置"备份与恢复"（`bkExport`/`bkImport`，见 `index.html:4549–:46
 
 ## 6. 决议（已确认）
 
-1. **范围（已定）**：`selfies` + `albums.photos` **一并纳入**阶段 1（后者是最大照片池，漏掉则容量/冷启动收益打折）；`messages` 当前无图片字段，**仅预留** IDB 路径 + 同步/导出展开逻辑，无真实数据迁移。
+1. **范围（已定）**：`selfies` + `albums.photos` + `partners[].avatar` **一并纳入**阶段 1（三者均为用户上传图片的 base64 内联，avatar 易被忽略但同样参与同步，漏掉则头像仍占主档体积）；`messages` 当前无图片字段，**仅预留** IDB 路径 + 同步/导出展开逻辑，无真实数据迁移。引用类 `tree.hungPhoto`、`photos[]` 不存独立 base64，随 `albums.photos` 处理，不单列。
 2. **messages 预留（已定）**：为消息图片预留 `putBlob/getBlob` 与同步、导出展开路径，暂不迁移真实数据。
 3. **降级策略（已定）**：升级到阶段 1 版本后，明确提示"请勿降级安装旧版 apk"——旧版不识别 `idb://` 引用会裂图。
 4. **备份策略（已定）**：
