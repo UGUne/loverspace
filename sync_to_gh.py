@@ -8,7 +8,7 @@
 #   - 小文件(<1MB): 用 Contents API (PUT /contents/<path>)，自动比较内容，未变则跳过
 #   - index.html(>1MB): 用 Git Data API (blob->tree->commit->ref)，绕过 1MB 限制
 #   - token 取自 git 配置 http.extraHeader（与 git push 同源）
-import base64, glob, json, os, sys, urllib.request
+import base64, glob, hashlib, json, os, re, sys, urllib.request
 
 ROOT = "/workspace"
 AUTH = os.popen("git -C %s config --get http.extraHeader" % ROOT).read().strip()
@@ -87,7 +87,21 @@ def put_large(local, repo_path, msg, force=False):
     print("%s  %-6s %s (%d bytes)" % (st, "LARGE", repo_path, len(data)))
     return st == 200
 
+# 按 index.html 内容哈希注入 sw.js 的 SHELL_VERSION: 推送即触发 SW 缓存更新(保留"推即更新"模型)
+def bump_sw_version():
+    idx = open(ROOT + "/index.html", "rb").read()
+    h = hashlib.sha256(idx).hexdigest()[:10]
+    p = ROOT + "/sw.js"
+    sw = open(p, "r", encoding="utf-8").read()
+    def repl(m):
+        return m.group(1) + h + m.group(2)
+    sw2 = re.sub(r"(const SHELL_VERSION = ')[^']*(';)", repl, sw)
+    if sw2 != sw:
+        open(p, "w", encoding="utf-8").write(sw2)
+    return h
+
 force = "--force" in sys.argv
+sw_ver = bump_sw_version()
 
 # 小文件
 put_small(ROOT + "/HANDOFF.md", "HANDOFF.md", "docs: 同步交接文档 HANDOFF.md")
@@ -99,6 +113,9 @@ for p in sorted(glob.glob(ROOT + "/tests/*")):
 # PWA 资源（manifest + 图标）
 for f in ["manifest.json", "icon-192.png", "icon-512.png"]:
     put_small(ROOT + "/" + f, f, "build: 同步 PWA 资源 " + f)
+
+# Service Worker（app 壳缓存，版本随 index.html 自动联动）
+put_small(ROOT + "/sw.js", "sw.js", "build: 同步 Service Worker 缓存壳 v" + sw_ver)
 
 # 阶段1方案文档（若已在 GitHub 且未变更则自动 SKIP）
 put_small(ROOT + "/STORAGE_PLAN.md", "STORAGE_PLAN.md", "docs: 同步阶段1存储分离方案 STORAGE_PLAN.md")
