@@ -331,6 +331,21 @@ try {
   /* 已登录：首帧前由 <head> 脚本打上 has-room，从源头不画创建/加入房间页，避免开屏闪一下 */
   html.has-room #roomGate { display: none; }
 
+  /* 冷启动网页层启动屏：粉底 + 跳动爱心 + 朱珊空间 艺术字依次浮现；作为原生粉屏的无缝衔接，App 就绪即收起 */
+  #bootfx { position: fixed; inset: 0; z-index: 400; background: linear-gradient(160deg, #ffe3ee 0%, #ffc9dc 55%, #ffb0cc 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; transition: opacity .5s ease; }
+  #bootfx.hide { opacity: 0; pointer-events: none; }
+  .bfx-heart { width: 84px; height: 84px; color: #fff; animation: bfx-beat 1.15s ease-in-out infinite; filter: drop-shadow(0 10px 22px rgba(242,85,141,.45)); }
+  .bfx-heart svg { width: 100%; height: 100%; display: block; }
+  .bfx-title { display: flex; gap: 14px; }
+  .bfx-title span { font-size: 34px; font-weight: 800; letter-spacing: 2px; background: linear-gradient(180deg, #fff 0%, #ff8fab 100%); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: 0 6px 16px rgba(242,85,141,.25); opacity: 0; transform: translateY(18px) scale(.8); animation: bfx-char 0.6s cubic-bezier(.22,1,.36,1) forwards; }
+  .bfx-title span:nth-child(1) { animation-delay: .15s; }
+  .bfx-title span:nth-child(2) { animation-delay: .35s; }
+  .bfx-title span:nth-child(3) { animation-delay: .55s; }
+  .bfx-title span:nth-child(4) { animation-delay: .75s; }
+  @keyframes bfx-beat { 0%,100% { transform: scale(1); } 15% { transform: scale(1.14); } 30% { transform: scale(1); } 45% { transform: scale(1.10); } 60% { transform: scale(1); } }
+  @keyframes bfx-char { to { opacity: 1; transform: translateY(0) scale(1); } }
+  html.dark #bootfx { background: linear-gradient(160deg, #2a2330 0%, #241d2b 55%, #1f1a26 100%); }
+  html.dark .bfx-title span { background: linear-gradient(180deg, #fff 0%, #ff9ec0 100%); -webkit-background-clip: text; background-clip: text; }
   .gate-card { background: #fff; border-radius: 24px; padding: 28px 22px 24px; width: 100%; max-width: 330px; box-shadow: 0 20px 50px rgba(242,85,141,.3); text-align: center; }
   .gate-logo { width: 64px; height: 64px; border-radius: 20px; margin: 0 auto 14px; background: linear-gradient(135deg, #ff8fb5, #f2558d); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(242,85,141,.4); }
   .gate-title { font-size: 22px; font-weight: 800; color: var(--ink); }
@@ -879,6 +894,12 @@ try {
 </style>
 </head>
 <body>
+
+<!-- 冷启动网页层启动屏：粉底 + 跳动爱心 + 朱珊空间 艺术字依次浮现，App 就绪即收起 -->
+<div id="bootfx">
+  <div class="bfx-heart"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></div>
+  <div class="bfx-title"><span>朱</span><span>珊</span><span>空</span><span>间</span></div>
+</div>
 
 <!-- 空间码入口 -->
 <div id="roomGate">
@@ -5092,7 +5113,7 @@ try {
     setTimeout(ensureNotifPerm, 1500);
     wakeSync();
     if (room && !backend.enabled) toast("正在连接云端，连上后自动同步…");
-    notifyBootReady(); // App 已渲染完毕，让原生启动画面收起（原生屏一路保持到此刻，冷启动全程粉色不露白）
+    markReady(); // App 已渲染完毕，收起网页启动屏并通知原生屏收起
   }
 
   $("shareTopBtn").addEventListener("click", doShare);
@@ -5271,11 +5292,13 @@ try {
 
   var hashImported = tryImportFromHash(); // 分享链接导入（成功则返回 true，hash 已清）
   applyEarlyTheme(); // gate 入口页也要跟随深色偏好
-  // 通知原生启动画面收起（仅原生壳内有此桥）：原生屏保持到 App 就绪，然后直接进
-  function notifyBootReady() {
+  // App 就绪：收起网页层启动屏，并通知原生屏收起（原生屏一路保持到此刻，冷启动全程粉色不露白）
+  function markReady() {
+    var b = document.getElementById("bootfx");
+    if (b && !b.dataset.hidden) { b.dataset.hidden = "1"; b.classList.add("hide"); setTimeout(function () { if (b && b.parentNode) b.style.display = "none"; }, 550); }
     try { if (window.LoverspaceNative && window.LoverspaceNative.markBootReady) window.LoverspaceNative.markBootReady(); } catch (e) {}
   }
-  if (room) { $("roomGate").classList.add("hide"); bootApp(hashImported); } else { bindGate(); notifyBootReady(); }
+  if (room) { $("roomGate").classList.add("hide"); bootApp(hashImported); } else { bindGate(); markReady(); }
   // ===== 移动端返回键：子界面优先关闭，根界面两次返回才退出 =====
   var lastBack = 0, suppressPopUntil = 0;
   function topLayer() {
