@@ -32,9 +32,16 @@ def api(method, url, data=None):
             return e.code, {}
 
 def get_remote(path):
-    st, body = api("GET", C_BASE + path)
-    if st == 200:
-        return base64.b64decode(body["content"]), body.get("sha")
+    last = None
+    for _ in range(3):
+        try:
+            st, body = api("GET", C_BASE + path)
+            if st == 200:
+                return base64.b64decode(body["content"]), body.get("sha")
+            return None, None
+        except Exception as e:
+            last = e
+            import time; time.sleep(1)
     return None, None
 
 def put_small(local, repo_path, msg):
@@ -93,8 +100,11 @@ for p in sorted(glob.glob(ROOT + "/tests/*")):
 for f in ["manifest.json", "icon-192.png", "icon-512.png"]:
     put_small(ROOT + "/" + f, f, "build: 同步 PWA 资源 " + f)
 
+# 阶段1方案文档（若已在 GitHub 且未变更则自动 SKIP）
+put_small(ROOT + "/STORAGE_PLAN.md", "STORAGE_PLAN.md", "docs: 同步阶段1存储分离方案 STORAGE_PLAN.md")
+
 # 大文件 index.html（Git Data API 绕过 1MB 限制）
-put_large(ROOT + "/index.html", "index.html", "feat: 同步 index.html", force)
+put_large(ROOT + "/index.html", "index.html", "feat(storage): 阶段1 IndexedDB 分离照片存储 v1066c", force)
 
 # 脚本自身（自举，未变则 SKIP）
 put_small(ROOT + "/sync_to_gh.py", "sync_to_gh.py", "build: 同步 sync_to_gh.py")
