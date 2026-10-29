@@ -113,3 +113,4 @@ node tests/test27_frog_house.js                                # 跑回归，确
 - ⚠️ 架构更正：**APK 是远程加载壳**（`build-apk.yml` 把 `capacitor.config.json` 的 `server.url` 注入成仓库变量 `BACKEND_URL`=a4af07ad）。因此 GitHub 推送**不会秒级**更新手机内容——需平台把 a4af07ad 重新部署。已验证 a4af07ad 当前即 v1066c。"下载 Release APK"只是重打包同一个远程壳，不会自带内容；真正的内容杠杆是 a4af07ad 部署的版本。
 - 发布通道：本沙箱 `git push` 被墙（github.com:443 不可达），改用 `sync_to_gh.py`（GitHub REST API，绕 1MB 限制）同步到 GitHub。`.git/config` 内嵌 access token（如失效请用新 token 重设 `http.extraHeader`）。
 - 新 AI 另发过 `a040f166...` 主机（不同来源，需导出导入迁移）——在 a4af07ad 已上 v1066c 后**已冗余，可忽略**。
+- **原生闪屏 APK 已发布（2026-10-29）**:`build-apk.yml` 触发构建(run `40867852678`,`success`),产物 `app-release.apk`(5.9MB,Release 签名=与旧版同密钥)。已建 GitHub Release **`apk-v1066d`**:https://github.com/UGUne/loverspace/releases/tag/apk-v1066d(APK 直链 `.../download/apk-v1066d/app-release.apk`)。**同签名 → 用户可直接覆盖安装,无需卸载,本机数据无损**;仅当系统报"签名不一致"才需先卸载(卸载前请 App 内「导出备份」)。`BACKEND_URL` 仓库变量仍为 a4af07ad,新包连现有后端与数据,无需重部署主机。
