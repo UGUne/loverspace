@@ -13,8 +13,8 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">#ffa3c0</item>
-        <!-- Android 12+ 系统启动画面：粉色底 + 跳动的爱心（AVD 缩放脉动），与网页动画屏无缝衔接 -->
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/avd_heart_beat</item>
+        <!-- 原生层只留干净粉底：中心图标改为透明占位，避免系统蒙版裁切出难看的白心；真正的启动动画交给网页层(朱珊空间) -->
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_blank</item>
         <item name="android:windowSplashScreenBackground">#ffa3c0</item>
         <item name="android:windowSplashScreenAnimationDuration">1000</item>
         <item name="android:windowSplashScreenBrandingImage">@null</item>
