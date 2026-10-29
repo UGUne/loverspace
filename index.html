@@ -26,6 +26,8 @@ try {
   if (t === "1" || t === "true" || (t === "auto" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
     document.documentElement.classList.add("dark");
   }
+  // 已登录(本地存过房间码)时,首帧前标记 has-room,让 CSS 直接不画创建/加入房间页,消除开屏闪一下该页
+  try { if ((localStorage.getItem("loverspace.room") || "").trim()) document.documentElement.classList.add("has-room"); } catch (e) {}
 } catch (e) {}
 </script>
 <style>
@@ -326,6 +328,8 @@ try {
 
   #roomGate { position: fixed; inset: 0; z-index: 300; background: linear-gradient(160deg, #ffd6e5, #ffb0cc); display: flex; align-items: center; justify-content: center; padding: 24px; }
   #roomGate.hide { display: none; }
+  /* 已登录：首帧前由 <head> 脚本打上 has-room，从源头不画创建/加入房间页，避免开屏闪一下 */
+  html.has-room #roomGate { display: none; }
   .gate-card { background: #fff; border-radius: 24px; padding: 28px 22px 24px; width: 100%; max-width: 330px; box-shadow: 0 20px 50px rgba(242,85,141,.3); text-align: center; }
   .gate-logo { width: 64px; height: 64px; border-radius: 20px; margin: 0 auto 14px; background: linear-gradient(135deg, #ff8fb5, #f2558d); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(242,85,141,.4); }
   .gate-title { font-size: 22px; font-weight: 800; color: var(--ink); }
@@ -4920,7 +4924,7 @@ try {
     });
     $("stLeave").addEventListener("click", function () {
       openSheet("切换空间？", '<div class="empty-tip" style="padding:6px 0 16px">将断开当前空间。重新打开页面可创建或加入新空间。</div><button class="primary-btn" id="leaveYes">退出当前空间</button><button class="ghost-btn" id="leaveNo">取消</button>');
-      $("leaveYes").addEventListener("click", function () { localStorage.removeItem(LS_ROOM); clearJPushAlias(); toast("已退出，刷新页面可换空间"); closeSheet(); });
+      $("leaveYes").addEventListener("click", function () { localStorage.removeItem(LS_ROOM); document.documentElement.classList.remove("has-room"); clearJPushAlias(); toast("已退出，刷新页面可换空间"); closeSheet(); });
       $("leaveNo").addEventListener("click", closeSheet);
     });
     // 毁灭性操作「清空全部数据」的隐蔽入口：长按设置页最底部的版本号 1.2 秒才弹出确认
