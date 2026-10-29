@@ -86,6 +86,12 @@ function httpGet(path) {
   console.log("  版本号: " + ver);
   if (ver === 'v1066d') ok("T0: 版本号 v1066d（启动优化 + Service Worker 缓存壳）"); else fail('T0', String(ver));
 
+  // T0b: 已登录(本地有房间码)时，<head> 脚本在首帧前打 has-room，CSS 让 roomGate 不渲染——杜绝开屏闪一下创建/加入房间页
+  var hasRoom = await evaluate("(function(){ return document.documentElement.classList.contains('has-room') })()");
+  var gateHidden = await evaluate("(function(){ var g=document.getElementById('roomGate'); return !!g && getComputedStyle(g).display === 'none' })()");
+  if (hasRoom && gateHidden) ok("T0b: 已登录首帧即隐藏创建/加入房间页（不闪房间页）");
+  else fail("T0b", "hasRoom=" + hasRoom + " gateHidden=" + gateHidden);
+
   // 打开奶蛙屋
   await evaluate("(function(){ var el=document.querySelector('[data-go=\"tree\"]'); if(el)el.click() })()");
   await sleep(1800);
