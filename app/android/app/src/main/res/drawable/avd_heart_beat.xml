@@ -10,7 +10,9 @@
       <group
           android:name="heart"
           android:pivotX="16"
-          android:pivotY="14.5">
+          android:pivotY="14.5"
+          android:scaleX="0.55"
+          android:scaleY="0.55">
         <path
             android:fillColor="#FFFFFF"
             android:pathData="M16 29S2.5 19.5 2.5 10.8C2.5 5.6 6.4 2 10.6 2 13.4 2 15.6 3.6 16 5.4 16.4 3.6 18.6 2 21.4 2 25.6 2 29.5 5.6 29.5 10.8 29.5 19.5 16 29 16 29z" />
@@ -23,16 +25,16 @@
         <objectAnimator
             android:propertyName="scaleX"
             android:duration="1150"
-            android:valueFrom="1"
-            android:valueTo="1.18"
+            android:valueFrom="0.55"
+            android:valueTo="0.64"
             android:valueType="floatType"
             android:repeatCount="infinite"
             android:repeatMode="reverse" />
         <objectAnimator
             android:propertyName="scaleY"
             android:duration="1150"
-            android:valueFrom="1"
-            android:valueTo="1.18"
+            android:valueFrom="0.55"
+            android:valueTo="0.64"
             android:valueType="floatType"
             android:repeatCount="infinite"
             android:repeatMode="reverse" />
