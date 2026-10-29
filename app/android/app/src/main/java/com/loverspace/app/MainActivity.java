@@ -12,13 +12,23 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import org.json.JSONObject;
 import cn.jpush.android.api.JPushInterface;
+import androidx.core.splashscreen.SplashScreen;
 
 public class MainActivity extends BridgeActivity {
   // 高重要性通知渠道：极光推送指定该渠道时以「顶部横幅」形式弹出（IMPORTANCE_DEFAULT 只在通知栏躺着）。
   // 服务端 /api/push/notify 的 notification.android.channel_id 必须与此一致。
   public static final String CHANNEL_MSG = "ls_message";
+  // 冷启动画面「保持」标志：网页启动完成（bootApp 渲染完毕）后置 true，原生启动画面随即收起。
+  // 用 volatile 保证 JS 桥线程对主线程轮询(setKeepOnScreenCondition)的可见性。
+  private static volatile boolean sBootReady = false;
   @Override
   public void onCreate(Bundle savedInstanceState) {
+    // 激活 windowSplashScreen*（styles.xml 配置的粉底 + 跳动爱心），使冷启动第一帧即粉色启动画面。
+    // setKeepOnScreenCondition 让原生启动画面保持到网页就绪，消除「原生屏淡出 → 网页粉屏」之间的露白缝隙。
+    // 6 秒超时兜底：即便网页远程加载失败，也不会永久卡在启动画面。
+    SplashScreen splash = SplashScreen.installSplashScreen(this);
+    splash.setKeepOnScreenCondition(() -> !sBootReady);
+    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> sBootReady = true, 6000);
     super.onCreate(savedInstanceState);
     // 把 WebView 画布底色设为与启动图一致的粉色，避免系统启动画面淡出后
     // 在 HTML 粉色启动图绘制出来之前闪一下白色
@@ -93,6 +103,10 @@ public class MainActivity extends BridgeActivity {
     // 按「源（scheme://host[:port]）」比较而非整串前缀：容忍末尾斜杠/路径差异，并允许网关把 http 强跳 https 后的同源访问。
     private static String[] ALLOWED_ORIGINS = null;
     LsNative(Context c, android.app.Activity a, android.webkit.WebView w) { ctx = c; act = a; wv = w; }
+    // 网页启动完成（bootApp 渲染完毕）时由前端调用，通知原生启动画面收起。
+    // 原生屏因此一路保持到 App 真正就绪，冷启动全程粉色跳动爱心、不露白。
+    @JavascriptInterface
+    public void markBootReady() { sBootReady = true; }
     private static String originOf(String url) {
       if (url == null) return null;
       java.util.regex.Matcher m = java.util.regex.Pattern
