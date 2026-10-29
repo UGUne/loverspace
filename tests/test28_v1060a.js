@@ -92,10 +92,10 @@ function httpGet(path) {
   if (hasRoom && gateHidden) ok("T0b: 已登录首帧即隐藏创建/加入房间页（不闪房间页）");
   else fail("T0b", "hasRoom=" + hasRoom + " gateHidden=" + gateHidden);
 
-  // T0c: 网页层启动过渡(bootfx)已彻底移除——启动画面只由原生层负责，避免"原生屏→网页屏"两次闪
-  var bfxGone = await evaluate("(function(){ return document.getElementById('bootfx') === null; })()");
-  if (bfxGone) ok("T0c: 网页启动过渡层 bootfx 已移除（启动画面仅原生一层）");
-  else fail("T0c", "bootfx 仍存在于页面中");
+  // T0c: 网页层启动屏(bootfx)在 App 就绪后应已收起(display:none),不遮挡界面
+  var bfxHidden = await evaluate("(function(){ var b=document.getElementById('bootfx'); return !!b && getComputedStyle(b).display === 'none'; })()");
+  if (bfxHidden) ok("T0c: 网页启动屏在 App 就绪后已收起（不遮挡）");
+  else fail("T0c", "bootfx 仍可见，可能卡在开屏");
 
   // 打开奶蛙屋
   await evaluate("(function(){ var el=document.querySelector('[data-go=\"tree\"]'); if(el)el.click() })()");
