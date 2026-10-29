@@ -13,9 +13,10 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">#ffa3c0</item>
-        <!-- 原生层只留干净粉底：中心图标改为透明占位，避免系统蒙版裁切出难看的白心；真正的启动动画交给网页层(朱珊空间) -->
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_blank</item>
+        <!-- 原生启动屏：粉底 + 居中爱心(AVD,已缩进蒙版不裁切,App 主色脉动) + 底部「朱珊空间」文字；网页不再画启动层 -->
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/avd_heart_beat</item>
         <item name="android:windowSplashScreenBackground">#ffa3c0</item>
+        <item name="android:windowSplashScreenBrandingImage">@drawable/splash_brand</item>
         <item name="android:windowSplashScreenAnimationDuration">1000</item>
         <item name="android:windowSplashScreenBrandingImage">@null</item>
         <!-- 旧版 Android 冷启动窗口底色，同样用粉色避免白闪 -->
