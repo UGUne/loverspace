@@ -89,5 +89,12 @@ for p in sorted(glob.glob(ROOT + "/tests/*")):
     if os.path.isfile(p):
         put_small(p, "tests/" + os.path.basename(p), "test: 同步 " + os.path.basename(p))
 
+# PWA 资源（manifest + 图标）
+for f in ["manifest.json", "icon-192.png", "icon-512.png"]:
+    put_small(ROOT + "/" + f, f, "build: 同步 PWA 资源 " + f)
+
 # 大文件 index.html（Git Data API 绕过 1MB 限制）
 put_large(ROOT + "/index.html", "index.html", "feat: 同步 index.html", force)
+
+# 脚本自身（自举，未变则 SKIP）
+put_small(ROOT + "/sync_to_gh.py", "sync_to_gh.py", "build: 同步 sync_to_gh.py")
