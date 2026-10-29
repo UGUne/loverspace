@@ -28,8 +28,6 @@ try {
   }
   // 已登录(本地存过房间码)时,首帧前标记 has-room,让 CSS 直接不画创建/加入房间页,消除开屏闪一下该页
   try { if ((localStorage.getItem("loverspace.room") || "").trim()) document.documentElement.classList.add("has-room"); } catch (e) {}
-  // 缓存命中(已有 Service Worker 接管本页) → 跳过浅粉动态开屏，秒进；首次冷启动(需拉 1.9MB)才播放动画
-  try { if (navigator.serviceWorker && navigator.serviceWorker.controller) document.documentElement.classList.add("bootfx-skip"); } catch (e) {}
 } catch (e) {}
 </script>
 <style>
@@ -333,10 +331,9 @@ try {
   /* 已登录：首帧前由 <head> 脚本打上 has-room，从源头不画创建/加入房间页，避免开屏闪一下 */
   html.has-room #roomGate { display: none; }
 
-  /* 冷启动浅粉动态开屏：盖住远程壳拉取 1.9MB 的空窗；缓存命中(SW 已接管)时由 html.bootfx-skip 直接跳过 */
+  /* 冷启动浅粉动态开屏：作为原生启动画面与网页内容之间的衔接屏（原生不可用时也独立作为启动画面）。始终显示，直到 bootApp 渲染完毕调用 hideBootFx 收起。 */
   #bootfx { position: fixed; inset: 0; z-index: 400; background: linear-gradient(160deg, #fff1f6 0%, #ffe3ee 45%, #ffd6e5 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; transition: opacity .5s ease; }
   #bootfx.hide { opacity: 0; pointer-events: none; }
-  html.bootfx-skip #bootfx { display: none; }
   .bfx-heart { width: 76px; height: 76px; color: #ff5e93; animation: bfx-beat 1.15s ease-in-out infinite; filter: drop-shadow(0 8px 18px rgba(255,94,147,.35)); }
   .bfx-heart svg { width: 100%; height: 100%; display: block; }
   .bfx-name { font-size: 20px; font-weight: 700; letter-spacing: 4px; color: #e85a86; animation: bfx-fade 1.6s ease-in-out infinite; }
@@ -899,7 +896,7 @@ try {
 </head>
 <body>
 
-<!-- 冷启动浅粉动态开屏（跳动爱心 + 恋人空间 + 加载点），App 就绪即淡出；html.bootfx-skip 时跳过 -->
+<!-- 冷启动浅粉动态开屏（跳动爱心 + 恋人空间 + 加载点），App 就绪即淡出 -->
 <div id="bootfx">
   <div class="bfx-heart"><svg viewBox="0 0 32 29" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M16 29S2.5 19.5 2.5 10.8C2.5 5.6 6.4 2 10.6 2 13.4 2 15.6 3.6 16 5.4 16.4 3.6 18.6 2 21.4 2 25.6 2 29.5 5.6 29.5 10.8 29.5 19.5 16 29 16 29z"/></svg></div>
   <div class="bfx-name">恋 人 空 间</div>
@@ -5304,6 +5301,8 @@ try {
     b.dataset.hidden = "1";
     b.classList.add("hide");
     setTimeout(function () { if (b && b.parentNode) b.style.display = "none"; }, 550);
+    // 通知原生启动画面收起（仅原生壳内有此桥）：原生屏一路保持到此刻，冷启动全程粉屏不露白
+    try { if (window.LoverspaceNative && window.LoverspaceNative.markBootReady) window.LoverspaceNative.markBootReady(); } catch (e) {}
   }
   if (room) { $("roomGate").classList.add("hide"); bootApp(hashImported); } else { bindGate(); hideBootFx(); }
   setTimeout(hideBootFx, 4500); // 兜底：任何异常都不让开屏卡在屏幕上
