@@ -1413,13 +1413,13 @@ try {
     if (r.data.enc === 1) {
       if (!subtle || !encPwd) { askPassword(); return Promise.resolve(false); }
       return decryptData(r.data).then(function (d) {
-        if (d && d.partners) { data = merge(data, d); backend.ts = r.ts || 0; detectNewContent(); return true; }
+        if (d && d.partners) { data = merge(data, d); backend.ts = r.ts || 0; detectNewContent(); return ensureIDBStorage(data).then(function () { return true; }); }
         return false;
       }).catch(function () { askPassword("解锁失败，密码好像不对"); return false; });
     }
     data = merge(data, r.data); backend.ts = r.ts || 0;
     detectNewContent();
-    return Promise.resolve(true);
+    return ensureIDBStorage(data).then(function () { return true; });
   }
 
   // ===== App 本地通知（需 Capacitor 本地通知插件；网页版没有 Capacitor 时静默降级）=====
@@ -1691,10 +1691,12 @@ try {
     saveLocal();
     // 与 pushLocal 同样的守卫：本机存储被清/损坏又连不上云端时，避免近乎空的数据覆盖云端真实数据
     if (backend.enabled && room && hasRealContent()) {
-      var payloadP = (encPwd && subtle) ? encryptData(data).catch(function () { return null; }) : Promise.resolve(data);
-      payloadP.then(function (payload) {
-        if (!payload) return;
-        roomPut(room, payload, data._updated).then(function (r) { if (r && r.ts) backend.ts = r.ts; });
+      dataToWire(data).then(function (wire) {
+        var payloadP = (encPwd && subtle) ? encryptData(wire).catch(function () { return null; }) : Promise.resolve(wire);
+        payloadP.then(function (payload) {
+          if (!payload) return;
+          roomPut(room, payload, data._updated).then(function (r) { if (r && r.ts) backend.ts = r.ts; });
+        });
       });
     }
   }
@@ -1702,10 +1704,12 @@ try {
   function pushLocal() {
     if (!backend.enabled || !room) return;
     if (!hasRealContent() && (backend.ts || 0) > 0) return;
-    var payloadP = (encPwd && subtle) ? encryptData(data).catch(function () { return null; }) : Promise.resolve(data);
-    payloadP.then(function (payload) {
-      if (!payload) return;
-      roomPut(room, payload, data._updated).then(function (r) { if (r && r.ts) backend.ts = r.ts; });
+    dataToWire(data).then(function (wire) {
+      var payloadP = (encPwd && subtle) ? encryptData(wire).catch(function () { return null; }) : Promise.resolve(wire);
+      payloadP.then(function (payload) {
+        if (!payload) return;
+        roomPut(room, payload, data._updated).then(function (r) { if (r && r.ts) backend.ts = r.ts; });
+      });
     });
   }
   // 立即同步：先拉云端合并（消息/照片按 id 并集），再把本地真实数据推上去。用于把只存在本机的数据补同步到云端。
@@ -1998,7 +2002,7 @@ try {
   function toast(msg) { var t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove("show"); }, 1800); }
 
   function closeSheetUI() { $("sheet").classList.remove("open"); $("mask").classList.remove("open"); }
-  function openSheet(title, html) { $("sheetTitle").textContent = title; $("sheetBody").innerHTML = html; $("sheet").classList.add("open"); $("mask").classList.add("open"); $("sheet").scrollTop = 0; history.pushState({ app: 1 }, ""); }
+  function openSheet(title, html) { $("sheetTitle").textContent = title; $("sheetBody").innerHTML = html; $("sheet").classList.add("open"); $("mask").classList.add("open"); $("sheet").scrollTop = 0; history.pushState({ app: 1 }, ""); requestAnimationFrame(function () { try { hydrateIdbImages($("sheetBody")); } catch (e) {} }); }
   // 关闭弹窗：弹窗已打开时回退一层历史（与 openSheet 压入的层级对应），否则无操作。
   // 这样弹窗的关闭完全依赖“进入时压入的历史”，不再依赖 popstate 里补压，移动端更稳健。
   function closeSheet() { if ($("sheet").classList.contains("open")) history.back(); }
@@ -2091,13 +2095,21 @@ try {
 
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
-  // 图片 URL 白名单：仅放行 http(s) 与 data:image。防存储型 XSS——恶意 src 会经云端同步/分享链接/备份文件在对方设备上执行
+  // 图片 URL 白名单：仅放行 http(s)、data:image 与 idb://（本机 IndexedDB 引用，安全）。防存储型 XSS
   function sanitizeUrl(u) {
     u = String(u == null ? "" : u).trim();
-    return /^(https?:\/\/|data:image\/)/i.test(u) ? u : "";
+    return /^(https?:\/\/|data:image\/|idb:\/\/)/i.test(u) ? u : "";
   }
-  // 渲染用：先清洗再转义，双保险
-  function imgSrc(u) { return esc(sanitizeUrl(u)); }
+  // 渲染用：先清洗再转义，双保险。idb:// 命中缓存则同步给出真实图(零白屏)，否则返回透明占位交由 hydrate 异步补图
+  function imgSrc(u) {
+    u = sanitizeUrl(u);
+    if (u && u.indexOf("idb://") === 0) {
+      var _id = u.slice(6);
+      if (idbCache[_id]) return esc(idbCache[_id]);
+      return "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+    }
+    return esc(u);
+  }
   // 清洗整份数据里的图片 URL 字段（导入备份/分享链接时用，防止历史或恶意数据带毒）
   function sanitizeDataUrls(d) {
     if (!d || typeof d !== "object") return d;
@@ -2111,6 +2123,138 @@ try {
   }
   function b64encode(str) { var b = new TextEncoder().encode(str), s = ""; for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return btoa(s); }
   function b64decode(x) { var s = atob(x), b = []; for (var i = 0; i < s.length; i++) b.push(s.charCodeAt(i)); return new TextDecoder().decode(new Uint8Array(b)); }
+
+  // ===== 阶段1：照片大体积二进制分离到 IndexedDB（解除 localStorage 5MB 上限 + 冷启动提速）=====
+  // 存储态：主档照片字段存 "idb://<id>" 引用；真实 base64 存 loverspace-blobs 库的 blobs(store, keyPath=id)。
+  // 线上/备份态：始终展开为完整 base64（dataToWire），保证旧版/对方/导入导出无损。
+  var IDB_NAME = "loverspace-blobs", IDB_VER = 1, idbDB = null, idbReady = false;
+  var idbCache = {}; // id -> base64（写入/迁移时预热，渲染可同步命中避免白屏）
+  function openBlobDB() {
+    return new Promise(function (res, rej) {
+      if (idbDB) return res(idbDB);
+      if (!window.indexedDB) return rej(new Error("no-indexedDB"));
+      var rq = indexedDB.open(IDB_NAME, IDB_VER);
+      rq.onupgradeneeded = function (e) { var db = e.target.result; if (!db.objectStoreNames.contains("blobs")) db.createObjectStore("blobs", { keyPath: "id" }); };
+      rq.onsuccess = function (e) { idbDB = e.target.result; idbReady = true; res(idbDB); };
+      rq.onerror = function (e) { rej(e.target.error || new Error("idb-open-fail")); };
+    });
+  }
+  function putBlob(rec) {
+    return openBlobDB().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction("blobs", "readwrite");
+        tx.objectStore("blobs").put(rec);
+        tx.oncomplete = function () { res(rec); };
+        tx.onerror = function () { rej(tx.error); };
+      });
+    });
+  }
+  function getBlob(id) {
+    return openBlobDB().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction("blobs", "readonly");
+        var rq = tx.objectStore("blobs").get(id);
+        rq.onsuccess = function () { res(rq.result || null); };
+        rq.onerror = function () { rej(rq.error); };
+      });
+    }).catch(function () { return null; });
+  }
+  function deleteBlob(id) {
+    return openBlobDB().then(function (db) {
+      return new Promise(function (res) {
+        var tx = db.transaction("blobs", "readwrite");
+        tx.objectStore("blobs").delete(id);
+        tx.oncomplete = function () { res(); };
+        tx.onerror = function () { res(); };
+      });
+    }).catch(function () {});
+  }
+  function clearAllBlobs() {
+    return openBlobDB().then(function (db) {
+      return new Promise(function (res) {
+        var tx = db.transaction("blobs", "readwrite");
+        tx.objectStore("blobs").clear();
+        tx.oncomplete = function () { idbCache = {}; res(); };
+        tx.onerror = function () { res(); };
+      });
+    }).catch(function () {});
+  }
+  // 是否内联 base64 图片（这类才需搬进 IDB）；/uploads/ 与 http(s) 链接是引用，体积很小，保留
+  function isInlinePhoto(u) { return typeof u === "string" && /^data:image\//i.test(u); }
+  function isIdbRef(u) { return typeof u === "string" && u.indexOf("idb://") === 0; }
+  // 新写入照片：把内联 base64 存进 IDB 并返回 "idb://<id>"；引用类(链接/服务器图)原样返回；IDB 不可用时退回内联(优雅降级)
+  function storeInline(src, kind) {
+    if (!isInlinePhoto(src)) return Promise.resolve(src);
+    if (!window.indexedDB) return Promise.resolve(src);
+    return putBlob({ id: uid(), kind: kind || "auto", src: src, ts: Date.now() })
+      .then(function (rec) { idbCache[rec.id] = src; return "idb://" + rec.id; })
+      .catch(function () { return src; });
+  }
+  // 取出 idb:// 引用的真实 base64（同步命中缓存，否则异步取 IDB）
+  function derefImg(ref) {
+    if (isIdbRef(ref)) {
+      var _id = ref.slice(6);
+      if (idbCache[_id]) return Promise.resolve(idbCache[_id]);
+      return getBlob(_id).then(function (b) { return (b && b.src) ? (idbCache[_id] = b.src) : ref; }).catch(function () { return ref; });
+    }
+    return Promise.resolve(ref);
+  }
+  // 把主档里所有内联 base64 照片搬进 IDB，改写为 idb:// 引用。幂等、单条失败不阻断、绝不先删源。
+  function ensureIDBStorage(d) {
+    var jobs = [];
+    function collect(obj, key) {
+      if (obj && typeof obj === "object" && isInlinePhoto(obj[key])) {
+        var _val = obj[key];
+        jobs.push(function () {
+          return putBlob({ id: uid(), kind: "auto", src: _val, ts: Date.now() })
+            .then(function (rec) { idbCache[rec.id] = _val; obj[key] = "idb://" + rec.id; })
+            .catch(function () {}); // 单条失败：保留原内联，不阻断其余
+        });
+      }
+    }
+    (d.selfies || []).forEach(function (s) { collect(s, "src"); });
+    (d.albums || []).forEach(function (a) { (a.photos || []).forEach(function (p) { collect(p, "src"); collect(p, "thumb"); }); });
+    (d.partners || []).forEach(function (p) { collect(p, "avatar"); });
+    (d.miss || []).forEach(function (m) { collect(m, "src"); });
+    return jobs.reduce(function (p, j) { return p.then(j); }, Promise.resolve()).then(function () {
+      if (idbReady) d._storage = 2; // 仅 IDB 可用时标已迁移，否则留待下回重试（避免误标导致不再重试）
+      return d;
+    });
+  }
+  // 启动迁移：先刷新完整备份(迁移前快照)，再把内联照片搬进 IDB；已迁移(_storage===2)直接跳过
+  function migrateToIDB() {
+    if (data && data._storage === 2) return Promise.resolve(data);
+    try { localStorage.setItem("loverspace.backup.v1", JSON.stringify({ ts: Date.now(), data: data })); } catch (e) {}
+    return ensureIDBStorage(data);
+  }
+  // 线上/备份态：把 idb:// 展开为真实 base64（深拷贝后替换，绝不改动本地 data）
+  function dataToWire(d) {
+    var _inline = JSON.parse(JSON.stringify(d || {}));
+    var _refs = [];
+    function _find(obj, key) { if (isIdbRef(obj[key])) _refs.push({ t: obj, k: key, id: obj[key].slice(6) }); }
+    (_inline.selfies || []).forEach(function (s) { _find(s, "src"); });
+    (_inline.albums || []).forEach(function (a) { (a.photos || []).forEach(function (p) { _find(p, "src"); _find(p, "thumb"); }); });
+    (_inline.partners || []).forEach(function (p) { _find(p, "avatar"); });
+    (_inline.miss || []).forEach(function (m) { _find(m, "src"); });
+    if (!_refs.length) return Promise.resolve(_inline);
+    return Promise.all(_refs.map(function (r) {
+      return getBlob(r.id).then(function (b) { if (b && b.src) r.t[r.k] = b.src; });
+    })).then(function () { return _inline; });
+  }
+  // 删除照片/自拍时同步清掉 IDB 里的 blob（避免孤儿膨胀）；同时清缓存
+  function purgeBlobRef(ref) { if (isIdbRef(ref)) { var _id = ref.slice(6); delete idbCache[_id]; deleteBlob(_id); } }
+  // 渲染补图：把任何仍带 idb:// 的 <img> 异步解析为真实图片（缓存命中的已在 imgSrc 同步给出，这里兜底）
+  function hydrateIdbImages(root) {
+    root = root || document;
+    if (!root || !root.querySelectorAll) return;
+    var _imgs = root.querySelectorAll('img[src^="idb://"]');
+    Array.prototype.forEach.call(_imgs, function (img) {
+      var _id = img.getAttribute("src").slice(6);
+      if (img.__idb === _id) return;
+      img.__idb = _id;
+      getBlob(_id).then(function (b) { if (b && b.src) { img.__idb = _id; img.src = b.src; } }).catch(function () {});
+    });
+  }
 
   function loveDays() {
     if (!data.startedDate) return 0;
@@ -2495,6 +2639,7 @@ try {
     document.title = data.spaceName || "恋人空间";
     $("barTitle").textContent = data.spaceName || "恋人空间";
     renderHome(); renderChat(); renderAlbum(); renderSelfie(); renderUs();
+    hydrateIdbImages(document); // 把仍带 idb:// 引用的 <img> 异步补成真实图片（缓存命中的已在 imgSrc 同步给出）
   }
   function allPhotos() { var out = []; (data.albums||[]).forEach(function(a){ (a.photos||[]).forEach(function(p){ out.push({ p:p, a:a }); }); }); return out; }
   function memoryToday() {
@@ -4183,25 +4328,28 @@ try {
     v.classList.add("open");
     v.classList.add("loading");
     img.className = "";
-    var hasThumb = !!p.thumb && p.thumb !== p.src;
-    function done() { img.classList.add("ready"); v.classList.remove("loading"); }
-    img.onload = done;
-    img.onerror = function () {
-      // 原图加载失败：回退本地缩略图，再不行提示不可用
-      if (hasThumb && img.src !== p.thumb) { img.onerror = function () { v.classList.remove("loading"); toast("原图暂不可用"); }; img.src = p.thumb; }
-      else { v.classList.remove("loading"); toast("原图暂不可用"); }
-    };
-    if (hasThumb) {
-      // 先显示本地缩略图（秒开），原图懒加载完成后淡入替换
-      img.src = p.thumb;
-      var big = new Image();
-      big.onload = function () { if (img.src !== p.src) { img.src = p.src; done(); } };
-      big.onerror = function () { v.classList.remove("loading"); };
-      big.src = p.src;
-    } else {
-      // 无独立缩略图：直接加载原图，加载期间显示骨架屏
-      img.src = p.src;
-    }
+    Promise.all([derefImg(p.thumb), derefImg(p.src)]).then(function (vals) {
+      var thumb = vals[0], srcref = vals[1];
+      var hasThumb = !!thumb && thumb !== srcref;
+      function done() { img.classList.add("ready"); v.classList.remove("loading"); }
+      img.onload = done;
+      img.onerror = function () {
+        // 原图加载失败：回退本地缩略图，再不行提示不可用
+        if (hasThumb && img.src !== thumb) { img.onerror = function () { v.classList.remove("loading"); toast("原图暂不可用"); }; img.src = thumb; }
+        else { v.classList.remove("loading"); toast("原图暂不可用"); }
+      };
+      if (hasThumb) {
+        // 先显示本地缩略图（秒开），原图懒加载完成后淡入替换
+        img.src = thumb;
+        var big = new Image();
+        big.onload = function () { if (img.src !== srcref) { img.src = srcref; done(); } };
+        big.onerror = function () { v.classList.remove("loading"); };
+        big.src = srcref;
+      } else {
+        // 无独立缩略图：直接加载原图，加载期间显示骨架屏
+        img.src = srcref;
+      }
+    }).catch(function () { v.classList.remove("loading"); });
   }
   function closeViewer() { $("viewer").classList.remove("open"); viewerCur = null; }
   $("photoGrid").addEventListener("click", function (e) {
@@ -4278,6 +4426,8 @@ try {
       if (target && target.src && target.src.indexOf("/uploads/") === 0) {
         fetch("/api/upload/" + encodeURIComponent(target.src.split("/").pop()), { method: "DELETE" }).catch(function () {});
       }
+      // 同步清理 IDB 里的 blob（避免孤儿膨胀）
+      if (target) { purgeBlobRef(target.src); if (target.thumb) purgeBlobRef(target.thumb); }
       if (wasSelfie) { data.selfies = (data.selfies || []).filter(function (x) { return x.id !== pid; }); tomb("selfies", pid); }
       else {
         var fa = findPhoto(pid);
@@ -4295,15 +4445,17 @@ try {
     var isBack = !!backDate && backDate !== todayStr();
     pickImageMenu(function (f) {
       compressImage(f, 900, 0.7, function (durl) {
-        // 重拍/补拍保留原 id 原地更新（同 moodSave 的理由：避免对方设备出现双份）
-        var exist = (data.selfies || []).find(function (s) { return s.date === d && s.who === me; });
-        if (exist) { exist.src = durl; exist.ts = Date.now(); }
-        else {
-          data.selfies = (data.selfies || []).filter(function (s) { return !(s.date === d && s.who === me); });
-          data.selfies.unshift({ id: uid(), date: d, who: me, src: durl, ts: Date.now() });
-        }
-        save(); renderAll();
-        toast(isBack ? ("已补拍 " + d.slice(5).replace("-", "月") + "日 的自拍，TA也能看到") : "今天的自拍已打卡，TA马上能看到");
+        storeInline(durl, "selfie").then(function (ref) {
+          // 重拍/补拍保留原 id 原地更新（同 moodSave 的理由：避免对方设备出现双份）
+          var exist = (data.selfies || []).find(function (s) { return s.date === d && s.who === me; });
+          if (exist) { exist.src = ref; exist.ts = Date.now(); }
+          else {
+            data.selfies = (data.selfies || []).filter(function (s) { return !(s.date === d && s.who === me); });
+            data.selfies.unshift({ id: uid(), date: d, who: me, src: ref, ts: Date.now() });
+          }
+          save(); renderAll();
+          toast(isBack ? ("已补拍 " + d.slice(5).replace("-", "月") + "日 的自拍，TA也能看到") : "今天的自拍已打卡，TA马上能看到");
+        });
       });
     });
   }
@@ -4353,17 +4505,24 @@ try {
     function addFromInput(useCamera) {
       pickImage(function (f) {
         compressImage(f, 1000, 0.72, function (durl) {           // 原图：上云
-          compressImage(f, 240, 0.6, function (thumb) {           // 缩略图：留本地
+          compressImage(f, 240, 0.6, function (thumb) {           // 缩略图：留本地(进 IDB)
             var a = curAlbum(); if (!a) { toast("相册不见了，请重新进入"); return; }
-            uploadImage(durl, function (url) {
-              if (url) {
-                (a.photos || (a.photos = [])).unshift({ id: uid(), src: url, thumb: thumb, ts: Date.now(), by: me });
-                save(); renderAll(); closeSheet(); toast("照片已添加");
-              } else {
-                // 云端上传失败：回退为本地保存，保证功能不中断
-                (a.photos || (a.photos = [])).unshift({ id: uid(), src: durl, ts: Date.now(), by: me });
-                save(); renderAll(); closeSheet(); toast("云端上传失败，已存本地");
-              }
+            storeInline(thumb, "photo").then(function (thumbRef) {
+              uploadImage(durl, function (url) {
+                function addPhoto(src, withThumb) {
+                  var ph = { id: uid(), src: src, ts: Date.now(), by: me };
+                  if (withThumb) ph.thumb = thumbRef;
+                  (a.photos || (a.photos = [])).unshift(ph);
+                  save(); renderAll(); closeSheet();
+                  toast(url ? "照片已添加" : "云端上传失败，已存本地");
+                }
+                if (url) {
+                  addPhoto(url, true); // 云端成功：原图用服务器链接(小)，缩略图进 IDB
+                } else {
+                  // 云端上传失败：回退为本地保存(原图+缩略图都进 IDB)，保证功能不中断
+                  storeInline(durl, "photo").then(function (srcRef) { addPhoto(srcRef, false); });
+                }
+              });
             });
           });
         });
@@ -4436,7 +4595,7 @@ try {
       var al = curAlbum(); if (!al) { closeSheet(); return; }
       (al.photos || []).forEach(function (p) {
         if (albumSel[p.id] && p.src && p.src.indexOf("/uploads/") === 0) fetch("/api/upload/" + encodeURIComponent(p.src.split("/").pop()), { method: "DELETE" }).catch(function () {});
-        if (albumSel[p.id]) tomb("photos", p.id);
+        if (albumSel[p.id]) { purgeBlobRef(p.src); if (p.thumb) purgeBlobRef(p.thumb); tomb("photos", p.id); }
       });
       al.photos = (al.photos || []).filter(function (p) { return !albumSel[p.id]; });
       if (al.cover && albumSel[al.cover]) al.cover = (al.photos[0] || {}).id || null;
@@ -4489,7 +4648,7 @@ try {
       '<button class="primary-btn" id="pfSave">保存</button>';
     openSheet("恋爱资料", html);
     function setAv(idx) {
-      pickImageMenu(function (f) { cropImage(f, function (durl) { data.partners[idx].avatar = durl; save(); renderAll(); openProfile(); toast("头像已更新"); }, 320); });
+      pickImageMenu(function (f) { cropImage(f, function (durl) { storeInline(durl, "avatar").then(function (ref) { data.partners[idx].avatar = ref; save(); renderAll(); openProfile(); toast("头像已更新"); }); }, 320); });
     }
     $("avTaBtn").addEventListener("click", function () { setAv(taIdx); });
     $("avMyBtn").addEventListener("click", function () { setAv(myIdx); });
@@ -4557,60 +4716,62 @@ try {
         document.body.appendChild(a); a.click();
         setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
       }
-      var snap = clone(data);
-      // 收集所有云端原图文件名
-      var names = {};
-      (snap.albums || []).forEach(function (al) {
-        (al.photos || []).forEach(function (p) {
-          if (p.src && p.src.indexOf("/uploads/") === 0) names[p.src.split("/").pop()] = true;
-        });
-      });
-      var keys = Object.keys(names);
-      function done(images) {
-        var json = JSON.stringify({ version: 2, data: snap, images: images || {} });
-        var fname = "loverspace-backup-" + todayStr() + ".json";
-        var imgN = keys.length ? Object.keys(images || {}).length : 0;
-        // App 内（Capacitor WebView）：<a download> 不会被处理，必须走原生桥写文件，
-        // 否则点了导出只弹 toast、什么文件都不落盘
-        var nb = window.LoverspaceNative;
-        if (nb && typeof nb.saveBackup === "function") {
-          var b64 = "";
-          try { b64 = btoa(unescape(encodeURIComponent(json))); } catch (e) { b64 = ""; } // UTF-8 安全 base64
-          if (b64) {
-            var r = String(nb.saveBackup(fname, b64));
-            if (r.indexOf("ok:") === 0) {
-              toast("备份已保存到手机「下载/loverspace」目录" + (imgN ? "（含 " + imgN + " 张原图）" : "") + "\n" + r.slice(3));
-            } else if (r === "need_perm") {
-              toast("请在弹窗中允许存储权限，然后再次点击导出");
-            } else {
-              toast("保存失败：" + r);
-            }
-            closeSheet();
-            return;
-          }
-          toast("备份数据编码失败，请重试"); closeSheet(); return;
-        }
-        // 浏览器（调试/网页版）：普通下载
-        var blob = new Blob([json], { type: "application/json" });
-        dl(blob, fname);
-        toast("备份文件已导出" + (imgN ? "（含 " + imgN + " 张原图）" : ""));
-        closeSheet();
-      }
-      if (!keys.length) return done({});
-      toast("正在打包原图 " + keys.length + " 张…");
-      Promise.all(keys.map(function (nm) {
-        return fetch("/uploads/" + nm).then(function (r) { return r.blob(); }).then(function (b) {
-          return new Promise(function (res) {
-            var fr = new FileReader();
-            fr.onload = function () { names[nm] = fr.result; res(); };
-            fr.onerror = function () { names[nm] = null; res(); };
-            fr.readAsDataURL(b);
+      // 先把 idb:// 引用展开为完整 base64，保证导出的备份文件含全部照片、可在任意设备恢复
+      dataToWire(data).then(function (snap) {
+        // 收集所有云端原图文件名
+        var names = {};
+        (snap.albums || []).forEach(function (al) {
+          (al.photos || []).forEach(function (p) {
+            if (p.src && p.src.indexOf("/uploads/") === 0) names[p.src.split("/").pop()] = true;
           });
-        }).catch(function () { names[nm] = null; });
-      })).then(function () {
-        var images = {}; keys.forEach(function (nm) { if (names[nm]) images[nm] = names[nm]; });
-        done(images);
-      });
+        });
+        var keys = Object.keys(names);
+        function done(images) {
+          var json = JSON.stringify({ version: 2, data: snap, images: images || {} });
+          var fname = "loverspace-backup-" + todayStr() + ".json";
+          var imgN = keys.length ? Object.keys(images || {}).length : 0;
+          // App 内（Capacitor WebView）：<a download> 不会被处理，必须走原生桥写文件，
+          // 否则点了导出只弹 toast、什么文件都不落盘
+          var nb = window.LoverspaceNative;
+          if (nb && typeof nb.saveBackup === "function") {
+            var b64 = "";
+            try { b64 = btoa(unescape(encodeURIComponent(json))); } catch (e) { b64 = ""; } // UTF-8 安全 base64
+            if (b64) {
+              var r = String(nb.saveBackup(fname, b64));
+              if (r.indexOf("ok:") === 0) {
+                toast("备份已保存到手机「下载/loverspace」目录" + (imgN ? "（含 " + imgN + " 张原图）" : "") + "\n" + r.slice(3));
+              } else if (r === "need_perm") {
+                toast("请在弹窗中允许存储权限，然后再次点击导出");
+              } else {
+                toast("保存失败：" + r);
+              }
+              closeSheet();
+              return;
+            }
+            toast("备份数据编码失败，请重试"); closeSheet(); return;
+          }
+          // 浏览器（调试/网页版）：普通下载
+          var blob = new Blob([json], { type: "application/json" });
+          dl(blob, fname);
+          toast("备份文件已导出" + (imgN ? "（含 " + imgN + " 张原图）" : ""));
+          closeSheet();
+        }
+        if (!keys.length) return done({});
+        toast("正在打包原图 " + keys.length + " 张…");
+        Promise.all(keys.map(function (nm) {
+          return fetch("/uploads/" + nm).then(function (r) { return r.blob(); }).then(function (b) {
+            return new Promise(function (res) {
+              var fr = new FileReader();
+              fr.onload = function () { names[nm] = fr.result; res(); };
+              fr.onerror = function () { names[nm] = null; res(); };
+              fr.readAsDataURL(b);
+            });
+          }).catch(function () { names[nm] = null; });
+        })).then(function () {
+          var images = {}; keys.forEach(function (nm) { if (names[nm]) images[nm] = names[nm]; });
+          done(images);
+        });
+      }).catch(function () { toast("导出失败，请重试"); });
     });
     $("bkImport").addEventListener("click", function () {
       var inp = document.createElement("input"); inp.type = "file"; inp.accept = ".json,application/json";
@@ -4627,7 +4788,11 @@ try {
             data = d; data._updated = Date.now();
             var imgs = bundle.images || {};
             var keys = Object.keys(imgs);
-            function finish() { save(); renderAll(); closeSheet(); toast("导入成功" + (keys.length ? "（已恢复 " + keys.length + " 张原图）" : "")); }
+            function finish() {
+              // 导入的备份是完整内联主档，需再搬进 IDB（幂等）以保持本机存储态一致
+              ensureIDBStorage(data).then(function () { save(); renderAll(); closeSheet(); toast("导入成功" + (keys.length ? "（已恢复 " + keys.length + " 张原图）" : "")); })
+                .catch(function () { save(); renderAll(); closeSheet(); toast("导入成功"); });
+            }
             if (!keys.length) return finish();
             toast("正在恢复原图 " + keys.length + " 张…");
             fetch("/api/restore-images", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ images: imgs }) })
@@ -4795,7 +4960,7 @@ try {
   // 清空全部数据：两步确认（隐藏入口 + 红色确认按钮），误触成本拉满
   function openClearConfirm() {
     openSheet("确认清空？", '<div class="empty-tip" style="padding:6px 0 16px">所有留言、照片、纪念日都会被清空，无法恢复。</div><button class="primary-btn" id="clearYes" style="background:linear-gradient(135deg,#ff7b7b,#e33d3d);box-shadow:0 6px 16px rgba(227,61,61,.3)">确认清空</button><button class="ghost-btn" id="clearNo">取消</button>');
-    $("clearYes").addEventListener("click", function () { data = clone(DEFAULT); save(); renderAll(); closeSheet(); toast("已清空"); });
+    $("clearYes").addEventListener("click", function () { data = clone(DEFAULT); clearAllBlobs(); save(); renderAll(); closeSheet(); toast("已清空"); });
     $("clearNo").addEventListener("click", closeSheet);
   }
 
@@ -4917,6 +5082,8 @@ try {
     }
     // 首屏优先：不 await 云端请求（休眠/冷启动时也不卡启动），同步交给后台 wakeSync 渐进唤醒
     renderAll();
+    // 启动迁移：把内联 base64 照片搬进 IndexedDB（幂等；已迁移则秒过）。完成后二次渲染，让缓存命中的图片即时显示
+    migrateToIDB().then(function () { try { renderAll(); } catch (e) {} }).catch(function (e) { console.error("migrateToIDB failed", e); });
     // 启动不在首帧前同步落盘：避免对(可能很大的)存档做整份 JSON 串化+双写阻塞首屏；
     // 仅当 loadLocal 实际改动(迁移/跨天重置)时才延后落盘，正常返回直接跳过——大存档冷启动明显变快
     if (bootChanged) setTimeout(saveLocal, 600);
@@ -5224,6 +5391,20 @@ try {
     if (b) b.addEventListener("click", hideBoot);
   })();
   setTimeout(hideBoot, 4000);
+
+  // ===== 调试/回归观测钩子（仅暴露内部状态，不改变任何线上行为） =====
+  // 用 getter 而非静态赋值：data 会在 loadLocal/merge/import 等多处被重赋值，
+  // 静态 window.data 会过期；getter 始终指向 IIFE 内部的活对象。
+  Object.defineProperty(window, "data", { get: function () { return data; }, configurable: true });
+  window.migrateToIDB = migrateToIDB;
+  window.dataToWire = dataToWire;
+  window.derefImg = derefImg;
+  window.ensureIDBStorage = ensureIDBStorage;
+  window.purgeBlobRef = purgeBlobRef;
+  window.openBlobDB = openBlobDB;
+  window.getBlob = getBlob;
+  window.isIdbRef = isIdbRef;
+  window.storeInline = storeInline;
 })();
 </script>
 </body>
