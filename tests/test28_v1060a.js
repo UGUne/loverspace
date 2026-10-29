@@ -92,6 +92,11 @@ function httpGet(path) {
   if (hasRoom && gateHidden) ok("T0b: 已登录首帧即隐藏创建/加入房间页（不闪房间页）");
   else fail("T0b", "hasRoom=" + hasRoom + " gateHidden=" + gateHidden);
 
+  // T0c: 浅粉动态开屏(bootfx)在 App 就绪后被收起，不遮挡界面（首屏加载完应 display:none）
+  var bfxHidden = await evaluate("(function(){ var b=document.getElementById('bootfx'); return !!b && getComputedStyle(b).display === 'none'; })()");
+  if (bfxHidden) ok("T0c: 浅粉动态开屏在 App 就绪后已收起（不遮挡）");
+  else fail("T0c", "bootfx 仍可见，可能卡在开屏");
+
   // 打开奶蛙屋
   await evaluate("(function(){ var el=document.querySelector('[data-go=\"tree\"]'); if(el)el.click() })()");
   await sleep(1800);
