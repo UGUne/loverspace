@@ -104,8 +104,9 @@ node tests/test27_frog_house.js                                # 跑回归，确
 ---
 
 ## 版本状态（2026-10-29 更新）
-- **最新交付版 = v1066c**（不是 v1066a）。v1066c 是"阶段1 存储分离"：照片（自拍/相册/头像）从 localStorage 内联 base64 迁移到 **IndexedDB**，主档只存 `idb://` 引用，解除 5MB 上限；并做成可安装的 **PWA**（`manifest.json` + `icon-192/512.png`，添加到主屏幕即独立 App）。
-- 回归基线：test27 18/18 · test28 9/9 · test29 5/5 · test30 9/9 · **test31_storage 18/18（新存储专项）** = 59/59 全绿。`npm test` 已含全部 5 套。
+- **最新交付版 = v1066d**（2026-10-29）。v1066d = **启动优化 + Service Worker 缓存壳**：① 去掉开屏粉屏硬编码的 4 秒等待（`index.html` 的 `setTimeout(hideBoot,4000)` → 改为 App 就绪即收起 + 1.5s 兜底），粉屏从必等 4s 降到就绪即关；② 新增 `sw.js` 并注册 Service Worker，对 app 壳（index.html/manifest/图标）做"缓存优先 + 后台静默更新"，**重复启动秒开**，且推送新版本仍自动更新（保留远程壳"不重打包 APK"模型）。`/api/`、`/uploads/` 直连不缓存（接口与照片原图实时）。
+- v1066c（前版）："阶段1 存储分离"——照片从 localStorage 内联 base64 迁移到 **IndexedDB**，主档只存 `idb://` 引用，解除 5MB 上限；并做成可安装的 **PWA**（`manifest.json` + `icon-192/512.png`）。注意：v1066c 当时**只挂了 manifest、并未真正注册 Service Worker**，所以此前"PWA"不缓存、每次重下 1.9MB，这正是 v1066d 要修的。
+- 回归基线（v1066d）：test27 18/18 · test28 9/9 · test29 5/5 · test30 9/9 · **test31_storage 18/18（新存储专项）** = 59/59 全绿。`npm test` 已含全部 5 套。
 - **旧主机 a4af07ad 已实测在服务 v1066c**（HTTP 200 / 1,925,614 字节 / sha256 与本地 index.html 逐字节一致）。手机现有 APK 远程加载 a4af07ad → 自动显示 v1066c，数据原封不动。
 - ⚠️ 架构更正：**APK 是远程加载壳**（`build-apk.yml` 把 `capacitor.config.json` 的 `server.url` 注入成仓库变量 `BACKEND_URL`=a4af07ad）。因此 GitHub 推送**不会秒级**更新手机内容——需平台把 a4af07ad 重新部署。已验证 a4af07ad 当前即 v1066c。"下载 Release APK"只是重打包同一个远程壳，不会自带内容；真正的内容杠杆是 a4af07ad 部署的版本。
 - 发布通道：本沙箱 `git push` 被墙（github.com:443 不可达），改用 `sync_to_gh.py`（GitHub REST API，绕 1MB 限制）同步到 GitHub。`.git/config` 内嵌 access token（如失效请用新 token 重设 `http.extraHeader`）。
