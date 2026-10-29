@@ -105,8 +105,9 @@ node tests/test27_frog_house.js                                # 跑回归，确
 
 ## 版本状态（2026-10-29 更新）
 - **最新交付版 = v1066d**（2026-10-29）。v1066d = **启动优化 + Service Worker 缓存壳**：① **彻底移除开屏启动图 `#boot`**（粉屏 + 自定义启动图 `data.splash` 一并删除），冷启动直接进入空间码入口（`#roomGate`，自带粉色渐变全屏覆盖）或 App，不再有任何开屏等待；② 新增 `sw.js` 并注册 Service Worker，对 app 壳（index.html/manifest/图标）做"缓存优先 + 后台静默更新"，**重复启动秒开**，且推送新版本仍自动更新（保留远程壳"不重打包 APK"模型）。`/api/`、`/uploads/` 直连不缓存（接口与照片原图实时）。③ **修掉"已登录却闪一下创建/加入房间页"**：`<head>` 早期脚本在首帧前读 `loverspace.room`，有则给 `<html>` 打 `has-room`，CSS `html.has-room #roomGate{display:none}` 从源头不画该页（原来要等 1.9MB 主脚本解析完才隐藏，远程壳加载期间会闪）。"退出空间"流程同步摘掉 `has-room`。
+- **浅粉动态开屏(v1066d 末)**:把登录后那段"浅粉空底"换成有生命的冷启动屏 `#bootfx`——浅粉渐变底 + 跳动爱心(♥ 缩放律动)+「恋人空间」呼吸字样 + 三个弹跳加载点,深色模式自动适配。它**盖在首帧前**(HTML 默认可见),遮住远程壳拉取 1.9MB 的空窗,`bootApp` 渲染完即淡出(`hideBootFx()`,含 4.5s 兜底防卡死)。**缓存命中跳过**:`<head>` 检测 `navigator.serviceWorker.controller`(已有 SW 接管=缓存命中)则打 `bootfx-skip` 直接不显示,实现"首装/清缓存才放动画、缓存命中秒进"。
 - v1066c（前版）："阶段1 存储分离"——照片从 localStorage 内联 base64 迁移到 **IndexedDB**，主档只存 `idb://` 引用，解除 5MB 上限；并做成可安装的 **PWA**（`manifest.json` + `icon-192/512.png`）。注意：v1066c 当时**只挂了 manifest、并未真正注册 Service Worker**，所以此前"PWA"不缓存、每次重下 1.9MB，这正是 v1066d 要修的。
-- 回归基线（v1066d）：test27 18/18 · test28 10/10 · test29 5/5 · test30 9/9 · **test31_storage 18/18（新存储专项）** = 60/60 全绿。`npm test` 已含全部 5 套。
+- 回归基线（v1066d）：test27 18/18 · test28 11/11 · test29 5/5 · test30 9/9 · **test31_storage 18/18（新存储专项）** = 61/61 全绿。`npm test` 已含全部 5 套。
 - **旧主机 a4af07ad 已实测在服务 v1066c**（HTTP 200 / 1,925,614 字节 / sha256 与本地 index.html 逐字节一致）。手机现有 APK 远程加载 a4af07ad → 自动显示 v1066c，数据原封不动。
 - ⚠️ 架构更正：**APK 是远程加载壳**（`build-apk.yml` 把 `capacitor.config.json` 的 `server.url` 注入成仓库变量 `BACKEND_URL`=a4af07ad）。因此 GitHub 推送**不会秒级**更新手机内容——需平台把 a4af07ad 重新部署。已验证 a4af07ad 当前即 v1066c。"下载 Release APK"只是重打包同一个远程壳，不会自带内容；真正的内容杠杆是 a4af07ad 部署的版本。
 - 发布通道：本沙箱 `git push` 被墙（github.com:443 不可达），改用 `sync_to_gh.py`（GitHub REST API，绕 1MB 限制）同步到 GitHub。`.git/config` 内嵌 access token（如失效请用新 token 重设 `http.extraHeader`）。
