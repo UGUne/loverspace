@@ -84,7 +84,7 @@ function httpGet(path) {
 
   var ver = await evaluate("(function(){ var m=document.documentElement.outerHTML.match(/PUSH_BUILD = \"(v\\d+[abcd])\"/); return m?m[1]:'NOT_FOUND' })()");
   console.log("  版本号: " + ver);
-  if (ver === 'v1066c') ok("T0: 版本号 v1066c（IndexedDB 存储分离 + PWA）"); else fail('T0', String(ver));
+  if (ver === 'v1066d') ok("T0: 版本号 v1066d（启动优化 + Service Worker 缓存壳）"); else fail('T0', String(ver));
 
   // 打开奶蛙屋
   await evaluate("(function(){ var el=document.querySelector('[data-go=\"tree\"]'); if(el)el.click() })()");
