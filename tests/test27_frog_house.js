@@ -143,10 +143,10 @@ function httpGet(path) {
   var patchHidden = await evaluate("(function(){ var e=document.getElementById('frogBody'); return e && e.src.indexOf('data:image/webp') === 0 && e.src.length > 1000 })()");
   if (patchHidden) ok("T6a: 初始为主图帧（WebP）");
   else fail("T6a", "主图帧异常");
-  // T5c: 启动层存在
-  var splash = await evaluate("(function(){ var e=document.getElementById('frogSplash'); return e && e.style.display !== 'none' })()");
-  if (splash) ok("T5c: 启动动画层显示中");
-  else fail("T5c", "启动层未显示");
+  // T5c: v1066j 启动图已移除，进场直接挥手打招呼
+  var splashGone = await evaluate("(function(){ return !document.getElementById('frogSplash') })()");
+  if (splashGone) ok("T5c: 启动图已移除（直接进场+挥手打招呼）");
+  else fail("T5c", "启动层仍存在");
   // T6b: 用 MutationObserver 记录（150ms 窗口，轮询会漏）
   await evaluate("(function(){ window.__blink=0; var e=document.getElementById('frogBody'); if(!e) return; var lastSrc=e.src; new MutationObserver(function(){ if(e.src!==lastSrc){window.__blink++; lastSrc=e.src;} }).observe(e,{attributes:true,attributeFilter:['src']}); })()");
   await sleep(7500);
@@ -169,7 +169,13 @@ function httpGet(path) {
   await evaluate("(function(){ var btn=document.getElementById('frogFeed'); if(btn&&!btn.disabled)btn.click() })()");
   await sleep(400);
   var sheetOk = await evaluate("(function(){ return document.getElementById('sheet').classList.contains('open') && !!document.querySelector('#sheetBody .feed-opt') })()");
-  await evaluate("(function(){ var c=document.querySelector('#sheetBody .feed-opt'); if(c)c.click(); return 1 })()");
+  await evaluate(`(function(){
+    var c=document.querySelector('#sheetBody .feed-opt'); if(!c) return 'NO_CARD';
+    var r=c.getBoundingClientRect(), x=r.left+r.width/2, y=r.top+r.height/2;
+    c.dispatchEvent(new PointerEvent('pointerdown',{clientX:x,clientY:y,pointerId:7,bubbles:true,cancelable:true}));
+    c.dispatchEvent(new PointerEvent('pointerup',{clientX:x,clientY:y,pointerId:7,bubbles:true,cancelable:true}));
+    return 'TAPPED';
+  })()`);
   await sleep(400);
   var holdOk = await evaluate("(function(){ return !!document.querySelector('.fr-food-hold') })()");
   await evaluate(`(function(){
