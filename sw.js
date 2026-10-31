@@ -5,7 +5,7 @@
  *   - /api/ 与 /uploads/: 直连不缓存(接口与照片原图必须实时, 且避免缓存膨胀)
  * SHELL_VERSION 由 sync_to_gh.py 按 index.html 内容哈希自动注入, 推送即触发 SW 更新。
  */
-const SHELL_VERSION = '9a84adbb2e';
+const SHELL_VERSION = '8d9b7e1d3f';
 const CACHE = 'loverspace-shell-' + SHELL_VERSION;
 const SHELL_ASSETS = [
   './',
