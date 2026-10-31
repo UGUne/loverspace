@@ -84,7 +84,7 @@ function httpGet(path) {
 
   var ver = await evaluate("(function(){ var m=document.documentElement.outerHTML.match(/PUSH_BUILD = \"(v\\d+[a-z])\"/); return m?m[1]:'NOT_FOUND' })()");
   console.log("  版本号: " + ver);
-  if (ver === 'v1066j') ok("T0: 版本号 v1066j（去启动图+动态挥手打招呼；喂食面板按住即拖；张嘴帧笑眼/愤怒帧白块修复）"); else fail('T0', String(ver));
+  if (ver === 'v1066k') ok("T0: 版本号 v1066k（挥手=主帧静止+手臂图层绕肩摆动，不再整身摇晃；拖喂虚线圈已移除）"); else fail('T0', String(ver));
 
   // T0b: 已登录(本地有房间码)时，<head> 脚本在首帧前打 has-room，CSS 让 roomGate 不渲染——杜绝开屏闪一下创建/加入房间页
   var hasRoom = await evaluate("(function(){ return document.documentElement.classList.contains('has-room') })()");
@@ -105,12 +105,12 @@ function httpGet(path) {
 
   // T1: v1066j 启动图已移除——进场 450ms 后动态挥手打招呼
   var splashGone = await evaluate("(function(){ return !document.getElementById('frogSplash') })()");
-  var waving = await evaluate("(function(){ var f=document.getElementById('frogFigure'); var b=document.getElementById('frogBody'); return !!(f && f.classList.contains('waving')) || !!(b && b.src.length === 111951) })()");
-  if (splashGone && waving) ok("T1: 启动图已移除，进场动态挥手打招呼");
+  // v1066k: 挥手=主帧静止+独立手臂图层绕肩摆动
+  var waving = await evaluate("(function(){ var a=document.getElementById('frogWaveArm'); var b=document.getElementById('frogBody'); return !!(a && a.style.display === 'block' && a.classList.contains('waving-arm')) && !!(b && b.src.length === 118491) })()");
+  if (splashGone && waving) ok("T1: 启动图已移除，进场挥手（主帧静止+手臂图层摆动）");
   else fail("T1", "splashGone=" + splashGone + " waving=" + waving);
 
   // T2: 喂食后不跳启动图（bug 修复验证）——新流程：选择器→选食物卡→点按手持食物投喂
-  await evaluate("(function(){ var sp=document.getElementById('frogSplash'); if(sp)sp.click() })()"); // 先跳过
   await sleep(300);
   await evaluate("(function(){ var btn=document.getElementById('frogFeed'); if(btn&&!btn.disabled)btn.click() })()");
   await sleep(400);
