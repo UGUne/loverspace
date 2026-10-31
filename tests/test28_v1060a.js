@@ -84,7 +84,7 @@ function httpGet(path) {
 
   var ver = await evaluate("(function(){ var m=document.documentElement.outerHTML.match(/PUSH_BUILD = \"(v\\d+[a-z])\"/); return m?m[1]:'NOT_FOUND' })()");
   console.log("  版本号: " + ver);
-  if (ver === 'v1066i') ok("T0: 版本号 v1066i（眨眼/开心帧同色调重制：主帧同色底 + 新原画笑眼弧线）"); else fail('T0', String(ver));
+  if (ver === 'v1066j') ok("T0: 版本号 v1066j（去启动图+动态挥手打招呼；喂食面板按住即拖；张嘴帧笑眼/愤怒帧白块修复）"); else fail('T0', String(ver));
 
   // T0b: 已登录(本地有房间码)时，<head> 脚本在首帧前打 has-room，CSS 让 roomGate 不渲染——杜绝开屏闪一下创建/加入房间页
   var hasRoom = await evaluate("(function(){ return document.documentElement.classList.contains('has-room') })()");
@@ -103,10 +103,11 @@ function httpGet(path) {
   await evaluate("(function(){ var el=document.getElementById('petScene'); if(el)el.click() })()");
   await sleep(1200);
 
-  // T1: 进场启动图播放一次
-  var splashOn = await evaluate("(function(){ var e=document.getElementById('frogSplash'); return !!(e && e.style.display === 'flex') })()");
-  if (splashOn) ok("T1: 进场播放启动图一次");
-  else fail("T1", "启动图未显示");
+  // T1: v1066j 启动图已移除——进场 450ms 后动态挥手打招呼
+  var splashGone = await evaluate("(function(){ return !document.getElementById('frogSplash') })()");
+  var waving = await evaluate("(function(){ var f=document.getElementById('frogFigure'); var b=document.getElementById('frogBody'); return !!(f && f.classList.contains('waving')) || !!(b && b.src.length === 111951) })()");
+  if (splashGone && waving) ok("T1: 启动图已移除，进场动态挥手打招呼");
+  else fail("T1", "splashGone=" + splashGone + " waving=" + waving);
 
   // T2: 喂食后不跳启动图（bug 修复验证）——新流程：选择器→选食物卡→点按手持食物投喂
   await evaluate("(function(){ var sp=document.getElementById('frogSplash'); if(sp)sp.click() })()"); // 先跳过
@@ -114,7 +115,13 @@ function httpGet(path) {
   await evaluate("(function(){ var btn=document.getElementById('frogFeed'); if(btn&&!btn.disabled)btn.click() })()");
   await sleep(400);
   var sheetOk = await evaluate("(function(){ return document.getElementById('sheet').classList.contains('open') && !!document.querySelector('#sheetBody .feed-opt') })()");
-  await evaluate("(function(){ var c=document.querySelector('#sheetBody .feed-opt'); if(c)c.click(); return 1 })()");
+  await evaluate(`(function(){
+    var c=document.querySelector('#sheetBody .feed-opt'); if(!c) return 'NO_CARD';
+    var r=c.getBoundingClientRect(), x=r.left+r.width/2, y=r.top+r.height/2;
+    c.dispatchEvent(new PointerEvent('pointerdown',{clientX:x,clientY:y,pointerId:7,bubbles:true,cancelable:true}));
+    c.dispatchEvent(new PointerEvent('pointerup',{clientX:x,clientY:y,pointerId:7,bubbles:true,cancelable:true}));
+    return 'TAPPED';
+  })()`);
   await sleep(300);
   await evaluate(`(function(){
     var f=document.querySelector('.fr-food-hold'); if(!f) return 'NO_HOLD';
@@ -131,6 +138,29 @@ function httpGet(path) {
   else fail("T2", "splash=" + splashAfterFeed + " hunger100=" + feedOk + " sheet=" + sheetOk);
   await sleep(900);
 
+  // T2b: v1066j 面板按住即拖——拖出面板时面板消失，食物跟手，拖到嘴边直接喂
+  await evaluate("(function(){ var btn=document.getElementById('frogFeed'); if(btn&&!btn.disabled)btn.click() })()");
+  await sleep(400);
+  var dragRes = await evaluate(`(function(){
+    var c=document.querySelector('#sheetBody .feed-opt'); if(!c) return 'NO_CARD';
+    var r=c.getBoundingClientRect(), x=r.left+r.width/2, y=r.top+r.height/2;
+    c.dispatchEvent(new PointerEvent('pointerdown',{clientX:x,clientY:y,pointerId:8,bubbles:true,cancelable:true}));
+    window.dispatchEvent(new PointerEvent('pointermove',{clientX:x,clientY:y-140,pointerId:8,bubbles:true,cancelable:true}));
+    var holdDrag = !!document.querySelector('.fr-food-hold.dragging');
+    var big=document.getElementById('frogBig').getBoundingClientRect();
+    var hx=big.left+big.width*0.46, hy=big.top+big.height*0.13;
+    window.dispatchEvent(new PointerEvent('pointermove',{clientX:hx,clientY:hy,pointerId:8,bubbles:true,cancelable:true}));
+    window.dispatchEvent(new PointerEvent('pointerup',{clientX:hx,clientY:hy,pointerId:8,bubbles:true,cancelable:true}));
+    return JSON.stringify({holdDrag: holdDrag});
+  })()`);
+  await sleep(700);
+  var dragAfter = await evaluate("(function(){ var d=JSON.parse(localStorage.getItem('loverspace.data.v2')); return { hunger:d.tree.pet.hunger, hold: !!document.querySelector('.fr-food-hold'), sheet: document.getElementById('sheet').classList.contains('open') } })()");
+  var dragOk = false;
+  try { var dj = JSON.parse(dragRes); dragOk = dj.holdDrag && dragAfter.hunger === 100 && !dragAfter.hold && !dragAfter.sheet; } catch (e) {}
+  if (dragOk) ok("T2b: 面板按住即拖——面板消失、食物跟手、拖到嘴边喂食成功");
+  else fail("T2b", "drag=" + dragRes + " after=" + JSON.stringify(dragAfter));
+  await sleep(900);
+
   // T3: 陪玩后不跳启动图
   await evaluate("(function(){ var btn=document.getElementById('frogPlay'); if(btn&&!btn.disabled)btn.click() })()");
   await sleep(600);
@@ -139,7 +169,7 @@ function httpGet(path) {
   else fail("T3", "splash 又显示了");
 
   // 帧长度识别（内联 base64 全串长度，含 data: 前缀 23 字符）：v1066h 新增 wave/surprise/angry/wronged 四姿势
-  var LEN = { main: 118491, closed: 86231, stretch: 132407, hold: 149567, wave: 111951, surprise: 88595, angry: 109379, wronged: 107887 };
+  var LEN = { main: 118491, closed: 86231, stretch: 132407, hold: 149567, wave: 111951, surprise: 85143, angry: 106191, wronged: 107887 }; // v1066j: surprise/angry 白块修复后重打包
   var POSE_LENS = [LEN.stretch, LEN.hold, LEN.wave, LEN.surprise, LEN.angry, LEN.wronged];
 
   // T4: 两种姿势帧（stretch/hold）由头部戳击触发，均加载为 1329x2124（鲁棒：戳后等回主图再戳，消除随机漏帧）
