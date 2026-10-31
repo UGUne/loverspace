@@ -84,7 +84,7 @@ function httpGet(path) {
 
   var ver = await evaluate("(function(){ var m=document.documentElement.outerHTML.match(/PUSH_BUILD = \"(v\\d+[a-z])\"/); return m?m[1]:'NOT_FOUND' })()");
   console.log("  版本号: " + ver);
-  if (ver === 'v1066h') ok("T0: 版本号 v1066h（奶蛙新动作表情：挥手/惊讶/生气/委屈 + 新闭眼帧）"); else fail('T0', String(ver));
+  if (ver === 'v1066i') ok("T0: 版本号 v1066i（眨眼/开心帧同色调重制：主帧同色底 + 新原画笑眼弧线）"); else fail('T0', String(ver));
 
   // T0b: 已登录(本地有房间码)时，<head> 脚本在首帧前打 has-room，CSS 让 roomGate 不渲染——杜绝开屏闪一下创建/加入房间页
   var hasRoom = await evaluate("(function(){ return document.documentElement.classList.contains('has-room') })()");
@@ -139,7 +139,7 @@ function httpGet(path) {
   else fail("T3", "splash 又显示了");
 
   // 帧长度识别（内联 base64 全串长度，含 data: 前缀 23 字符）：v1066h 新增 wave/surprise/angry/wronged 四姿势
-  var LEN = { main: 118491, closed: 125191, stretch: 132407, hold: 149567, wave: 111951, surprise: 88595, angry: 109379, wronged: 107887 };
+  var LEN = { main: 118491, closed: 86231, stretch: 132407, hold: 149567, wave: 111951, surprise: 88595, angry: 109379, wronged: 107887 };
   var POSE_LENS = [LEN.stretch, LEN.hold, LEN.wave, LEN.surprise, LEN.angry, LEN.wronged];
 
   // T4: 两种姿势帧（stretch/hold）由头部戳击触发，均加载为 1329x2124（鲁棒：戳后等回主图再戳，消除随机漏帧）
@@ -151,7 +151,7 @@ function httpGet(path) {
     var obs = new MutationObserver(function(){
       if(b.src.length !== last){
         var L = b.src.length;
-        if(L !== 118491 && L !== 125191) seen[String(L)] = b.src;
+        if(L !== 118491 && L !== 86231) seen[String(L)] = b.src;
         last = L;
       }
     });
@@ -187,9 +187,9 @@ function httpGet(path) {
     function waitMain(){ return new Promise(function(res){ var t0=Date.now(); (function chk(){ if(b.src.length===118491||Date.now()-t0>2600) return res(); setTimeout(chk,60); })(); }); }
     var poseLen=0, t0=Date.now();
     while(Date.now()-t0<30000){
-      if(b.src.length!==118491 && b.src.length!==125191){ poseLen=b.src.length; break; }
+      if(b.src.length!==118491 && b.src.length!==86231){ poseLen=b.src.length; break; }
       poke();
-      if(b.src.length!==118491 && b.src.length!==125191){ poseLen=b.src.length; break; }
+      if(b.src.length!==118491 && b.src.length!==86231){ poseLen=b.src.length; break; }
       await waitMain();
     }
     if(!poseLen) return 'NO_POSE';
@@ -199,7 +199,7 @@ function httpGet(path) {
     for(var i=0;i<6;i++){
       poke();
       await new Promise(function(r){setTimeout(r,200)});
-      if(b.src.length===125191) flipped=true;
+      if(b.src.length===86231) flipped=true;
       if(b.src.length===118491) endedEarly=true;
     }
     var guardOk = !flipped && !endedEarly && b.src.length===poseLen;
@@ -217,7 +217,7 @@ function httpGet(path) {
     else fail("T5", r5.slice(0, 400));
   } catch (e) { fail("T5", r5.slice(0, 300)); }
 
-  // T7: 闭眼帧眼部干净（v1066h 新闭眼帧来自新原画，独立像素级检测）
+  // T7: 闭眼帧眼部干净（v1066i 重制帧=旧闭眼底图+新原画弧线，独立像素级检测）
   var r7 = await evaluate(`(async function(){
     var el = document.getElementById('frogBig'), b = document.getElementById('frogBody');
     if(!el||!b) return 'NO_EL';
@@ -230,7 +230,7 @@ function httpGet(path) {
     var last = b.src.length;
     var obs = new MutationObserver(function(){
       if(b.src.length !== last){
-        if(b.src.length === 125191 && !closedSrc) closedSrc = b.src; // v1066h 新闭眼帧长度（含前缀）
+        if(b.src.length === 86231 && !closedSrc) closedSrc = b.src; // v1066i 重制闭眼帧长度（含前缀）
         last = b.src.length;
       }
     });
@@ -248,8 +248,8 @@ function httpGet(path) {
     var cv=document.createElement('canvas'); cv.width=c.naturalWidth; cv.height=c.naturalHeight; var x=cv.getContext('2d'); x.drawImage(c,0,0);
     var d = x.getImageData(0,0,c.naturalWidth,c.naturalHeight).data;
     var W = c.naturalWidth;
-    // v1066h 新闭眼帧实测闭眼线中心（左 530,196 / 右 760,196）
-    var eyes = [{cx:530,cy:196,R:40},{cx:760,cy:196,R:40}];
+    // v1066i 新闭眼帧实测闭眼弧线中心（左 540,166 / 右 794,167）
+    var eyes = [{cx:540,cy:166,R:40},{cx:794,cy:167,R:40}];
     var out = { centers: [], greenTotal: 0, whiteSpots: 0, blackSpots: 0 };
     for(var k=0;k<eyes.length;k++){
       var cx=eyes[k].cx, cy=eyes[k].cy, R=eyes[k].R, RR=R+26;
@@ -271,7 +271,7 @@ function httpGet(path) {
     var j7 = JSON.parse(r7);
     // 眼心落在闭眼深色弧线上(lum 30~200)，无绿虹膜残留；环带内无绿(睁眼残留)、无白斑，黑弧线属闭眼线本身故放宽
     var centersOk = j7.centers.every(function (c) { return c.lum >= 25 && c.lum <= 200 && c.greenness < 14; });
-    var ringOk = j7.greenTotal <= 40 && j7.whiteSpots <= 40 && j7.blackSpots <= 800; // 黑弧=闭眼线本身, 双眼约 550
+    var ringOk = j7.greenTotal <= 40 && j7.whiteSpots <= 40 && j7.blackSpots <= 800; // 黑弧=闭眼线本身, 双眼约 664
     if (centersOk && ringOk)
       ok("T7: 闭眼帧眼部干净——眼心无绿虹膜残留，环带绿 " + j7.greenTotal + "px / 白斑 " + j7.whiteSpots + "px / 黑弧 " + j7.blackSpots + "px");
     else fail("T7", JSON.stringify(j7));
@@ -288,7 +288,7 @@ function httpGet(path) {
       poke();
       await new Promise(function(r){setTimeout(r,120)});
       var L = b.src.length;
-      if(L !== 118491 && L !== 125191){ poseLen = L; break; }
+      if(L !== 118491 && L !== 86231){ poseLen = L; break; }
       await new Promise(function(r){setTimeout(r,120)});
     }
     return JSON.stringify({poseLen: poseLen});
