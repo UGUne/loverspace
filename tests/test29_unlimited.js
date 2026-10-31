@@ -71,7 +71,7 @@ function httpGet(path) {
   console.log('\n=== test29: 喂食/陪玩不限次 + 开心帧无白斑 ===\n');
   var ver = await evaluate('(function(){ var m=document.documentElement.outerHTML.match(/PUSH_BUILD = "(v\\d+[a-z])"/); return m?m[1]:' + "'NOT_FOUND'" + ' })()');
   console.log('  版本号: ' + ver);
-  if (ver === 'v1066i') ok('T0: 版本号 v1066i'); else fail('T0', String(ver));
+  if (ver === 'v1066j') ok('T0: 版本号 v1066j'); else fail('T0', String(ver));
 
   await evaluate('(function(){ var el=document.querySelector(\'[data-go="tree"]\'); if(el)el.click() })()');
   await sleep(1600);
@@ -91,7 +91,7 @@ function httpGet(path) {
       await new Promise(function(r){setTimeout(r,300)});
       var c=document.querySelector('#sheetBody .feed-opt');
       if(!c){ log.push('NO_CARD@'+i); break; }
-      c.click();
+      (function(){ var r=c.getBoundingClientRect(), x=r.left+r.width/2, y=r.top+r.height/2; c.dispatchEvent(new PointerEvent('pointerdown',{clientX:x,clientY:y,pointerId:5,bubbles:true,cancelable:true})); c.dispatchEvent(new PointerEvent('pointerup',{clientX:x,clientY:y,pointerId:5,bubbles:true,cancelable:true})); })();
       await new Promise(function(r){setTimeout(r,250)});
       var f=document.querySelector('.fr-food-hold');
       if(!f){ log.push('NO_HOLD@'+i); break; }
