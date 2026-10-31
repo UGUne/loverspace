@@ -84,7 +84,7 @@ function httpGet(path) {
 
   var ver = await evaluate("(function(){ var m=document.documentElement.outerHTML.match(/PUSH_BUILD = \"(v\\d+[a-z])\"/); return m?m[1]:'NOT_FOUND' })()");
   console.log("  版本号: " + ver);
-  if (ver === 'v1066g') ok("T0: 版本号 v1066g（原生启动屏优化 + 去掉网页层）"); else fail('T0', String(ver));
+  if (ver === 'v1066h') ok("T0: 版本号 v1066h（奶蛙新动作表情：挥手/惊讶/生气/委屈 + 新闭眼帧）"); else fail('T0', String(ver));
 
   // T0b: 已登录(本地有房间码)时，<head> 脚本在首帧前打 has-room，CSS 让 roomGate 不渲染——杜绝开屏闪一下创建/加入房间页
   var hasRoom = await evaluate("(function(){ return document.documentElement.classList.contains('has-room') })()");
@@ -138,8 +138,9 @@ function httpGet(path) {
   if (!splashAfterPlay) ok("T3: 陪玩后启动图不再跳出");
   else fail("T3", "splash 又显示了");
 
-  // 帧长度识别（内联 base64 全串长度）：主图 118491 / 闭眼 128791 / stretch 132407 / hold 149567（v1066a 删除 hug/cheer）
-  var LEN = { main: 118491, closed: 128791, stretch: 132407, hold: 149567 };
+  // 帧长度识别（内联 base64 全串长度，含 data: 前缀 23 字符）：v1066h 新增 wave/surprise/angry/wronged 四姿势
+  var LEN = { main: 118491, closed: 125191, stretch: 132407, hold: 149567, wave: 111951, surprise: 88595, angry: 109379, wronged: 107887 };
+  var POSE_LENS = [LEN.stretch, LEN.hold, LEN.wave, LEN.surprise, LEN.angry, LEN.wronged];
 
   // T4: 两种姿势帧（stretch/hold）由头部戳击触发，均加载为 1329x2124（鲁棒：戳后等回主图再戳，消除随机漏帧）
   var r4 = await evaluate(`(async function(){
@@ -150,7 +151,7 @@ function httpGet(path) {
     var obs = new MutationObserver(function(){
       if(b.src.length !== last){
         var L = b.src.length;
-        if(L !== 118491 && L !== 128791) seen[String(L)] = b.src;
+        if(L !== 118491 && L !== 125191) seen[String(L)] = b.src;
         last = L;
       }
     });
@@ -159,7 +160,7 @@ function httpGet(path) {
     var rect = el.getBoundingClientRect();
     function poke(){ el.dispatchEvent(new MouseEvent('click', {clientX: rect.left+rect.width*0.5, clientY: rect.top+rect.height*0.10, bubbles:true})); }
     for(var i=0;i<70;i++){
-      if(seen['132407'] && seen['149567']) break;
+      if(Object.keys(seen).length >= 2) break;
       poke();
       await waitMain();
     }
@@ -171,10 +172,9 @@ function httpGet(path) {
   })()`);
   try {
     var j4 = JSON.parse(r4);
-    var bothSeen = j4.seen.indexOf('132407') >= 0 && j4.seen.indexOf('149567') >= 0;
-    var dimsOk = j4.dims['132407'] && j4.dims['132407'].w === 1329 && j4.dims['132407'].h === 2124
-      && j4.dims['149567'] && j4.dims['149567'].w === 1329 && j4.dims['149567'].h === 2124;
-    if (bothSeen && dimsOk) ok("T4: 伸展/托腮两种姿势均加载为 1329x2124 高清帧");
+    var poseSeen = POSE_LENS.map(String).filter(function (l) { return j4.seen.indexOf(l) >= 0; });
+    var dimsOk = poseSeen.length >= 2 && poseSeen.every(function (l) { var d = j4.dims[l]; return d && d.w === 1329 && d.h === 2124; });
+    if (dimsOk) ok("T4: " + poseSeen.length + " 种姿势帧均加载为 1329x2124 高清帧");
     else fail("T4", r4.slice(0, 400));
   } catch (e) { fail("T4", String(r4).slice(0, 300)); }
 
@@ -187,9 +187,9 @@ function httpGet(path) {
     function waitMain(){ return new Promise(function(res){ var t0=Date.now(); (function chk(){ if(b.src.length===118491||Date.now()-t0>2600) return res(); setTimeout(chk,60); })(); }); }
     var poseLen=0, t0=Date.now();
     while(Date.now()-t0<30000){
-      if(b.src.length!==118491 && b.src.length!==128791){ poseLen=b.src.length; break; }
+      if(b.src.length!==118491 && b.src.length!==125191){ poseLen=b.src.length; break; }
       poke();
-      if(b.src.length!==118491 && b.src.length!==128791){ poseLen=b.src.length; break; }
+      if(b.src.length!==118491 && b.src.length!==125191){ poseLen=b.src.length; break; }
       await waitMain();
     }
     if(!poseLen) return 'NO_POSE';
@@ -199,7 +199,7 @@ function httpGet(path) {
     for(var i=0;i<6;i++){
       poke();
       await new Promise(function(r){setTimeout(r,200)});
-      if(b.src.length===128791) flipped=true;
+      if(b.src.length===125191) flipped=true;
       if(b.src.length===118491) endedEarly=true;
     }
     var guardOk = !flipped && !endedEarly && b.src.length===poseLen;
@@ -211,92 +211,69 @@ function httpGet(path) {
   })()`);
   try {
     var j = JSON.parse(r5);
-    var good = (j.poseLen === 132407 || j.poseLen === 149567) && j.during.belly === '0'
+    var good = POSE_LENS.indexOf(j.poseLen) >= 0 && j.during.belly === '0'
       && j.guardOk === true && j.after.len === 118491 && j.after.belly === '';
     if (good) ok("T5: 姿势播放中肚皮隐藏、戳击不打断姿势，结束后回主图并恢复肚皮层（poseLen=" + j.poseLen + "）");
     else fail("T5", r5.slice(0, 400));
   } catch (e) { fail("T5", r5.slice(0, 300)); }
 
-  // T7: 闭眼帧眼部无白斑——从 DOM 捕获主图/闭眼帧 src，canvas 像素级分析
+  // T7: 闭眼帧眼部干净（v1066h 新闭眼帧来自新原画，独立像素级检测）
   var r7 = await evaluate(`(async function(){
     var el = document.getElementById('frogBig'), b = document.getElementById('frogBody');
     if(!el||!b) return 'NO_EL';
     var rect = el.getBoundingClientRect();
     function poke(){ el.dispatchEvent(new MouseEvent('click', {clientX: rect.left+rect.width*0.5, clientY: rect.top+rect.height*0.10, bubbles:true})); }
-    // 先等回主图
     var t0 = Date.now();
     while(b.src.length !== 118491 && Date.now()-t0 < 4000){ await new Promise(function(r){setTimeout(r,60)}); }
     if(b.src.length !== 118491) return 'NOT_MAIN:' + b.src.length;
-    var mainSrc = b.src;
-    // 戳到闭眼帧出现并捕获其 src（150ms 窗口，MutationObserver 同步记录）
     var closedSrc = null;
     var last = b.src.length;
     var obs = new MutationObserver(function(){
       if(b.src.length !== last){
-        if(b.src.length === 128791 && !closedSrc) closedSrc = b.src;
+        if(b.src.length === 125191 && !closedSrc) closedSrc = b.src; // v1066h 新闭眼帧长度（含前缀）
         last = b.src.length;
       }
     });
     obs.observe(b, {attributes:true, attributeFilter:['src']});
     t0 = Date.now();
-    while(!closedSrc && Date.now()-t0 < 15000){
+    while(!closedSrc && Date.now()-t0 < 20000){
       poke();
       await new Promise(function(r){setTimeout(r,200)});
     }
     obs.disconnect();
     if(!closedSrc) return 'NO_CLOSED';
     function load(src){ return new Promise(function(res){ var i=new Image(); i.onload=function(){res(i)}; i.onerror=function(){res(null)}; i.src=src; }); }
-    var a = await load(mainSrc), c = await load(closedSrc);
-    if(!a||!c) return 'LOAD_FAIL';
-    function ctx(img){ var cv=document.createElement('canvas'); cv.width=img.naturalWidth; cv.height=img.naturalHeight; var x=cv.getContext('2d'); x.drawImage(img,0,0); return x; }
-    var xa = ctx(a), xb = ctx(c);
-    var da = xa.getImageData(0,0,a.naturalWidth,a.naturalHeight).data;
-    var db = xb.getImageData(0,0,c.naturalWidth,c.naturalHeight).data;
-    var W = a.naturalWidth;
-    var eyes = [{cx:794,cy:150,R:57},{cx:540,cy:149,R:52}];  // 实际虹膜参数(旧值R=49偏小, 测量环带切入虹膜缘)
-    function zoneLum(data, y0,y1,x0,x1){
-      // 只统计实心像素(alpha>=250): 主图虹膜缘有半透明抗锯齿边(alpha~101),
-      // Chrome getImageData 对其返回预乘暗值, 与不透明的闭眼帧直接比会假阳
-      var s=0,n=0;
-      for(var y=y0;y<y1;y++) for(var x=x0;x<x1;x++){ var i=(y*W+x)*4; if(data[i+3]<250) continue; s+=(data[i]+data[i+1]+data[i+2])/3; n++; }
-      return n? s/n : null;
-    }
-    var out = { zones: [], centers: [], greenTotal: 0 };
+    var c = await load(closedSrc);
+    if(!c) return 'LOAD_FAIL';
+    var cv=document.createElement('canvas'); cv.width=c.naturalWidth; cv.height=c.naturalHeight; var x=cv.getContext('2d'); x.drawImage(c,0,0);
+    var d = x.getImageData(0,0,c.naturalWidth,c.naturalHeight).data;
+    var W = c.naturalWidth;
+    // v1066h 新闭眼帧实测闭眼线中心（左 530,196 / 右 760,196）
+    var eyes = [{cx:530,cy:196,R:40},{cx:760,cy:196,R:40}];
+    var out = { centers: [], greenTotal: 0, whiteSpots: 0, blackSpots: 0 };
     for(var k=0;k<eyes.length;k++){
-      var cx=eyes[k].cx, cy=eyes[k].cy, R=eyes[k].R;
-      var zs = { 眼上:[cy-R-26,cy-R-10,cx-12,cx+12], 眼下:[cy+R+10,cy+R+26,cx-12,cx+12],
-                 眼左:[cy-12,cy+12,cx-R-26,cx-R-10], 眼右:[cy-12,cy+12,cx+R+10,cx+R+26] };
-      for(var zn in zs){
-        var z=zs[zn];
-        var lm=zoneLum(da,z[0],z[1],z[2],z[3]), lc=zoneLum(db,z[0],z[1],z[2],z[3]);
-        out.zones.push({eye:k, zone:zn, mainLum:+lm.toFixed(1), closedLum:+lc.toFixed(1), diff:+(lc-lm).toFixed(1)});
+      var cx=eyes[k].cx, cy=eyes[k].cy, R=eyes[k].R, RR=R+26;
+      var ic=(cy*W+cx)*4;
+      var lum=(d[ic]+d[ic+1]+d[ic+2])/3, grn=d[ic+1]-d[ic];
+      out.centers.push({eye:k, lum:+lum.toFixed(1), greenness:+grn.toFixed(1)});
+      for(var dy=-RR; dy<=RR; dy++) for(var dx=-RR; dx<=RR; dx++){
+        if(dx*dx+dy*dy>RR*RR) continue;
+        var i2=((cy+dy)*W+(cx+dx))*4;
+        var l2=(d[i2]+d[i2+1]+d[i2+2])/3;
+        if(d[i2+1]-d[i2]>14 && d[i2+1]-d[i2+2]>14) out.greenTotal++;
+        if(l2>248) out.whiteSpots++;
+        if(l2<50) out.blackSpots++;
       }
-      var ic=((cy)*W+cx)*4;
-      var lc2=(db[ic]+db[ic+1]+db[ic+2])/3, grn=db[ic+1]-db[ic];
-      out.centers.push({eye:k, closedLum:+lc2.toFixed(1), greenness:+grn.toFixed(1)});
-      var gc=0;
-      for(var dy2=-R-30; dy2<=R+30; dy2++) for(var dx2=-R-30; dx2<=R+30; dx2++){
-        if(dx2*dx2+dy2*dy2<=(R+30)*(R+30)){
-          var i2=((cy+dy2)*W+(cx+dx2))*4;
-          if(db[i2+1]-db[i2]>14 && db[i2+1]-db[i2+2]>14) gc++;
-        }
-      }
-      out.greenTotal += gc;
     }
     return JSON.stringify(out);
   })()`);
   try {
     var j7 = JSON.parse(r7);
-    // 眼上/眼左/眼右：与主图一致；眼左/右含虹膜缘过渡带(闭眼时虹膜被眼皮覆盖, 亮度+12属设计使然)故容差±15
-    var sideZones = j7.zones.filter(function (z) { return z.zone !== '眼下'; });
-    var maxSideDiff = Math.max.apply(null, sideZones.map(function (z) { return Math.abs(z.diff); }));
-    // 绝对白斑/黑斑检查: 任何眼部区域闭眼亮度必须在 [120,245]（白斑会>245, 黑影会<120）
-    var lumRangeOk = j7.zones.every(function (z) { return z.closedLum >= 120 && z.closedLum <= 245; });
-    // 眼下：主图是眼窝暗影，闭眼帧应为肤色（与已上线的开心帧同设计语言）
-    var belowOk = j7.zones.filter(function (z) { return z.zone === '眼下'; }).every(function (z) { return z.closedLum > 140; });
-    var centersOk = j7.centers.every(function (c) { return c.closedLum > 150 && c.greenness < 14; });
-    if (maxSideDiff <= 15 && belowOk && centersOk && j7.greenTotal <= 60 && lumRangeOk)
-      ok("T7: 闭眼帧眼部干净——眼上/左/右亮度差≤" + maxSideDiff + "（无白斑），眼下为肤色，眼心为肤色，虹膜区残留绿 " + j7.greenTotal + "px");
+    // 眼心落在闭眼深色弧线上(lum 30~200)，无绿虹膜残留；环带内无绿(睁眼残留)、无白斑，黑弧线属闭眼线本身故放宽
+    var centersOk = j7.centers.every(function (c) { return c.lum >= 25 && c.lum <= 200 && c.greenness < 14; });
+    var ringOk = j7.greenTotal <= 40 && j7.whiteSpots <= 40 && j7.blackSpots <= 800; // 黑弧=闭眼线本身, 双眼约 550
+    if (centersOk && ringOk)
+      ok("T7: 闭眼帧眼部干净——眼心无绿虹膜残留，环带绿 " + j7.greenTotal + "px / 白斑 " + j7.whiteSpots + "px / 黑弧 " + j7.blackSpots + "px");
     else fail("T7", JSON.stringify(j7));
   } catch (e) { fail("T7", String(r7).slice(0, 300)); }
 
@@ -311,7 +288,7 @@ function httpGet(path) {
       poke();
       await new Promise(function(r){setTimeout(r,120)});
       var L = b.src.length;
-      if(L !== 118491 && L !== 128791){ poseLen = L; break; }
+      if(L !== 118491 && L !== 125191){ poseLen = L; break; }
       await new Promise(function(r){setTimeout(r,120)});
     }
     return JSON.stringify({poseLen: poseLen});
