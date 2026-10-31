@@ -71,7 +71,7 @@ function httpGet(path) {
   console.log('\n=== test29: 喂食/陪玩不限次 + 开心帧无白斑 ===\n');
   var ver = await evaluate('(function(){ var m=document.documentElement.outerHTML.match(/PUSH_BUILD = "(v\\d+[a-z])"/); return m?m[1]:' + "'NOT_FOUND'" + ' })()');
   console.log('  版本号: ' + ver);
-  if (ver === 'v1066j') ok('T0: 版本号 v1066j'); else fail('T0', String(ver));
+  if (ver === 'v1066k') ok('T0: 版本号 v1066k'); else fail('T0', String(ver));
 
   await evaluate('(function(){ var el=document.querySelector(\'[data-go="tree"]\'); if(el)el.click() })()');
   await sleep(1600);
