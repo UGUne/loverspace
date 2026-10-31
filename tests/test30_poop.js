@@ -129,7 +129,7 @@ function httpGet(path) {
   })()`);
   try {
     var j2 = JSON.parse(t2);
-    var T2FRAMES=[123083, 82415, 60003]; // v1066n: 拉屎等待三帧(坐马桶/蹲坐/倒立)随机其一，长度=文件b64去换行 // v1066n: 拉屎等待三帧(坐马桶/蹲坐/倒立)随机其一
+    var T2FRAMES=[123083, 82415, 68503]; // v1066n: 拉屎等待三帧(坐马桶/蹲坐/倒立)随机其一，长度=文件b64去换行 // v1066n: 拉屎等待三帧(坐马桶/蹲坐/倒立)随机其一
     if (T2FRAMES.indexOf(j2.duringLen) >= 0 && j2.poop === 0 && j2.floor === 1 && j2.badge === 'NONE' && j2.backMain === 118491 || j2.backMain === 86231 && j2.stillThere === true)
       ok('T2: 拉屎→三姿势随机帧之一(43031→三帧其一)→回主图→奶屎落地不自动收回（poopFloor=1）');
     else fail('T2', t2.slice(0, 300));
