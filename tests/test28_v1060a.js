@@ -84,7 +84,7 @@ function httpGet(path) {
 
   var ver = await evaluate("(function(){ var m=document.documentElement.outerHTML.match(/PUSH_BUILD = \"(v\\d+[a-z])\"/); return m?m[1]:'NOT_FOUND' })()");
   console.log("  版本号: " + ver);
-  if (ver === 'v1066k') ok("T0: 版本号 v1066k（挥手=主帧静止+手臂图层绕肩摆动，不再整身摇晃；拖喂虚线圈已移除）"); else fail('T0', String(ver));
+  if (ver === 'v1066l') ok("T0: 版本号 v1066l（挥手=无臂身体帧+主帧同源手臂图层绕肩摆动，同一只手不再多长一只；拖喂虚线圈已移除）"); else fail('T0', String(ver));
 
   // T0b: 已登录(本地有房间码)时，<head> 脚本在首帧前打 has-room，CSS 让 roomGate 不渲染——杜绝开屏闪一下创建/加入房间页
   var hasRoom = await evaluate("(function(){ return document.documentElement.classList.contains('has-room') })()");
@@ -105,10 +105,19 @@ function httpGet(path) {
 
   // T1: v1066j 启动图已移除——进场 450ms 后动态挥手打招呼
   var splashGone = await evaluate("(function(){ return !document.getElementById('frogSplash') })()");
-  // v1066k: 挥手=主帧静止+独立手臂图层绕肩摆动
-  var waving = await evaluate("(function(){ var a=document.getElementById('frogWaveArm'); var b=document.getElementById('frogBody'); return !!(a && a.style.display === 'block' && a.classList.contains('waving-arm')) && !!(b && b.src.length === 118491) })()");
-  if (splashGone && waving) ok("T1: 启动图已移除，进场挥手（主帧静止+手臂图层摆动）");
+  // v1066l: 挥手=身体换无左臂帧(79087)+主帧同源手臂图层绕肩摆动（同一只手）
+  var waving = await evaluate("(function(){ var a=document.getElementById('frogWaveArm'); var b=document.getElementById('frogBody'); return !!(a && a.style.display === 'block' && a.classList.contains('waving-arm')) && !!(b && b.src.length === 79087) })()");
+  if (splashGone && waving) ok("T1: 启动图已移除，进场挥手（无臂身体帧+手臂图层摆动，仅一只手）");
   else fail("T1", "splashGone=" + splashGone + " waving=" + waving);
+  // T1b: 挥手结束后回主帧、手臂图层隐藏（收势与主帧逐像素重合，无跳变）；轮询 2s 避开眨眼采样竞态
+  var t1b = null;
+  for (var tb = 0; tb < 20; tb++) {
+    await sleep(120);
+    t1b = await evaluate("(function(){ var a=document.getElementById('frogWaveArm'); var b=document.getElementById('frogBody'); return { body: b ? b.src.length : 0, armHidden: !a || (a.style.display === 'none' && !a.classList.contains('waving-arm')) } })()");
+    if (t1b.body === 118491 && t1b.armHidden) break;
+  }
+  if (t1b.body === 118491 && t1b.armHidden) ok("T1b: 挥手结束回主帧且手臂图层已隐藏");
+  else fail("T1b", JSON.stringify(t1b));
 
   // T2: 喂食后不跳启动图（bug 修复验证）——新流程：选择器→选食物卡→点按手持食物投喂
   await sleep(300);
@@ -169,7 +178,7 @@ function httpGet(path) {
   else fail("T3", "splash 又显示了");
 
   // 帧长度识别（内联 base64 全串长度，含 data: 前缀 23 字符）：v1066h 新增 wave/surprise/angry/wronged 四姿势
-  var LEN = { main: 118491, closed: 86231, stretch: 132407, hold: 149567, wave: 111951, surprise: 85143, angry: 106191, wronged: 107887 }; // v1066j: surprise/angry 白块修复后重打包
+  var LEN = { main: 118491, closed: 86231, stretch: 132407, hold: 149567, wave: 79087, surprise: 85143, angry: 106191, wronged: 107887 }; // v1066l: wave=无左臂身体帧
   var POSE_LENS = [LEN.stretch, LEN.hold, LEN.wave, LEN.surprise, LEN.angry, LEN.wronged];
 
   // T4: 两种姿势帧（stretch/hold）由头部戳击触发，均加载为 1329x2124（鲁棒：戳后等回主图再戳，消除随机漏帧）
