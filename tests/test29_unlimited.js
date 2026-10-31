@@ -71,7 +71,7 @@ function httpGet(path) {
   console.log('\n=== test29: 喂食/陪玩不限次 + 开心帧无白斑 ===\n');
   var ver = await evaluate('(function(){ var m=document.documentElement.outerHTML.match(/PUSH_BUILD = "(v\\d+[a-z])"/); return m?m[1]:' + "'NOT_FOUND'" + ' })()');
   console.log('  版本号: ' + ver);
-  if (ver === 'v1066h') ok('T0: 版本号 v1066h'); else fail('T0', String(ver));
+  if (ver === 'v1066i') ok('T0: 版本号 v1066i'); else fail('T0', String(ver));
 
   await evaluate('(function(){ var el=document.querySelector(\'[data-go="tree"]\'); if(el)el.click() })()');
   await sleep(1600);
@@ -144,9 +144,9 @@ function httpGet(path) {
     var body=document.getElementById('frogBody');
     for(var i=0;i<40;i++){
       await new Promise(function(r){setTimeout(r,80)});
-      if(body.src.length===116879) break;
+      if(body.src.length===86399) break;
     }
-    if(body.src.length!==116879) return 'NOT_HAPPY:'+body.src.length;
+    if(body.src.length!==86399) return 'NOT_HAPPY:'+body.src.length;
     var im=new Image(); im.src=body.src;
     await new Promise(function(r){ im.onload=r; im.onerror=r; });
     if(im.naturalWidth!==1329) return 'BAD_SIZE';
