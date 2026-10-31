@@ -175,7 +175,7 @@ function httpGet(path) {
     var nPoop=document.querySelectorAll('#sheetBody .feed-opt.poop').length;
     var fp=document.querySelector('#sheetBody .feed-opt.poop');
     if(!fp) return JSON.stringify({sheetOpen:sheetOpen, nFood:nFood, nPoop:nPoop, noBtn:true});
-    fp.click();
+    (function(){ var r=fp.getBoundingClientRect(), x=r.left+r.width/2, y=r.top+r.height/2; fp.dispatchEvent(new PointerEvent('pointerdown',{clientX:x,clientY:y,pointerId:6,bubbles:true,cancelable:true})); fp.dispatchEvent(new PointerEvent('pointerup',{clientX:x,clientY:y,pointerId:6,bubbles:true,cancelable:true})); })();
     await new Promise(function(r){setTimeout(r,300)});
     var hold=!!document.querySelector('.fr-food-hold');
     return JSON.stringify({sheetOpen:sheetOpen, nFood:nFood, nPoop:nPoop, hold:hold});
@@ -212,7 +212,7 @@ function httpGet(path) {
     var nFood=document.querySelectorAll('#sheetBody .feed-opt').length;
     var nPoop=document.querySelectorAll('#sheetBody .feed-opt.poop').length;
     var fc=document.querySelector('#sheetBody .feed-opt');
-    if(fc) fc.click();
+    (function(){ if(!fc) return; var r=fc.getBoundingClientRect(), x=r.left+r.width/2, y=r.top+r.height/2; fc.dispatchEvent(new PointerEvent('pointerdown',{clientX:x,clientY:y,pointerId:6,bubbles:true,cancelable:true})); fc.dispatchEvent(new PointerEvent('pointerup',{clientX:x,clientY:y,pointerId:6,bubbles:true,cancelable:true})); })();
     await new Promise(function(r){setTimeout(r,300)});
     var hold=!!document.querySelector('.fr-food-hold');
     return JSON.stringify({sheetOpen:sheetOpen, nFood:nFood, nPoop:nPoop, hold:hold});
