@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// test32_tree_v1067a.js — v1067a 回归：恋爱树十阶段形态 + 成长值只由浇水产出 + 消息秒同步(pollSoon)
-// 运行: node test32_tree_v1067a.js
+// test32_tree_v1067b.js — v1067b 回归：恋爱树十阶段形态 + 成长值只由浇水产出 + 消息秒同步(pollSoon)
+// 运行: node test32_tree_v1067b.js
 const { spawn } = require('child_process');
 const fs = require('fs');
 const http = require('http');
@@ -24,7 +24,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   console.log('[T0] 静态源检查');
   const src = fs.readFileSync('/workspace/index.html', 'utf8');
   const ver = (src.match(/PUSH_BUILD = "([^"]+)"/) || [])[1];
-  if (ver === 'v1067a') ok('T0: 版本号 v1067a（恋爱树十阶段+浇水产出成长值+pollSoon 消息秒同步）'); else fail('T0', String(ver));
+  if (ver === 'v1067b') ok('T0: 版本号 v1067b（恋爱树十阶段+浇水产出成长值+pollSoon 消息秒同步）'); else fail('T0', String(ver));
 
   const stageBlock = (src.match(/var TREE_STAGES = \[[\s\S]*?\];/) || [''])[0];
   const stageCount = (stageBlock.match(/\{ min:/g) || []).length;
