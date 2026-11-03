@@ -84,7 +84,7 @@ function httpGet(path) {
 
   var ver = await evaluate("(function(){ var m=document.documentElement.outerHTML.match(/PUSH_BUILD = \"(v\\d+[a-z])\"/); return m?m[1]:'NOT_FOUND' })()");
   console.log("  版本号: " + ver);
-  if (ver === 'v1067b') ok("T0: 版本号 v1067b（挥手=图二弯肘臂图层+挥手帧去臂身体小幅摆动；戳肚皮姿势加权随机）"); else fail('T0', String(ver));
+  if (ver === 'v1067c') ok("T0: 版本号 v1067c（挥手=图二弯肘臂图层+挥手帧去臂身体小幅摆动；戳肚皮姿势加权随机）"); else fail('T0', String(ver));
 
   // T0b: 已登录(本地有房间码)时，<head> 脚本在首帧前打 has-room，CSS 让 roomGate 不渲染——杜绝开屏闪一下创建/加入房间页
   var hasRoom = await evaluate("(function(){ return document.documentElement.classList.contains('has-room') })()");
@@ -179,7 +179,7 @@ function httpGet(path) {
 
   // 帧长度识别（内联 base64 全串长度，含 data: 前缀 23 字符）：v1066h 新增 wave/surprise/angry/wronged 四姿势
   var LEN = { main: 118491, closed: 86231, stretch: 132407, hold: 149567, wave: 92879, surprise: 85143, angry: 106191, wronged: 107887 }; // v1066m: wave=挥手帧去臂身体
-  var POSE_LENS = [LEN.stretch, LEN.hold, LEN.wave, LEN.surprise, LEN.angry, LEN.wronged, 142499, 134071]; // v1067b: +wink/crossed
+  var POSE_LENS = [LEN.stretch, LEN.hold, LEN.wave, LEN.surprise, LEN.angry, LEN.wronged, 142499, 134071]; // v1067c: +wink/crossed
 
   // T4: 两种姿势帧（stretch/hold）由头部戳击触发，均加载为 1329x2124（鲁棒：戳后等回主图再戳，消除随机漏帧）
   var r4 = await evaluate(`(async function(){
