@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// test32_tree_v1067b.js — v1067b 回归：恋爱树十阶段形态 + 成长值只由浇水产出 + 消息秒同步(pollSoon)
-// 运行: node test32_tree_v1067b.js
+// test32_tree_v1067c.js — v1067c 回归：恋爱树十阶段形态 + 成长值只由浇水产出 + 消息秒同步(pollSoon)
+// 运行: node test32_tree_v1067c.js
 const { spawn } = require('child_process');
 const fs = require('fs');
 const http = require('http');
@@ -24,7 +24,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   console.log('[T0] 静态源检查');
   const src = fs.readFileSync('/workspace/index.html', 'utf8');
   const ver = (src.match(/PUSH_BUILD = "([^"]+)"/) || [])[1];
-  if (ver === 'v1067b') ok('T0: 版本号 v1067b（恋爱树十阶段+浇水产出成长值+pollSoon 消息秒同步）'); else fail('T0', String(ver));
+  if (ver === 'v1067c') ok('T0: 版本号 v1067c（恋爱树十阶段+浇水产出成长值+pollSoon 消息秒同步）'); else fail('T0', String(ver));
 
   const stageBlock = (src.match(/var TREE_STAGES = \[[\s\S]*?\];/) || [''])[0];
   const stageCount = (stageBlock.match(/\{ min:/g) || []).length;
@@ -39,7 +39,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   const pollSoonCalls = (src.match(/pollSoon\(\);/g) || []).length;
   if (pollSoonCalls >= 3) ok('T0h: pollSoon 挂到 visibilitychange/focus/推送跳转 ' + pollSoonCalls + ' 处'); else fail('T0h', 'calls=' + pollSoonCalls);
   if (src.includes('function waterFx()') && src.includes('.water-fx .wf-can')) ok('T0i: 浇水反馈动画 waterFx(水壶+水滴+飘字) 已就位'); else fail('T0i');
-  if (src.includes('tp-rainbow') && src.includes('tp-kite') && src.includes('tp-balloon') && src.includes('tp-bird')) ok('T0j: 天空解锁物(飞鸟/风筝/气球/彩虹) 已就位'); else fail('T0j');
+  if (src.includes('tp-plane') && src.includes('tp-heartx') && src.includes('tp-kite') && src.includes('tp-balloon') && src.includes('tp-bird')) ok('T0j: 天空解锁物(飞鸟/风筝/气球/纸飞机/爱心串) 已就位'); else fail('T0j');
 
   // ---------- 浏览器行为测试 ----------
   try { require('child_process').execSync("pkill -f 'remote-debugging-port=" + CDP_PORT + "' || true"); } catch (e) {}
@@ -99,7 +99,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
   await openTree(170);
   if ((await stageName()) === '爱情之树') ok('T1k: growth=170 → 爱情之树(最终形态)'); else fail('T1k', await stageName());
-  if (await evaluate(q('.tp-rainbow'))) ok('T1l: 满级天空升起双彩虹'); else fail('T1l');
+  if (await evaluate(q('.tp-heartx')) && !await evaluate(q('.tp-rainbow'))) ok('T1l: 满级天空升起爱心串(双彩虹已移除)'); else fail('T1l');
   if (await evaluate(q('.tp-balloon'))) ok('T1m: 满级天空有爱心气球'); else fail('T1m');
 
   // ---------- T2: 浇水 +1 成长 + 反馈动画 ----------
