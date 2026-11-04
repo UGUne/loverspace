@@ -24,8 +24,8 @@ if (!missingTerms.length) ok('T0e: 24节气主题全部就位'); else fail('T0e'
 if (!missingFests.length) ok('T0f: 20个节日主题全部就位'); else fail('T0f', '缺 ' + missingFests.join(','));
 if (src.includes('treeSky(season, phase, fest ? THEMES[fest.key] : null)')) ok('T0g: treeSVG 天色接入主题'); else fail('T0g');
 if (src.includes('if (i >= 2 && theme && theme.hang) parts = parts.concat(hangParts(theme.hang))')) ok('T0h: 树冠挂饰接入主题'); else fail('T0h');
-if (src.includes('.tp-rain') && src.includes('.tp-bubble') && src.includes('.tp-firework') && src.includes('.tp-bigmoon') && src.includes('.tp-fstar')) ok('T0i: 新粒子/烟花/大月亮 CSS 已就位'); else fail('T0i');
-if (src.includes('PUSH_BUILD = "v1067d"')) ok('T0j: 版本号 v1067d'); else fail('T0j');
+if (src.includes('.tp-rain') && src.includes('.tp-bubble') && src.includes('.tp-fw') && src.includes('.tp-lanstr') && src.includes('.tp-bigmoon') && src.includes('.tp-fstar')) ok('T0i: 新粒子/烟花/灯笼串/大月亮 CSS 已就位(v1067e)'); else fail('T0i');
+if (src.includes('PUSH_BUILD = "v1067e"')) ok('T0j: 版本号 v1067e（v1067e 换装质感重做：纸牌横幅+精化挂饰+粒子烟花+灯笼串）'); else fail('T0j');
 
 // ---------- 浏览器行为测试 ----------
 (async () => {
@@ -114,7 +114,7 @@ console.log('[T2] 节日识别与主题（DOM，mock 日期）');
 await openTreeOn('2026-02-17T10:30:00', 170);
 if ((await banner()).includes('春节')) ok('T2a: 2026-02-17 → 春节(农历正月初一)'); else fail('T2a', await banner());
 if ((await sceneHtml()).includes('#ff5148')) ok('T2b: 春节树上挂红灯笼'); else fail('T2b');
-if ((await stageStyle()).includes('#ffddd0')) ok('T2c: 春节暖色天色'); else fail('T2c', await stageStyle());
+if ((await stageStyle()).includes('#ffe6d8')) ok('T2c: 春节暖色天色(v1067e 柔化)'); else fail('T2c', await stageStyle());
 
 await openTreeOn('2026-02-16T10:30:00', 170);
 if ((await banner()).includes('除夕')) ok('T2d: 2026-02-16 → 除夕(春节前一天)'); else fail('T2d', await banner());
