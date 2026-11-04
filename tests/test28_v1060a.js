@@ -84,7 +84,7 @@ function httpGet(path) {
 
   var ver = await evaluate("(function(){ var m=document.documentElement.outerHTML.match(/PUSH_BUILD = \"(v\\d+[a-z])\"/); return m?m[1]:'NOT_FOUND' })()");
   console.log("  版本号: " + ver);
-  if (ver === 'v1067d') ok("T0: 版本号 v1067d（继承 v1066 挥手/戳肚皮，v1067d 节气/节日换装）"); else fail('T0', String(ver));
+  if (ver === 'v1067e') ok("T0: 版本号 v1067e（v1067e 换装质感重做）"); else fail('T0', String(ver));
 
   // T0b: 已登录(本地有房间码)时，<head> 脚本在首帧前打 has-room，CSS 让 roomGate 不渲染——杜绝开屏闪一下创建/加入房间页
   var hasRoom = await evaluate("(function(){ return document.documentElement.classList.contains('has-room') })()");
