@@ -81,6 +81,12 @@ public class MainActivity extends BridgeActivity {
           && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED;
       toastUi(ok ? "存储权限已授予，请再次点击「导出备份文件」" : "没有存储权限，无法保存备份文件");
     }
+    // 旧版设备（API 24-28）保存图片到系统相册时的存储权限申请结果：引导用户再次点击保存
+    if (requestCode == 9002) {
+      boolean ok = grantResults.length > 0
+          && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED;
+      toastUi(ok ? "存储权限已授予，请再次点击「保存」" : "没有存储权限，无法把图片保存到相册");
+    }
   }
   private void toastUi(final String msg) {
     try {
@@ -186,6 +192,76 @@ public class MainActivity extends BridgeActivity {
       try {
         byte[] bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT);
         return writeToDownloads(name, bytes);
+      } catch (Throwable t) {
+        return "err:" + t;
+      }
+    }
+    // ===== 保存图片到「系统相册」：WebView 不处理 <a download>，下载目录里的图片也不会被媒体库索引，
+    //       必须走原生写入 MediaStore.Images，相册 App 才会显示。返回 "ok:<路径>" / "need_perm" / "err:<原因>" =====
+    @JavascriptInterface
+    public String saveImageToGallery(String name, String base64, String mime) {
+      // 与备份一致：22MB 上限（解码后 16MB），避免巨大 base64 解码双倍占内存 OOM
+      if (base64 == null || base64.length() > 22 * 1024 * 1024) return "err:too-large";
+      if (!originOk()) return "err:origin";
+      String m = (mime != null && mime.startsWith("image/")) ? mime : "image/jpeg";
+      try {
+        byte[] bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT);
+        return writeToGallery(name, bytes, m);
+      } catch (Throwable t) {
+        return "err:" + t;
+      }
+    }
+    private String writeToGallery(String name, byte[] bytes, String mime) {
+      String ext = "image/png".equals(mime) ? ".png" : ("image/webp".equals(mime) ? ".webp" : ".jpg");
+      String safe = (name == null ? "photo" : name).replaceAll("[^a-zA-Z0-9._\\-\\u4e00-\\u9fa5]", "_");
+      safe = safe.replaceAll("\\.(png|jpg|jpeg|webp|gif)$", "");   // 去掉传入扩展名，按真实 mime 统一补
+      if (safe.isEmpty()) safe = "photo";
+      safe = safe + "_" + System.currentTimeMillis() + ext;            // 时间戳防同名覆盖
+      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+        // API 29+：MediaStore.Images 免存储权限，落在「Pictures/loverspace」，系统相册立即可见
+        android.net.Uri uri = null;
+        try {
+          android.content.ContentValues cv = new android.content.ContentValues();
+          cv.put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, safe);
+          cv.put(android.provider.MediaStore.Images.Media.MIME_TYPE, mime);
+          cv.put(android.provider.MediaStore.Images.Media.RELATIVE_PATH,
+              android.os.Environment.DIRECTORY_PICTURES + "/loverspace");
+          cv.put(android.provider.MediaStore.Images.Media.IS_PENDING, 1);
+          uri = act.getContentResolver().insert(
+              android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, cv);
+          if (uri == null) return "err:insert-failed";
+          java.io.OutputStream os = act.getContentResolver().openOutputStream(uri);
+          if (os == null) return "err:open-failed";
+          os.write(bytes);
+          os.close();
+          cv.clear();
+          cv.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0);
+          act.getContentResolver().update(uri, cv, null, null);
+          return "ok:" + android.os.Environment.DIRECTORY_PICTURES + "/loverspace/" + safe;
+        } catch (Throwable t) {
+          // 失败时清掉 IS_PENDING 的孤儿文件（否则它在相册里永远不可见地占位）
+          if (uri != null) { try { act.getContentResolver().delete(uri, null, null); } catch (Throwable ignore) {} }
+          return "err:" + t;
+        }
+      }
+      // API 24-28：写公共 Pictures 目录 + 媒体扫描让相册立刻可见，需运行时存储权限
+      // （AndroidManifest 已声明 WRITE_EXTERNAL_STORAGE 且 maxSdkVersion=28）
+      try {
+        if (act.checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+          act.requestPermissions(new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 9002);
+          return "need_perm";
+        }
+        java.io.File dir = new java.io.File(
+            android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_PICTURES), "loverspace");
+        if (!dir.exists() && !dir.mkdirs()) return "err:mkdir-failed";
+        java.io.File f = new java.io.File(dir, safe);
+        java.io.FileOutputStream fos = new java.io.FileOutputStream(f);
+        fos.write(bytes);
+        fos.close();
+        android.media.MediaScannerConnection.scanFile(ctx, new String[]{f.getAbsolutePath()},
+            new String[]{mime}, null);
+        return "ok:" + f.getAbsolutePath();
       } catch (Throwable t) {
         return "err:" + t;
       }

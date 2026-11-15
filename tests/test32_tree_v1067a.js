@@ -24,7 +24,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   console.log('[T0] 静态源检查');
   const src = fs.readFileSync('/workspace/index.html', 'utf8');
   const ver = (src.match(/PUSH_BUILD = "([^"]+)"/) || [])[1];
-  if (ver === 'v1067e') ok('T0: 版本号 v1067e'); else fail('T0', String(ver));
+  if (ver === 'v1067l') ok('T0: 版本号 v1067l'); else fail('T0', String(ver));
 
   const stageBlock = (src.match(/var TREE_STAGES = \[[\s\S]*?\];/) || [''])[0];
   const stageCount = (stageBlock.match(/\{ min:/g) || []).length;

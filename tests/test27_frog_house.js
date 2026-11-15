@@ -209,6 +209,11 @@ function httpGet(path) {
   else fail("T10", "无摇摆");
   await sleep(900);
 
+  // v1067k: 「陪玩」按钮已并入游戏厅入口（点它会打开 #frogGame 并压一层 history）。
+  // 先返回一次关掉游戏厅、回到陪玩房，T11 再测陪玩房自身的返回键。
+  await evaluate("(function(){ history.back() })()");
+  await sleep(400);
+
   // T11: 返回关闭 + 眨眼定时器停止
   await evaluate("(function(){ var btn=document.getElementById('frogBack'); if(btn)btn.click() })()");
   await sleep(600);
